@@ -6,5 +6,9 @@ import { mountCardOverlay } from './overlay'
 // whichever view is active (login, lobby), and removed on close.
 export function openDocView(title: string, markdown: string, opts?: MdOptions): void {
   const { body } = mountCardOverlay(title, { body: 'doc-body' })
+  // Documentation is long-form English (upstream's ABOUT/CHANGELOG). Sentence
+  // level machine lookup on their fragments produces nonsense ("Features" →
+  // 地形), so the body is excluded from the DOM translator entirely.
+  body.classList.add('no-i18n')
   body.innerHTML = renderMarkdown(markdown, opts)
 }

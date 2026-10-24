@@ -13,20 +13,63 @@ function displayWidth(s: string): number {
   return n
 }
 
+/** Translate one "Label: value" cell, re-padding the value to its old column. */
+function translateCell(cell: string): string {
+  const m = /^(\s*)(\S+?):(\s+)(.+)$/.exec(cell)
+  if (!m) return cell
+  const label = propLabel(m[2])
+  const desc = t(m[4])
+  if (label !== m[2] || desc !== m[4]) {
+    const target = displayWidth(m[2]) + m[3].length
+    const pad = Math.max(1, target - displayWidth(label))
+    return tidy(`${m[1]}${label}:${' '.repeat(pad)}${desc}`)
+  }
+  // Labels outside the property table ("Base armour rating", "Encumbrance
+  // rating") are ordinary dictionary keys: try the whole cell.
+  const whole = t(cell.trim())
+  return whole === cell.trim() ? cell : cell.slice(0, cell.length - cell.trimStart().length) + tidy(whole)
+}
+
 /** Translate the property/value rows and stray sentences of a describe body. */
 export function translateBody(body: string): string {
   if (!isZh() || !body) return body
   return body.split('\n').map((line) => {
-    const m = /^(\s*)(\S+?):(\s+)(.+)$/.exec(line)
-    if (m) {
-      const label = propLabel(m[2])
-      const desc = t(m[4])
-      if (label !== m[2] || desc !== m[4]) {
-        const target = displayWidth(m[2]) + m[3].length
-        const pad = Math.max(1, target - displayWidth(label))
-        return tidy(`${m[1]}${label}:${' '.repeat(pad)}${desc}`)
-      }
+    // Rows can carry several labelled cells separated by the engine's column
+    // gaps ("Base armour rating: 2       Encumbrance rating: 0"): translate
+    // each cell on its own, keep the gaps.
+    const pieces = line.split(/(\s{2,})/)
+    if (pieces.length > 1) {
+      let changed = false
+      const out = pieces.map((piece, i) => {
+        if (i % 2 === 1) return piece
+        const lead = piece.slice(0, piece.length - piece.trimStart().length)
+        const text = piece.trim()
+        if (!text) return piece
+        // Label-only cell (the value lives in the next column).
+        const labelOnly = /^(\S+?):$/.exec(text)
+        if (labelOnly) {
+          const label = propLabel(labelOnly[1])
+          if (label !== labelOnly[1]) {
+            changed = true
+            return lead + label + ':'
+          }
+        }
+        const cell = translateCell(text)
+        if (cell !== text) {
+          changed = true
+          return lead + cell
+        }
+        const whole = t(text)
+        if (whole !== text) {
+          changed = true
+          return lead + tidy(whole)
+        }
+        return piece
+      }).join('')
+      if (changed) return out
     }
+    const cell = translateCell(line)
+    if (cell !== line) return cell
     const trimmed = line.trim()
     if (!trimmed) return line
     const zh = t(trimmed)

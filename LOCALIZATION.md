@@ -41,11 +41,11 @@
 
 ## 接入点（都只是“显示副本”）
 
-- `src/views/message-log.ts`：日志整行（保留行首颜色标签）
-- `src/views/menu-view.ts`：菜单标题、行文本（定宽列行不碰）
+- `src/views/message-log.ts`：日志整行（保留行首颜色标签；切语言时按原文重渲染）
+- `src/views/menu-view.ts`：菜单标题、行文本；法术/技能菜单由 `menu-columns.ts` 重排为中文列
 - `src/views/game-view.ts`：所有 overlay 标题
 - `src/views/settings-view.ts`：新增「语言 / Language」分段开关
-- `src/i18n/dom.ts`：其余所有渲染出来的文本与属性
+- `src/i18n/dom.ts`：其余所有渲染出来的文本与属性（文档正文排除）
 
 ## 重新生成词表
 
@@ -57,14 +57,17 @@ node tools/build-zh-descript.mjs --src "<你的 DCSS 安装>/dat"
 
 ## 已知边界（诚实列出）
 
-1. **描述正文（examine）**：在线可在服务器的 rc 里设 `language = zh` 让引擎先翻译描述；
-   离线引擎的数据包 `crawl.data` 不含 `dat/descript/zh`。客户端已内置轻量兜底：按标题里的
-   英文名查 `data/zh-descript.json`（2,261 条，来自本机 `dat/descript/zh`），命中时替换散文段、
-   保留数值行。未命中的名字仍是英文。
+1. **描述正文（examine）**：按标题里的英文名查 `data/zh-descript.json`
+   （2,343 条分类记录 + 7,043 组整段配对，来自中文版 `dat/descript/zh`），并按页面类型
+   （法术/怪物/物品/神祇）优先查对应分类；命中时替换散文段与引文、保留数值行。
+   未命中的名字仍是英文。
 2. **帮助/图鉴/CRT 定宽屏**：预排版英文，未翻译（避免破坏 80 列布局）。
-3. **菜单里的固定列行**（法术/技能表）：保持英文以免破坏对齐。
+3. **菜单里的固定列行**（法术/技能表）：已在中文下重排为中文列（`menu-columns.ts`、
+   `skill-reflow.ts`）；列宽按汉字 2 列计算。
 4. **玩家名、聊天、角色存档文件**：不翻译。
 5. 词库是 0.34.1 的；连更高版本服务器时未命中的句子会保留英文（不会错译）。
+6. **文档（About / What's new）**：整段英文文档不进入逐节点翻译（避免把 "Features" 译成
+   地形这类片段错译）。
 
 ## 开关
 

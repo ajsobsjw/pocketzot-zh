@@ -68,6 +68,8 @@ export const MONSTER_NAMES: Record<string, string> = {
   'wretched soul': '悲惨灵魂',
   'fleshlord': '血肉领主',
   'vile': '卑劣者',
+  'Armataur': '甲尾人',
+  'Xom': '佐姆',
   'dart slug': '飞镖蛞蝓',
   'frilled lizard': '褶边蜥蜴',
   'ball python': '球蟒',

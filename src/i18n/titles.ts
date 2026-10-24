@@ -350,13 +350,7 @@ export const TITLE_RULES: TitleRule[] = [
   // "Ice/Summoning" — the school pair printed above a spell list.
   {
     re: /^It protects you from (.+)\.$/,
-    to: (m) => {
-      const types: Record<string, string> = {
-        poison: '毒素', 'negative energy': '负能量', fire: '火焰', cold: '寒冷',
-        electricity: '电击', acid: '酸', corrosion: '腐蚀', 'sticky flames': '黏性火焰',
-      }
-      return `它保护你免受${types[m[1].toLowerCase()] ?? m[1]}伤害。`
-    },
+    to: (m) => `它保护你免受${zhDamageList(m[1])}伤害。`,
   },
   {
     re: /^It increases the power of your (.+) spells\.$/,

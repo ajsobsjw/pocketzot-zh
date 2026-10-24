@@ -21,13 +21,13 @@ if (!DCS_DAT) {
 const LANG = getArg('--lang', 'zh')
 const OUT = resolve(getArg('--out', 'src/i18n/data/zh-descript.json'))
 
-const FILES = ['items', 'monsters', 'spells', 'gods', 'features', 'unrand', 'ability', 'status', 'species', 'backgrounds']
+const FILES = ['items', 'monsters', 'spells', 'gods', 'features', 'unrand', 'ability', 'status', 'species', 'backgrounds', 'skills']
 
 // Whole-paragraph pairs (English prose → Chinese prose) for screens that show
 // the database text verbatim, like the new-game species blurbs.
 const PAIR_FILES = [
   'species', 'backgrounds', 'tutorial', 'gods', 'quotes',
-  'items', 'monsters', 'spells', 'features', 'unrand', 'ability', 'status',
+  'items', 'monsters', 'spells', 'features', 'unrand', 'ability', 'status', 'skills',
 ]
 const norm = (s) => s.replace(/\s+/g, ' ').trim()
 
@@ -39,9 +39,11 @@ function parse(path) {
     const lines = block.replace(/^\r?\n/, '').split(/\r?\n/)
     const name = (lines.shift() ?? '').trim()
     if (!name || name.startsWith('#') || name.startsWith('__')) continue
-    const prose = lines.join('\n').trim()
-    if (!prose) continue
-    out[name] = prose
+    // Source comments are not prose: they must not become dictionary keys or,
+    // worse,译文本身 (the client would display "# TODO: …").
+    const body = lines.filter((line) => !line.trim().startsWith('#')).join('\n').trim()
+    if (!body) continue
+    out[name] = body
   }
   return out
 }

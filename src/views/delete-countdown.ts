@@ -8,9 +8,12 @@
 // stays spent after firing, so a caller that re-enables the button on
 // failure (records-view) gets a one-tap retry.
 
+import { tLabel } from '../i18n'
+
 export function deleteCountdownButtons(
   onConfirm: () => void,
 ): { cancelBtn: HTMLButtonElement; delBtn: HTMLButtonElement } {
+  const label = (n: number): string => tLabel(`Delete in ${n}`)
   const cancelBtn = document.createElement('button')
   cancelBtn.type = 'button'
   cancelBtn.className = 'offline-slot-confirm-cancel'
@@ -18,11 +21,11 @@ export function deleteCountdownButtons(
   const delBtn = document.createElement('button')
   delBtn.type = 'button'
   delBtn.className = 'offline-slot-confirm-del'
-  delBtn.textContent = 'Delete in 3'
+  delBtn.textContent = label(3)
   let taps = 3
   delBtn.addEventListener('click', () => {
     if (--taps > 0) {
-      delBtn.textContent = `Delete in ${taps}`
+      delBtn.textContent = label(taps)
       return
     }
     delBtn.disabled = true

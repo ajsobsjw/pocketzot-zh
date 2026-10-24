@@ -173,6 +173,7 @@ function phrase(m: Matcher, words: string[]): string | null {
     for (let n = Math.min(4, words.length - i); n >= 1; n--) {
       const chunk = words.slice(i, i + n).join(' ')
       const t = m.exact.get(chunk)
+        ?? (n === 1 && chunk !== chunk.toLowerCase() ? m.exact.get(chunk.toLowerCase()) : undefined)
       if (t) {
         out.push(t)
         i += n
@@ -266,6 +267,8 @@ export function translateItem(m: Matcher, raw: string): string | null {
     ?? m.exact.get(bare)
     ?? m.exact.get(cap)
     ?? m.exact.get(title)
+    // Single-word proper nouns often exist only in lower case ("fireball").
+    ?? (bare.includes(' ') ? undefined : m.exact.get(bare.toLowerCase()))
   if (direct) return prefix + hotkey + direct
 
   // Shop rows put the price first: "202 gold a runed buckler". Handled before

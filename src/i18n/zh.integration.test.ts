@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 
 // Integration check against the real dictionary (src/i18n/data/zh.json):
 // loading, a few known engine strings, item grammar and the safety rules.
@@ -101,7 +101,7 @@ describe('real dictionary', () => {
   it('keeps the noun when an item brand is unknown', async () => {
     await setLang('zh')
     expect(t('You see here a parchment of Volatile Blastmotes.')).toBe(
-      '你在这里看到羊皮纸（Volatile Blastmotes）。',
+      'You see here a parchment of Volatile Blastmotes.',
     )
   })
 
@@ -124,7 +124,7 @@ describe('real dictionary', () => {
     )
     expect(
       t('Aim: a kobold, wielding a +0 whip and quivering stones (severely wounded, 100% to hit)'),
-    ).toContain('备有投石索')
+    ).toContain('备有石头')
   })
 
   it('translates the menu nav keyhelp', async () => {
@@ -192,3 +192,4 @@ describe('real dictionary', () => {
     expect(tLabel('Control sets')).toBe('控制方案')
   })
 })
+

@@ -8,7 +8,7 @@
 import type { ClientMsg } from '../ws/types'
 import type { Handlers, MsgOf } from '../ws/dispatcher'
 import { dcssToHtml } from '../game/dcss-colors'
-import { t } from '../i18n'
+import { LANG_CHANGED_EVENT, t } from '../i18n'
 import { isKeyHintsLine, parsePromptText, PROMPT_TRIGGER_RE, type PromptSegment } from './prompt-parse'
 import { systemKeyboardField } from './text-field'
 import { downloadPackFile } from '../offline/save-transfer'
@@ -133,6 +133,7 @@ export class MessageLog {
     new ResizeObserver(() => {
       if (this.xdescStrip.offsetHeight > this.xdescPeakH) this.setXdescPeak(this.xdescStrip.offsetHeight)
     }).observe(this.xdescStrip)
+    window.addEventListener(LANG_CHANGED_EVENT, this.onLangChange)
   }
 
   get moreActive(): boolean { return this.more }
@@ -493,10 +494,24 @@ export class MessageLog {
 
   private row(text: string): HTMLElement {
     const p = this.markedRow('game-msg')
+    // Keep the wire text so a language switch can re-render the row: the DOM
+    // translator only remembers nodes it translated itself, and these rows are
+    // translated before they enter the document.
+    p.dataset.i18nRaw = text
     const content = document.createElement('span')
     content.innerHTML = dcssToHtml(displayLine(text))
     p.appendChild(content)
     return p
+  }
+
+  /** Re-render every plain log row after a language switch. */
+  private onLangChange = (): void => {
+    for (const p of this.element.querySelectorAll<HTMLElement>('p.game-msg[data-i18n-raw]')) {
+      const raw = p.dataset.i18nRaw
+      const content = p.querySelector('span')
+      if (!raw || !content) continue
+      content.innerHTML = dcssToHtml(displayLine(raw))
+    }
   }
 
   // A log row with its (blank) turn/cmd mark slot.

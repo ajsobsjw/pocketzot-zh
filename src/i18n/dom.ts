@@ -16,6 +16,14 @@ const SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CODE', 'PRE
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'] as const
 
 const MAX_ORIGINALS = 4000
+// Fragments that inline markup splits out of a sentence ("and", ", and",
+// "Features"). The engine dictionary translates them by game context, which is
+// wrong in prose, so they only go through the exact UI table.
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'to', 'of', 'in', 'on', 'at', 'by',
+  'for', 'with', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been',
+  'this', 'that', 'these', 'those', 'it', 'its', 'you', 'your', 'we', 'our',
+])
 
 let observer: MutationObserver | null = null
 let root: HTMLElement | null = null
@@ -60,12 +68,29 @@ function translateText(node: Text): void {
   if (!value || value.length < 2) return
   if (!/[A-Za-z]/.test(value)) return
   if (skipped(node.parentElement)) return
+
+  const lead = value.slice(0, value.length - value.trimStart().length)
+  const trail = value.slice(value.trimEnd().length)
+  const core = value.trim()
+  const words = core.split(/\s+/)
+  const fragment = !/[.!?]/.test(core) && (
+    (words.length <= 1 && core.length < 6) || /^[,;:]/.test(core) || STOP_WORDS.has(core.toLowerCase())
+  )
+  const hotkeyRow = /^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(value)
+
   const label = tLabel(value)
-  let out = hasUiLabel(value) ? label : label !== value ? label : tItem(t(value))
+  let out: string
+  if (hasUiLabel(value)) out = label
+  else if (hotkeyRow) out = tItem(value)
+  else if (fragment) out = label
+  else out = label !== value ? label : tItem(t(value))
   // Property rows ("rPois:  It protects…") and menu cards that build their own
   // text nodes: translate the label and the value separately.
   if (out === value) out = translateLabeledText(value) ?? value
   if (out === value) return
+  // Preserve the node's own surrounding whitespace (inline layouts rely on it);
+  // hotkey rows already carry their prefix from the item grammar.
+  if (!hotkeyRow && (lead || trail) && !out.startsWith(lead)) out = lead + out.trim() + trail
   remember(node, value)
   node.nodeValue = out
 }

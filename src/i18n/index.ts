@@ -4,9 +4,11 @@
 //   * Nothing the game parses may pass through here. Views keep raw English in
 //     their models; only what is about to be written to the DOM is translated.
 //   * A lookup that is not confident returns the input unchanged — half a
-//     translated sentence is worse than an English one.
+//     translated sentence is worse than an English one. Templates whose
+//     captures stay English are rejected as a whole, and compound lines are
+//     translated only when every sentence matches.
 //   * Switching back to English restores the original text (dom.ts keeps the
-//     originals), so nothing is destructive.
+//     originals for it, message-log.ts keeps each row's wire text and re-renders).
 
 import { compileDict, fill, lookup, type Matcher } from './translate'
 import { translateItem } from './items'
@@ -85,7 +87,15 @@ export async function setLang(next: Lang): Promise<void> {
   if (next === lang) return
   lang = next
   setPref('language', next)
-  if (next === 'zh') await loadDict()
+  if (next === 'zh') {
+    await loadDict()
+    // The describe dictionary is lazy-loaded in main.ts; a switch from English
+    // must load it too, or prose stays English until reload.
+    const { loadDescript } = await import('./describe')
+    await loadDescript()
+  }
+  if (typeof document !== 'undefined') document.documentElement.lang = next === 'zh' ? 'zh-CN' : 'en'
+  // Cached lookups may predate the describe table; drop them after loading.
   cache.clear()
   window.dispatchEvent(new Event(LANG_CHANGED_EVENT))
 }
@@ -98,11 +108,11 @@ const PRONOUNS: Record<string, string> = {
 
 const STATUS_WORDS: Record<string, string> = {
   'asleep': '沉睡', 'heavily wounded': '重伤', 'lightly wounded': '轻伤',
-  'moderately wounded': '中伤', 'severely wounded': '重伤', 'almost dead': '濒死',
+  'moderately wounded': '中伤', 'severely wounded': '严重受伤', 'almost dead': '濒死',
   'constricting you': '正在缠绕你', 'slow': '迟缓', 'very slow': '极慢',
   'fast': '很快', 'strong': '强壮', 'wandering': '游荡中',
   "hasn't noticed you": '尚未发现你',
-  'quivering stones': '备有投石索', 'fleeing': '逃跑中', 'confused': '混乱',
+  'quivering stones': '备有石头', 'fleeing': '逃跑中', 'confused': '混乱',
   'invulnerable': '无敌', 'invisible': '隐形', 'berserk': '狂暴',
   'ally target': '盟友目标', 'summoned': '召唤物', 'friendly': '友好',
 }
@@ -124,10 +134,11 @@ function translateCapture(raw: string): string {
   if (!trimmed || !/[A-Za-z]/.test(trimmed)) return raw
   const pronoun = PRONOUNS[trimmed.toLowerCase()]
   if (pronoun) return pronoun
-  // "quivering stones" is a monster status (ammo), not a stone item.
-  if (/\band\s+quivering stones$/i.test(trimmed)) {
-    const head = trimmed.replace(/\s+and\s+quivering stones$/i, '')
-    return `${translateCapture(head)}，并备有投石索`
+  // "a kobold, wielding a whip and quivering stones": quivered ammo, not a
+  // sling. Translate whatever ammo noun follows "quivering".
+  const andQuivering = /^(.*?)\s+and\s+quivering\s+(.+)$/i.exec(trimmed)
+  if (andQuivering) {
+    return `${translateCapture(andQuivering[1])}，并备有${translateCapture(andQuivering[2])}`
   }
   // "your ice beast" → 你的冰兽
   const poss = /^your\s+(.+)$/i.exec(trimmed)
@@ -160,11 +171,6 @@ function translateCapture(raw: string): string {
     }
     return `${who}${map[verb[2].toLowerCase()]}${what}`
   }
-  // "quivering stones" is a monster status (ammo), not a stone item.
-  if (/\band\s+quivering stones$/i.test(trimmed)) {
-    const head = trimmed.replace(/\s+and\s+quivering stones$/i, '')
-    return `${translateCapture(head)}，备有投石索`
-  }
   // "a goblin, X and Y" where Y starts with another verb.
   const andVerb = /^(.*?)\s+and\s+((?:wielding|wearing|carrying|quivering)\b.*)$/i.exec(trimmed)
   if (andVerb) {
@@ -184,9 +190,12 @@ function translateCapture(raw: string): string {
   if (feat && feat !== trimmed) return feat
   const cap = noArticle.charAt(0).toUpperCase() + noArticle.slice(1)
   const title = noArticle.replace(/\b[a-z]/g, (c) => c.toUpperCase())
-  const noun = lookup(matcher, noArticle, {}) ?? lookup(matcher, cap, {}) ?? lookup(matcher, title, {})
+  const lower = noArticle.toLowerCase()
+  const noun = lookup(matcher, noArticle, {}) ?? lookup(matcher, cap, {})
+    ?? lookup(matcher, title, {}) ?? lookup(matcher, lower, {})
   if (noun && noun.out !== noArticle) return noun.out
   const item = translateItem(matcher, noArticle) ?? translateItem(matcher, cap)
+    ?? translateItem(matcher, lower)
   if (item && item !== noArticle) return item
   return raw
 }
@@ -304,7 +313,9 @@ function splitSentences(text: string): string[] {
   let last = 0
   let m: RegExpExecArray | null
   while ((m = re.exec(flat))) {
-    out.push(flat.slice(last, m.index + 1))
+    // Keep the whitespace that follows the punctuation so joining untouched
+    // English sentences cannot glue them together ("A.B").
+    out.push(flat.slice(last, m.index + m[0].length))
     last = m.index + m[0].length
   }
   out.push(flat.slice(last))
@@ -375,6 +386,8 @@ function translateOne(text: string): string | null {
   }
   const found = /^You found it on level (.+) of the (.+)\.$/.exec(plainText)
   if (found) return `你在${translateCapture(found[2])}第 ${found[1]} 层找到了它。`
+  const pray = /^You pray to (.+)\.$/.exec(plainText)
+  if (pray) return `你向${translateCapture(pray[1])}祈祷。`
   const itemPower = /^At your current (.+) skills, it has a (\d+)% chance to deal up to (\d+) additional (.+) damage\.$/.exec(plainText)
   if (itemPower) {
     const dmg: Record<string, string> = {
@@ -399,6 +412,28 @@ function translateOne(text: string): string | null {
   // Generic "The yak gores your ice beast but does no damage." shape.
   const combat = translateCombat(plainText)
   if (combat) return combat
+  // "Welcome, <name> the <race> <class>." / "Welcome back, …": the player name
+  // is data and stays verbatim; race and class are translated word by word.
+  const welcome = /^Welcome( back)?, (\S+?)(?: the ([^.]+))?\.(?:\s+(.*))?$/.exec(plainText)
+  if (welcome) {
+    const name = welcome[2]
+    const raceClass = welcome[3]
+    let label = ''
+    if (raceClass) {
+      const words = raceClass.split(/\s+/)
+      const zh = words.map((w) => translateCapture(w))
+      if (zh.every((z, i) => z !== words[i])) label = `（${zh.join('')}）`
+    }
+    let tail = ''
+    const rest = welcome[4] ?? ''
+    const known = /^Please select your (species|background)\.$/.exec(rest)
+    if (known) tail = known[1] === 'species' ? '请选择你的种族。' : '请选择你的职业。'
+    else if (rest) {
+      const zh = t(rest)
+      if (zh !== rest) tail = zh
+    }
+    return `${welcome[1] ? '欢迎回来' : '欢迎'}，${name}${label}。${tail}`
+  }
   // A handful of narrow, high-value rules (weapon panel, monster stats, spell
   // prompts) win over the dictionary: they read the numbers and keep the order.
   const ruled = matchTitle(plainText)
@@ -421,10 +456,12 @@ function translateOne(text: string): string | null {
   }
   if (r && r.args && r.tmpl) {
     // Rebuild with translated captures so "You see a +0 sling." does not come
-    // out as "你看到 a +0 sling。".
+    // out as "你看到 a +0 sling。". A capture that is still English (three or
+    // more Latin letters) means the template cannot be completed: drop the hit
+    // and keep the original line rather than print half a sentence.
     const args = r.args.map(translateCapture)
-    const rebuilt = fill(r.tmpl, args)
-    r = { out: rebuilt, key: r.key }
+    if (args.some((a) => /[A-Za-z]{3,}/.test(a))) r = null
+    else r = { out: fill(r.tmpl, args), key: r.key }
   } else if (r && r.labelTail !== undefined) {
     const translated = translatePlaceValue(r.labelTail)
     if (translated !== r.labelTail) r = { out: r.out.replace(r.labelTail, translated), key: r.key }
@@ -465,24 +502,21 @@ export function t(text: string): string {
   if (lang !== 'zh' || !matcher || !text) return text
   if (!/[A-Za-z]/.test(text)) return text
   const hit = cache.get(text)
-  if (hit !== undefined) return hit ?? text
+  if (hit !== undefined) {
+    // Count every occurrence of a miss, not just the first computation.
+    if (hit == null) noteMiss(text)
+    return hit ?? text
+  }
 
   let out = translateOne(text)
   if (out == null) {
     // Compound messages ("The rat squeaks loudly. You hear a shout!") arrive as
-    // one string; translate sentence by sentence and keep whatever matched.
+    // one string. Translate all sentences or none: a partial line would be
+    // half English, which the display contract forbids.
     const parts = splitSentences(text)
     if (parts.length > 1) {
-      let changed = false
-      const translated = parts.map((p) => {
-        const one = translateOne(p)
-        if (one != null) {
-          changed = true
-          return one
-        }
-        return p
-      })
-      if (changed) out = translated.join('')
+      const translated = parts.map((p) => translateOne(p))
+      if (translated.every((one) => one != null)) out = translated.join('')
     }
   }
   // Exclamations: "The yak gores you!" — retry the same sentence as a plain
@@ -539,6 +573,11 @@ export function tItem(text: string): string {
 export function tLabel(text: string): string {
   if (lang !== 'zh' || !text) return text
   const trimmed = text.trim()
+  // Dynamic own-UI labels that a static dictionary cannot key.
+  const del = /^Delete in (\d+)$/.exec(trimmed)
+  if (del) return text.replace(trimmed, `再按 ${del[1]} 次删除`)
+  const actions = /^Actions for (.+)$/.exec(trimmed)
+  if (actions) return text.replace(trimmed, `${actions[1]} 的操作`)
   const hit = UI_ZH[trimmed]
   if (!hit) return text
   // Keep the surrounding whitespace so inline layouts don't collapse.

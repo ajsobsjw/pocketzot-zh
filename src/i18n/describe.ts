@@ -12,7 +12,7 @@ let loading: Promise<void> | null = null
 let proseMap: Map<string, string> | null = null
 const norm = (s: string): string => s.replace(/\s+/g, ' ').trim()
 
-const ORDER = ['items', 'monsters', 'spells', 'gods', 'features', 'unrand', 'ability', 'status', 'species', 'backgrounds'] as const
+const ORDER = ['items', 'monsters', 'spells', 'gods', 'features', 'unrand', 'ability', 'status', 'species', 'backgrounds', 'skills'] as const
 
 export function loadDescript(): Promise<void> {
   if (dict) return Promise.resolve()
@@ -44,12 +44,13 @@ export function describeName(title: string): string {
   return s.trim()
 }
 
-function findProse(name: string): string | null {
+function findProse(name: string, kinds?: string[]): string | null {
   if (!dict) return null
   const candidates = [name, name.toLowerCase()]
   // The spell database keys carry a " spell" suffix ("Magic Dart spell").
   if (dict.spells) candidates.push(`${name} spell`, `${name.toLowerCase()} spell`)
-  for (const kind of ORDER) {
+  const order = kinds ? [...kinds, ...ORDER.filter((k) => !kinds.includes(k))] : ORDER
+  for (const kind of order) {
     const table = dict[kind]
     if (!table) continue
     for (const cand of candidates) {
@@ -60,25 +61,41 @@ function findProse(name: string): string | null {
   return null
 }
 
-/**
- * Returns the overlay body with its prose paragraph replaced, or null when the
- * feature has nothing to offer (unknown name, dict not loaded, English off).
- */
-export function zhDescribe(title: string, body: string): string | null {
+// Which describe page type reads which database table first. Without this,
+// "Foxfire" (a spell and a monster) resolves against monsters and the spell
+// page shows the monster's prose.
+const TYPE_KINDS: Record<string, string[]> = {
+  'describe-spell': ['spells'],
+  'describe-monster': ['monsters'],
+  'describe-item': ['items', 'unrand'],
+  'describe-god': ['gods'],
+  'describe-feature': ['features'],
+  'describe-skill': ['skills'],
+}
+
+/** Plain paragraph text, ignoring markup and the spellset slot marker. */
+function plainOf(para: string): string {
+  return norm(para.replace(/<[^>]*>/g, '').replace(/SPELLSET_PLACEHOLDER/g, ''))
+}
+
+export function zhDescribe(title: string, body: string, type?: string): string | null {
   if (getLang() !== 'zh' || !dict || !body) return null
   const paras = body.split(/\n[ \t]*\n/)
   const idx = paras.findIndex((p) => p.replace(/<[^>]*>/g, '').trim() !== '')
   if (idx < 0) return null
   const out = paras.slice()
   let changed = false
-  let prose = title ? findProse(describeName(title)) : null
+  const kinds = TYPE_KINDS[type ?? ''] ?? undefined
+  let prose = title ? findProse(describeName(title), kinds) : null
   // Pages without a usable title (describe-god carries the name only in the
   // body) still match by their opening paragraph, which is the database text.
   if (!prose && proseMap) {
-    prose = proseMap.get(norm(paras[idx].replace(/<[^>]*>/g, ''))) ?? null
+    prose = proseMap.get(plainOf(paras[idx])) ?? null
   }
   if (prose) {
-    out[idx] = prose
+    // Keep the spellset slot marker (it is replaced by the real list later).
+    const slot = /<[^>]*>SPELLSET_PLACEHOLDER/.exec(paras[idx])?.[0] ?? ''
+    out[idx] = prose + slot
     changed = true
   }
   // Every other paragraph that is a database quote (the Quote: section of a
@@ -86,11 +103,12 @@ export function zhDescribe(title: string, body: string): string | null {
   if (proseMap) {
     for (let i = 0; i < out.length; i++) {
       if (i === idx && prose) continue
-      const plain = norm(out[i].replace(/<[^>]*>/g, ''))
+      const plain = plainOf(out[i])
       if (plain.length < 20) continue
       const pair = proseMap.get(plain)
       if (pair) {
-        out[i] = pair
+        const slot = /<[^>]*>SPELLSET_PLACEHOLDER/.exec(out[i])?.[0] ?? ''
+        out[i] = pair + slot
         changed = true
       }
     }

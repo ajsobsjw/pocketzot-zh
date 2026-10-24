@@ -201,7 +201,7 @@ export class LayoutView {
     // Phase D light: swap the English prose for the localized description when
     // the title names something in dat/descript/zh. Computed lines stay.
     if (String(msg.type ?? '').startsWith('describe')) {
-      rawBody = zhDescribe(title, rawBody) ?? rawBody
+      rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
       // Property rows ("rPois:  It protects…") and lone sentences.
       rawBody = translateBody(rawBody)
     }
