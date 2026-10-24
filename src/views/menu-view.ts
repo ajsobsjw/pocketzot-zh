@@ -20,6 +20,7 @@ import { menuTagHasBar, type MenuBar } from './menu-bar'
 import { columnTable, menuColumns, type ColumnTable } from './menu-columns'
 import { systemKeyboardField } from './text-field'
 import { isZh, tItem, tMore, tTitle } from '../i18n'
+import { LANG_CHANGED_EVENT } from '../i18n'
 
 // Debounce for reporting a client-side scroll back to the server — menus
 // here, the formatted scroller in LayoutView.
@@ -97,6 +98,14 @@ export class MenuView {
 
   constructor(deps: MenuViewDeps) {
     this.d = deps
+    window.addEventListener(LANG_CHANGED_EVENT, this.onLangChange)
+  }
+
+  // Titles and rows are translated before they enter the DOM, so a language
+  // switch has to rebuild the open menu rather than rely on the DOM pass.
+  private onLangChange = (): void => {
+    const active = this.model.active
+    if (active) this.show(active)
   }
 
   private get model(): MenuModel { return this.d.model }
@@ -107,6 +116,7 @@ export class MenuView {
   dropFilter(): void { this.filterInput = null }
 
   dispose(): void {
+    window.removeEventListener(LANG_CHANGED_EVENT, this.onLangChange)
     if (this.scrollSendTimer !== null) window.clearTimeout(this.scrollSendTimer)
     this.scrollSendTimer = null
     this.listResize?.disconnect()

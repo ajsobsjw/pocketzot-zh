@@ -33,7 +33,29 @@ function translateCell(cell: string): string {
 /** Translate the property/value rows and stray sentences of a describe body. */
 export function translateBody(body: string): string {
   if (!isZh() || !body) return body
-  return body.split('\n').map((line) => {
+  // The engine hard-wraps long property values ("Flame:  It burns victims,\n
+  // dealing …"). Join indented continuation lines back onto their label so the
+  // sentence can match; the overlay wraps the merged line again on screen.
+  const raw = body.split('\n')
+  const lines: string[] = []
+  for (let i = 0; i < raw.length; i++) {
+    const line = raw[i]
+    const label = /^(\s*\S+?):\s+\S/.exec(line)
+    if (label && i + 1 < raw.length) {
+      let value = line
+      while (i + 1 < raw.length
+        && /^\s{2,}\S/.test(raw[i + 1])
+        && !/^\s*\S+?:\s/.test(raw[i + 1])
+        && !/^\s*$/.test(raw[i + 1])) {
+        value += ' ' + raw[i + 1].trim()
+        i++
+      }
+      lines.push(value)
+      continue
+    }
+    lines.push(line)
+  }
+  return lines.map((line) => {
     // Rows can carry several labelled cells separated by the engine's column
     // gaps ("Base armour rating: 2       Encumbrance rating: 0"): translate
     // each cell on its own, keep the gaps.
