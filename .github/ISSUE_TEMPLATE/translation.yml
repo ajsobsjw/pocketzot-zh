@@ -1,0 +1,48 @@
+name: Translation issue
+description: 某句话没翻译 / 翻译错了 / 显示不对
+title: "[翻译] "
+labels: ["translation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量附上截图和出现位置，方便快速定位。
+  - type: dropdown
+    id: where
+    attributes:
+      label: 出现位置
+      options:
+        - 战斗日志 / 消息栏
+        - 物品描述
+        - 怪物描述 / 怪物面板
+        - 法术菜单 / 法术描述
+        - 技能菜单
+        - 商店 / 物品栏
+        - 神祇页面
+        - 设置 / 应用界面
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: english
+    attributes:
+      label: 英文原文
+      description: 从游戏里抄下来，保留标点与标记
+      placeholder: "The yak gores your ice beast but does no damage."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望的中文
+      placeholder: "牦牛用角顶了你的冰兽，但没有造成伤害。"
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: 截图
+      description: 直接拖进这个输入框
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 提交
+      placeholder: "例如 0.1.0 或 commit 前 7 位"

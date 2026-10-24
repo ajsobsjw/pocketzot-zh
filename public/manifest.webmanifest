@@ -1,0 +1,15 @@
+{
+  "name": "PocketZot",
+  "short_name": "PocketZot",
+  "description": "Mobile app for Dungeon Crawl Stone Soup (DCSS) — play online on WebTiles servers or fully offline on your device",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "display": "standalone",
+  "start_url": "/?src=pwa",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

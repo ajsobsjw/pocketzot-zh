@@ -1,0 +1,21 @@
+{
+  "name": "pocketzot",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "check:links": "node scripts/check-html-links.mjs",
+    "build": "tsc && vitest run && vite build",
+    "build:deploy": "npm run build && rm -rf dist/offline dist/gamedata/local",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.11.2",
+    "typescript": "^7.0.2",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.7"
+  }
+}
