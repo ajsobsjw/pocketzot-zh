@@ -1,27 +1,37 @@
-# PocketZot 中文汉化版（Chinese localization fork）
+# 🎮 PocketZot 中文汉化版（Chinese localization fork）
 
 > **非官方第三方汉化版**。原项目：[pocketzot/pocketzot](https://github.com/pocketzot/pocketzot)
 > （AGPL-3.0-or-later，版权归原作者）。本仓库保留原版权声明，并在其基础上增加
 > **仅限显示层**的中文汉化。
 
+🌐 **在线体验：<https://pocketzot-cn.pages.dev/>**
+
 PocketZot 是一个手机竖屏用的《Dungeon Crawl Stone Soup》(DCSS) 客户端：既能连
 公共 WebTiles 服务器在线玩，也能把 DCSS 引擎（WebAssembly）下载到设备上离线玩。
 它是 PWA，可以“添加到主屏幕”。
 
-本汉化版做了什么：
+## 🀄 汉化是怎么实现的
 
-- 战斗日志、提示、弹窗标题、菜单（含法术/技能菜单的中文列）逐行翻译；
-- 物品、怪物、神祇、法术、地形、能力的名称与描述；
-- 描述页正文、属性行（`rPois:` → 毒抗）、诗句、神谕/怪物台词；
-- 应用自身界面（设置、按钮、提示、新手引导）；
-- **不修改** `src/game/` 的解析、状态与网络协议——所以能持续跟上游 rebase。
+汉化完全发生在**显示边界**，按“抽取 → 编译 → 匹配 → 界面替换”的路径完成：
 
-未翻译的内容（有意保留英文）：神器专名、独特怪物称号、诗句署名、玩家名、储藏
-搜索前缀。拿不准的句子宁可保留英文，也不乱翻。
+1. **抽取词库**：从 DCSS 中文数据（`dat/i18n`、`dat/descript`、`dat/database`）
+   导出引擎消息模板、物品/怪物/神祇描述、诗句与神明/怪物台词，生成
+   `src/i18n/data/zh.json` 与 `zh-descript.json`。
+2. **编译匹配器**：把模板里的 `%s` / `%1$s` 编译成可匹配“已格式化游戏文本”的
+   规则；客户端只看到成品句子，所以匹配时再反向填充捕获到的名字、数字、装备。
+3. **显示层拦截**：在文本写入界面的位置接入翻译——战斗日志逐行、菜单标题与行、
+   describe 正文与属性行（`rPois:` → 毒抗）、HUD 与设置等自有界面文案。
+4. **专项规则**：物品语法（`+2 匕首（淬火）`）、动态句式（命中率、速度、毒发）、
+   法术/技能菜单的中文列重排、专名与台词配对表。
+5. **兜底**：任何未命中的句子按原文显示，保证界面永远可读、不出现半中半英的
+   乱码式拼接。
+
+数据与代码分层：`src/i18n/` 只负责翻译与排版，游戏解析、状态与协议保持原样；
+新增界面文案时补词表即可，不需要改动游戏逻辑。
 
 ## 使用
 
-线上版：`https://<你的站点>.pages.dev`（部署后填写）
+线上版：**<https://pocketzot-cn.pages.dev/>**
 
 自行构建：
 
@@ -52,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File .\download-offline.ps1
 
 ## 与上游同步
 
-翻译是“挂载层”，可以直接叠到上游新版本上。步骤与冲突范围见
+翻译以“补丁 + 显示层挂钩”的方式叠加到上游新版本：步骤与冲突范围见
 [SYNC.md](SYNC.md)；改动汇总可用
 `node tools/make-localization-patch.mjs --base <原始快照>` 重新生成。
 
@@ -69,6 +79,11 @@ powershell -ExecutionPolicy Bypass -File .\download-offline.ps1
 
 本项目是非官方汉化，与 PocketZot 原作者、DCSS 开发团队均无隶属或背书关系。
 问题请在本仓库提 Issue，不要打扰原作者。
+
+## 🤝 协作说明
+
+本项目与 **DeepSeek V4.1 Flash** 合作完成：翻译数据整理、匹配规则、界面接入与
+测试由双方协作产出。
 
 ## 技术栈
 
