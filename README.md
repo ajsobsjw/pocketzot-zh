@@ -1,4 +1,4 @@
-# 🎮 PocketZot 中文汉化版（Chinese localization fork）
+﻿# 🎮 PocketZot 中文汉化版（Chinese localization fork）
 
 > **非官方第三方汉化版**。原项目：[pocketzot/pocketzot](https://github.com/pocketzot/pocketzot)
 > （AGPL-3.0-or-later，版权归原作者）。本仓库保留原版权声明，并在其基础上增加
@@ -80,6 +80,14 @@ powershell -ExecutionPolicy Bypass -File .\download-offline.ps1
 本项目是非官方汉化，与 PocketZot 原作者、DCSS 开发团队均无隶属或背书关系。
 问题请在本仓库提 Issue，不要打扰原作者。
 
+
+## 自动同步上游
+
+仓库内置 `.github/workflows/upstream-sync.yml`：每天北京时间 11:00 拉取上游
+`pocketzot/pocketzot` 最新代码，应用 `localization.patch`，构建并自动部署到
+Cloudflare Pages。补丁与上游冲突时任务会失败并通知，站点保持上一版，不会部署
+半成品。
+
 ## 🤝 协作说明
 
 本项目与 **DeepSeek V4.1 Flash** 合作完成：翻译数据整理、匹配规则、界面接入与
@@ -89,3 +97,4 @@ powershell -ExecutionPolicy Bypass -File .\download-offline.ps1
 
 TypeScript + [Vite](https://vitejs.dev)；测试用 Vitest；无后端，Cloudflare Pages
 静态托管。
+
