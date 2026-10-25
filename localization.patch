@@ -2309,7 +2309,7 @@ diff --git a/src/i18n/body.ts b/src/i18n/body.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/body.ts
-@@ -0,0 +1,303 @@
+@@ -0,0 +1,308 @@
 +// Describe overlays arrive as pre-arranged text, so the DOM translator never
 +// sees a sentence on its own: property rows come as "rPois:     It protects…"
 +// and the label/value share one text node. This runs on the assembled body
@@ -2386,7 +2386,12 @@ new file mode 100644
 +function translateList(raw: string, table: Record<string, string>): string | null {
 +  const parts = raw.split(/\s*,\s*/).filter(Boolean)
 +  if (!parts.length) return null
-+  const zh = parts.map((p) => table[p] ?? (t(p) !== p ? t(p) : null))
++  const title = (s: string): string => s.replace(/\b[a-z]/g, (c) => c.toUpperCase())
++  const zh = parts.map((p) => {
++    const hit = table[p] ?? table[title(p)]
++    if (hit) return hit
++    return t(p) !== p ? t(p) : null
++  })
 +  return zh.every((z): z is string => z != null) ? zh.join('、') : null
 +}
 +
@@ -9153,7 +9158,7 @@ new file mode 100644
 +    await setLang('zh')
 +    await initI18n()
 +    const out = translateBody([
-+      '      Skill   Regen   Shed Tail HP   Distraction Stab Chance',
++      '<lightgrey>      Skill   Regen   Shed Tail HP   Distraction Stab Chance</lightgrey>',
 +      'Min   0       +0.20   12             +5%',
 +      'Max   7       +0.20   24             +15%',
 +      'Cur   0.0     +0.20   12             +5%',
@@ -9173,7 +9178,7 @@ new file mode 100644
 +      .reduce((n, ch) => n + (/[^\x00-\xff]/.test(ch) ? 2 : 1), 0)
 +    const columns = (line: string): number[] => [...line.matchAll(/\S+/g)]
 +      .map((m) => width(line.slice(0, m.index)))
-+    const lines = out.split('\n')
++    const lines = out.split('\n').map((l) => l.replace(/<[^>]*>/g, ''))
 +    expect(columns(lines[0])).toEqual([6, 14, 22, 37])
 +    expect(columns(lines[1])).toEqual([0, 6, 14, 22, 37])
 +    expect(columns(lines[2])).toEqual([0, 6, 14, 22, 37])

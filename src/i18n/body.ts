@@ -74,7 +74,12 @@ const MENU_PREFIX_ZH: Record<string, string> = {
 function translateList(raw: string, table: Record<string, string>): string | null {
   const parts = raw.split(/\s*,\s*/).filter(Boolean)
   if (!parts.length) return null
-  const zh = parts.map((p) => table[p] ?? (t(p) !== p ? t(p) : null))
+  const title = (s: string): string => s.replace(/\b[a-z]/g, (c) => c.toUpperCase())
+  const zh = parts.map((p) => {
+    const hit = table[p] ?? table[title(p)]
+    if (hit) return hit
+    return t(p) !== p ? t(p) : null
+  })
   return zh.every((z): z is string => z != null) ? zh.join('、') : null
 }
 

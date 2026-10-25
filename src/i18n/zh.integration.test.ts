@@ -407,7 +407,7 @@ describe('talisman form panel', () => {
     await setLang('zh')
     await initI18n()
     const out = translateBody([
-      '      Skill   Regen   Shed Tail HP   Distraction Stab Chance',
+      '<lightgrey>      Skill   Regen   Shed Tail HP   Distraction Stab Chance</lightgrey>',
       'Min   0       +0.20   12             +5%',
       'Max   7       +0.20   24             +15%',
       'Cur   0.0     +0.20   12             +5%',
@@ -427,7 +427,7 @@ describe('talisman form panel', () => {
       .reduce((n, ch) => n + (/[^\x00-\xff]/.test(ch) ? 2 : 1), 0)
     const columns = (line: string): number[] => [...line.matchAll(/\S+/g)]
       .map((m) => width(line.slice(0, m.index)))
-    const lines = out.split('\n')
+    const lines = out.split('\n').map((l) => l.replace(/<[^>]*>/g, ''))
     expect(columns(lines[0])).toEqual([6, 14, 22, 37])
     expect(columns(lines[1])).toEqual([0, 6, 14, 22, 37])
     expect(columns(lines[2])).toEqual([0, 6, 14, 22, 37])
