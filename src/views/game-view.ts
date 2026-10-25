@@ -921,6 +921,7 @@ export function buildGameView(opts: GameViewOptions): HTMLElement {
       const top = popups.top()
       return top?.kind === 'ui' ? top.push : undefined
     },
+    visible: () => overlayMode !== 'none',
     repaint: () => restoreTopLayer(),
     showTextPage: (text) => showTxtPage(text),
   })

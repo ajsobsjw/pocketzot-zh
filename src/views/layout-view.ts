@@ -23,6 +23,7 @@ import {
   splitGodPowerCosts, unpadMutationCategory, renderSpellbook, stripDcss,
 } from './overlay-body'
 import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
+import { LANG_CHANGED_EVENT } from '../i18n'
 import { zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 
@@ -39,6 +40,9 @@ export interface LayoutViewDeps {
   spectating: boolean
   // The topmost ui-push layout on the popup stack.
   topLayout(): UiPushMsg | undefined
+  // Whether the overlay is actually on screen (a ui_cutoff may hide it while
+  // its frame stays on the stack).
+  visible(): boolean
   // Repaint whatever the stack shows (ui-state swapped a layout's content).
   repaint(): void
   // ui-state text with no layout open.
@@ -73,6 +77,25 @@ export class LayoutView {
     this.scheduleScrollerSync()
   }
 
+  // Describe prose is substituted from zh-descript before the DOM pass, so
+  // switching language cannot rely on the DOM layer's originals: rebuild the
+  // page from the raw ui-push instead (menu/log keep their wire text for the
+  // same reason).
+  private readonly onLangChange = (): void => {
+    const top = this.d.topLayout()
+    if (!top || !String(top.type ?? '').startsWith('describe')) return
+    // A cutoff-hidden frame stays on the stack but is not on screen: showing it
+    // again would resurrect the overlay over the map the engine is targeting.
+    if (!this.d.visible()) return
+    const body = this.d.content().querySelector<HTMLElement>('.overlay-body')
+    const scrollTop = body?.scrollTop ?? 0
+    this.show(top)
+    if (scrollTop > 0) {
+      const next = this.d.content().querySelector<HTMLElement>('.overlay-body')
+      if (next) next.scrollTop = scrollTop
+    }
+  }
+
   // Share chip for exportable fixed-width screens (screen-export.ts): the `%`
   // overview and the end screen (the allowlist in show). The game view
   // mounts it as a sibling of the overlay (not a child — enterOverlayLayout
@@ -85,6 +108,7 @@ export class LayoutView {
 
   constructor(deps: LayoutViewDeps) {
     this.d = deps
+    window.addEventListener(LANG_CHANGED_EVENT, this.onLangChange)
     const btn = this.exportButton
     btn.className = 'screen-export-btn'
     btn.hidden = true
@@ -117,6 +141,7 @@ export class LayoutView {
   // The connection belongs to the next view after this: no more syncs.
   dispose(): void {
     this.disposed = true
+    window.removeEventListener(LANG_CHANGED_EVENT, this.onLangChange)
     if (this.scrollerSyncTimer !== undefined) window.clearTimeout(this.scrollerSyncTimer)
     this.scrollerSyncTimer = undefined
   }

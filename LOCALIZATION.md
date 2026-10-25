@@ -42,6 +42,7 @@
 ## 接入点（都只是“显示副本”）
 
 - `src/views/message-log.ts`：日志整行（保留行首颜色标签；切语言时按原文重渲染）
+- `src/views/layout-view.ts`：describe 覆盖层（切语言时按原始 ui-push 重绘，保留滚动位置）
 - `src/views/menu-view.ts`：菜单标题、行文本；法术/技能菜单由 `menu-columns.ts` 重排为中文列
 - `src/views/game-view.ts`：所有 overlay 标题
 - `src/views/settings-view.ts`：新增「语言 / Language」分段开关

@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { buildGameView, type SpectateTarget } from './game-view'
+import { setLang } from '../i18n'
 import { disposeView } from './view-dispose'
 import { unwrapHangingIndents } from './overlay-body'
 import { ENABLE_SPELL_TAB } from '../game/input/touch'
@@ -1641,6 +1642,27 @@ describe('ui-push / ui-pop overlay stack', () => {
     // the first (ui_stack_handled).
     h.dispatch({ msg: 'ui-stack', items: [] })
     expect(isHidden(overlay(h))).toBe(false)
+  })
+})
+
+describe('language switch with a describe page open', () => {
+  it('rebuilds the prose from the raw ui-push, both ways, without closing the page', async () => {
+    const h = setup()
+    const body = 'This ring protects its wearer from poison.'
+    h.dispatch({ msg: 'ui-push', type: 'describe-item', title: 'a ring of poison resistance', body })
+    const bodyText = (): string => overlay(h).querySelector('.overlay-body')?.textContent ?? ''
+    // The engine dictionary does not cover this whole sentence, so only the
+    // zh-descript substitution can produce the Chinese prose below.
+    expect(bodyText()).toContain(body)
+    try {
+      await setLang('zh')
+      expect(bodyText()).toContain('这枚戒指能帮助佩戴者抵抗毒。')
+      expect(isHidden(overlay(h))).toBe(false)
+    } finally {
+      await setLang('en')
+    }
+    // Rebuilt from the wire text: switching back restores English in place.
+    expect(bodyText()).toContain(body)
   })
 })
 
