@@ -6,7 +6,10 @@
 import { getLang, setProseLookup } from './index'
 import { MANUAL_PROSE } from './manual-zh'
 
-type DescDict = Record<string, Record<string, string>> & { pairs?: Record<string, string> }
+type DescDict = Record<string, Record<string, string>> & {
+  pairs?: Record<string, string>
+  monstatus?: Record<string, string>
+}
 
 let dict: DescDict | null = null
 let loading: Promise<void> | null = null
@@ -25,7 +28,12 @@ export function loadDescript(): Promise<void> {
       // new-game screen). Whitespace is normalised on both sides because the
       // wire text is reflowed and the database keeps hard line breaks.
       const map = new Map<string, string>()
-      for (const [en, zh] of Object.entries(raw.pairs ?? {})) map.set(norm(en), zh)
+      // Status descriptions can carry colour markup (the engine resolves
+      // "[[… monstatus]]" references before sending); keys are matched against
+      // plain text, so drop tags on the key side only.
+      for (const [en, zh] of Object.entries(raw.pairs ?? {})) {
+        map.set(norm(en.replace(/<[^>]*>/g, '')), zh)
+      }
       // Hand-written prose for content newer than the 0.34.1 Chinese database.
       for (const [en, zh] of Object.entries(MANUAL_PROSE)) map.set(norm(en), zh)
       proseMap = map
@@ -33,6 +41,21 @@ export function loadDescript(): Promise<void> {
     })
   }
   return loading
+}
+
+/** Whole-paragraph prose from dat/descript (quotes, species blurbs, …). */
+export function lookupProse(text: string): string | null {
+  if (!proseMap || !text) return null
+  const plain = norm(text.replace(/<[^>]*>/g, ''))
+  return plain ? proseMap.get(plain) ?? null : null
+}
+
+/** The localized "Tag: body" description from dat/descript/zh/monstatus.txt. */
+export function lookupMonsterStatus(tag: string): string | null {
+  const table = dict?.monstatus
+  if (!table || !tag) return null
+  const key = tag.trim().toLowerCase()
+  return table[key] ?? table[tag.trim()] ?? null
 }
 
 /** Strip the hotkey, article, enchantment and qualifiers from an overlay title. */

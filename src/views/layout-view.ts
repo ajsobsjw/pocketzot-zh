@@ -23,9 +23,10 @@ import {
   splitGodPowerCosts, unpadMutationCategory, renderSpellbook, stripDcss,
 } from './overlay-body'
 import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
-import { LANG_CHANGED_EVENT } from '../i18n'
+import { LANG_CHANGED_EVENT, t } from '../i18n'
 import { zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
+import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 
 interface ExportSource { runs: () => DcssRun[][]; slug: string }
 
@@ -206,9 +207,16 @@ export class LayoutView {
       // as plain text (unlike the body-embedded darkgrey quotes from
       // describe.cc:4001) — render it as-is, preserving the source's
       // original line structure (dialogue, stage directions, attribution).
+      // Both fields are translated here: the status body lives in
+      // dat/descript/zh/monstatus.txt (keyed by the same tag), and the quote
+      // in quotes.txt, so neither reaches the generic sentence matcher.
       const extra: string[] = []
-      if (msg.status) extra.push(`<lightblue>Status:</lightblue>\n${joinIndentedRuns(msg.status)}`)
-      if (msg.quote) extra.push(`<lightblue>Quote:</lightblue>\n${msg.quote}`)
+      if (msg.status) {
+        extra.push(`<lightblue>${t('Status:')}</lightblue>\n${translateMonsterStatus(joinIndentedRuns(msg.status))}`)
+      }
+      if (msg.quote) {
+        extra.push(`<lightblue>${t('Quote:')}</lightblue>\n${translateMonsterQuote(msg.quote)}`)
+      }
       if (extra.length) rawBody = (rawBody ? rawBody + '\n\n' : '') + extra.join('\n\n')
     }
     if (msg.type === 'describe-feature-wide' && msg.feats?.length) {
@@ -227,8 +235,10 @@ export class LayoutView {
     // the title names something in dat/descript/zh. Computed lines stay.
     if (String(msg.type ?? '').startsWith('describe')) {
       rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
-      // Property rows ("rPois:  It protects…") and lone sentences.
-      rawBody = translateBody(rawBody)
+      // Property rows ("rPois:  It protects…") and lone sentences. The monster
+      // panel also has an attack table, a to-hit line and a notice chance, so
+      // it gets the structural rules first.
+      rawBody = msg.type === 'describe-monster' ? translateMonsterBody(rawBody) : translateBody(rawBody)
     }
     const spellset = msg.spellset
     // Strip the placeholder when there's no spellset to render in its place;

@@ -21,13 +21,14 @@ if (!DCS_DAT) {
 const LANG = getArg('--lang', 'zh')
 const OUT = resolve(getArg('--out', 'src/i18n/data/zh-descript.json'))
 
-const FILES = ['items', 'monsters', 'spells', 'gods', 'features', 'unrand', 'ability', 'status', 'species', 'backgrounds', 'skills']
+const FILES = ['items', 'monsters', 'spells', 'gods', 'features', 'unrand', 'ability', 'status', 'monstatus', 'species', 'backgrounds', 'skills']
 
 // Whole-paragraph pairs (English prose → Chinese prose) for screens that show
 // the database text verbatim, like the new-game species blurbs.
 const PAIR_FILES = [
   'species', 'backgrounds', 'tutorial', 'gods', 'quotes',
-  'items', 'monsters', 'spells', 'features', 'unrand', 'ability', 'status', 'skills',
+  'items', 'monsters', 'spells', 'features', 'unrand', 'ability', 'status',
+  'monstatus', 'skills',
 ]
 const norm = (s) => s.replace(/\s+/g, ' ').trim()
 
@@ -48,12 +49,29 @@ function parse(path) {
   return out
 }
 
+// Entries can cross-reference each other with "[[key]]"; the engine expands
+// those before sending text to the client, so the shipped strings must be
+// resolved too or the pair never matches.
+function resolveRefs(table) {
+  const one = (text, depth = 0) => depth > 8 ? text : text.replace(
+    /\[\[([^\]]+)\]\]/g,
+    (_m, key) => table[key] ? one(table[key], depth + 1) : '')
+  return Object.fromEntries(Object.entries(table).map(([k, v]) => [k, one(v)]))
+}
+
 const dict = {}
 let total = 0
 for (const file of FILES) {
   const p = resolve(DCS_DAT, 'descript', LANG, `${file}.txt`)
   try {
-    const entries = parse(p)
+    let entries = parse(p)
+    if (file === 'monstatus') entries = resolveRefs(entries)
+    // Monster status descriptions are keyed "<tag> monstatus" in the database;
+    // the panel sends the bare tag as the row label, so store the bare form.
+    if (file === 'monstatus') {
+      entries = Object.fromEntries(Object.entries(entries)
+        .map(([k, v]) => [k.replace(/ monstatus$/, ''), v]))
+    }
     dict[file] = entries
     total += Object.keys(entries).length
     console.log(`${file}: ${Object.keys(entries).length}`)
@@ -66,8 +84,12 @@ mkdirSync(dirname(OUT), { recursive: true })
 const pairs = {}
 for (const file of PAIR_FILES) {
   try {
-    const en = parse(resolve(DCS_DAT, 'descript', `${file}.txt`))
-    const zh = parse(resolve(DCS_DAT, 'descript', LANG, `${file}.txt`))
+    let en = parse(resolve(DCS_DAT, 'descript', `${file}.txt`))
+    let zh = parse(resolve(DCS_DAT, 'descript', LANG, `${file}.txt`))
+    if (file === 'monstatus') {
+      en = resolveRefs(en)
+      zh = resolveRefs(zh)
+    }
     let n = 0
     for (const [name, zhText] of Object.entries(zh)) {
       const enText = en[name]

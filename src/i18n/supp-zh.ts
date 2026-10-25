@@ -908,4 +908,50 @@ export const SUPP_ZH: Record<string, string> = {
   'Your spells take twice as long to cast.': '你的施法时间加倍。',
   'Your unholy armour drains life force from %s.': '你的邪恶护甲从%s身上吸取生命力。',
   "you're too confused to cast spells.": '你太困惑了，无法施法。',
+
+  // --- monster describe panel ---
+  // Stat-table labels the engine composes; the property-token table handles
+  // Max HP / Will / AC / EV / SH / Regen, but Class and Speed are prose words.
+  'Class': '类别',
+  'Speed': '速度',
+  'Status:': '状态：',
+  'Quote:': '引文：',
+  // Damage figures the monster page prints as "Label: NdM" rows.
+  'Explosion damage': '爆炸伤害',
+  'Shooting star damage': '流星伤害',
+  'Projectile damage': '投射物伤害',
+  'Spore damage': '孢子伤害',
+  'Recite power': '诵读威力',
+  'Hit dice': '生命骰',
+  // Class (holiness) and Int values.
+  'Demon': '恶魔',
+  'Magical': '魔法',
+  'Mindless': '无意识',
+  'Nonliving': '无生命',
+  'Eggplantelligent': '茄子智能',
+  // Size adjectives.
+  'Little': '小',
+  'Big': '大',
+  // Panel sentences the engine composes with a pronoun.
+  'It is frail and will die soon after being struck.': '它很脆弱，被击中后很快就会死亡。',
+  'It is vulnerable to silver and hated by Zin.': '它惧怕银，并被辛厌恶。',
+  'It is susceptible to fire.': '它易受火焰伤害。',
+  'It is stationary.': '它无法移动。',
+  'It will release varied jellies when damaged or killed, with the number of jellies proportional to the amount of damage.':
+    '它在受伤或死亡时会释放不同种类的果冻，数量与伤害量成正比。',
+  // Status tags the 0.34.1 dictionary lacks (20 of the 139 carry "[[…]]"
+  // cross-references, so the labels are keyed lowercase like the rest).
+  'catching its breath': '正在喘气',
+  'catching his breath': '正在喘气',
+  'catching her breath': '正在喘气',
+  'catching their breath': '正在喘气',
+  'inner flame': '体内火焰',
+  'repelling missiles': '弹开飞弹',
+  'sharing its pain': '分担痛苦',
+  'sharing his pain': '分担痛苦',
+  'sharing her pain': '分担痛苦',
+  'sharing their pain': '分担痛苦',
+  'spells diminished': '法术削弱',
+  'low-tier stab': '低级刺击',
+  'high-tier stab': '高级刺击',
 }

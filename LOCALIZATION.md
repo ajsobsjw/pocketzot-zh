@@ -15,7 +15,8 @@
 | `src/i18n/items.ts` | 物品名语法：`+1 dagger of venom` → `淬毒的+1匕首`、`2 black potions` → `黑色药水×2` |
 | `src/i18n/titles.ts` | 动态标题：`Gear: 1/52 gear slots`、`Casting: …` 等 |
 | `src/i18n/index.ts` | `t()` / `tItem()` / `tTitle()` / `tLabel()`、语言状态与懒加载 |
-| `src/i18n/describe.ts` + `data/zh-descript.json` | 详情面板的散文替换：按标题里的英文名查 `dat/descript/zh`，只换散文段，数值行保留 |
+| `src/i18n/describe.ts` + `data/zh-descript.json` | 详情面板的散文替换：按标题里的英文名查 `dat/descript/zh`，只换散文段，数值行保留；生物面板另用 139 条 `monstatus` 标签正文 |
+| `src/i18n/monster.ts` | 生物面板专用：命中/注意/速度整句、攻击表逐格+列对齐、状态标签+正文、引言 |
 | `src/i18n/dom.ts` | 渲染后文本节点与 placeholder/aria-label/title 的自动翻译；跳过地图网格与 CRT 定宽屏；切回英文会还原原文 |
 | `src/views/tile-error-notice.ts` | 图块图集加载失败时弹一次可见提示（否则只会静默退回 ASCII，无法区分是故障还是 ASCII 模式）|
 
@@ -65,9 +66,11 @@ node tools/build-zh-descript.mjs --src "<你的 DCSS 安装>/dat"
 ## 已知边界（诚实列出）
 
 1. **描述正文（examine）**：按标题里的英文名查 `data/zh-descript.json`
-   （2,343 条分类记录 + 7,043 组整段配对，来自中文版 `dat/descript/zh`），并按页面类型
-   （法术/怪物/物品/神祇）优先查对应分类；命中时替换散文段与引文、保留数值行。
-   未命中的名字仍是英文。
+   （2,343 条分类记录 + 7,153 组整段配对 + 139 条 `monstatus`，来自中文版 `dat/descript/zh`），
+   并按页面类型（法术/怪物/物品/神祇）优先查对应分类；命中时替换散文段与引文、保留数值行。
+   **生物面板**（属性表、命中率、速度、攻击表、状态、引言）由 `src/i18n/monster.ts`
+   结构化翻译：攻击表按原列起点切片、按中文表头重排；任一格或整块状态未知时整行/整块
+   保持英文，不会出现半中半英。未命中的名字仍是英文。
    0.34.1 中文数据没有的 0.35 内容（新法术/怪物/物品/地形/状态/背景、Gale Centaur 等）
    由 `src/i18n/manual-zh.ts` 手写补充（90 个名字 + 76 段散文，由
    `tools/build-manual-zh.mjs` 从上游英文原文对齐生成）。

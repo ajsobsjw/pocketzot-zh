@@ -13,22 +13,55 @@ function displayWidth(s: string): number {
   return n
 }
 
+// Stat rows arrive as colour-tagged cells ("<lightgrey>Max HP: 10  </lightgrey>
+// <lightgrey>Will: +  </lightgrey>"), so a label can be preceded by opening or
+// closing tags and can contain spaces ("Max HP", "Base armour rating"). Match
+// the tag/space prefix separately and keep it verbatim; the label itself never
+// carries markup.
+
+/** Translate a row label: property tokens first, then the dictionary. */
+function labelOf(raw: string): string {
+  const prop = propLabel(raw)
+  if (prop !== raw) return prop
+  return t(raw)
+}
+
 /** Translate one "Label: value" cell, re-padding the value to its old column. */
 function translateCell(cell: string): string {
-  const m = /^(\s*)(\S+?):(\s+)(.+)$/.exec(cell)
-  if (!m) return cell
-  const label = propLabel(m[2])
-  const desc = t(m[4])
-  if (label !== m[2] || desc !== m[4]) {
-    const target = displayWidth(m[2]) + m[3].length
-    const pad = Math.max(1, target - displayWidth(label))
-    return tidy(`${m[1]}${label}:${' '.repeat(pad)}${desc}`)
+  // A closing colour tag belongs to the cell, not to the value: a dictionary
+  // hit returns plain text, so put the tag back rather than dropping it.
+  const tail = /((?:<\/[a-zA-Z]+>)+)$/.exec(cell)?.[1] ?? ''
+  const body = tail ? cell.slice(0, -tail.length) : cell
+  const m = /^((?:\s|<[^>]+>)*)([^<\s][^<:]{0,39}?):(\s+)(.+)$/.exec(body)
+  if (m) {
+    const [, lead, rawLabel, spaces, rawValue] = m
+    const label = labelOf(rawLabel)
+    const value = t(rawValue)
+    // A label translated while its value stays English would print half a
+    // sentence. Keep the whole cell English instead; the panel can fall back.
+    if (value === rawValue && /[A-Za-z]{3,}/.test(rawValue.replace(/<[^>]*>/g, ''))
+      && label !== rawLabel) {
+      return cell
+    }
+    if (label !== rawLabel || value !== rawValue) {
+      const target = displayWidth(rawLabel) + spaces.length
+      const pad = Math.max(1, target - displayWidth(label))
+      return tidy(`${lead}${label}:${' '.repeat(pad)}${value}${tail}`)
+    }
   }
   // Labels outside the property table ("Base armour rating", "Encumbrance
   // rating") are ordinary dictionary keys: try the whole cell.
-  const whole = t(cell.trim())
-  return whole === cell.trim() ? cell : cell.slice(0, cell.length - cell.trimStart().length) + tidy(whole)
+  const trimmed = body.trim()
+  if (!trimmed) return cell
+  const whole = t(trimmed)
+  if (whole === trimmed) return cell
+  return body.slice(0, body.length - body.trimStart().length) + tidy(whole) + tail
 }
+
+// A row label is a short Latin phrase at the start of the line ("Max HP",
+// "Base armour rating", "Attack"), optionally behind colour tags. Keep it
+// tight: a prose sentence rarely starts with 1–40 word characters and a colon.
+const LABEL_ROW = /^\s*(?:<[^>]+>)*[A-Za-z][\w .'+-]{0,38}?:\s+\S/
 
 /** Translate the property/value rows and stray sentences of a describe body. */
 export function translateBody(body: string): string {
@@ -40,12 +73,12 @@ export function translateBody(body: string): string {
   const lines: string[] = []
   for (let i = 0; i < raw.length; i++) {
     const line = raw[i]
-    const label = /^(\s*\S+?):\s+\S/.exec(line)
+    const label = LABEL_ROW.exec(line)
     if (label && i + 1 < raw.length) {
       let value = line
       while (i + 1 < raw.length
         && /^\s{2,}\S/.test(raw[i + 1])
-        && !/^\s*\S+?:\s/.test(raw[i + 1])
+        && !LABEL_ROW.test(raw[i + 1])
         && !/^\s*$/.test(raw[i + 1])) {
         value += ' ' + raw[i + 1].trim()
         i++
@@ -68,9 +101,9 @@ export function translateBody(body: string): string {
         const text = piece.trim()
         if (!text) return piece
         // Label-only cell (the value lives in the next column).
-        const labelOnly = /^(\S+?):$/.exec(text)
+        const labelOnly = /^([^\s<][^<:]{0,39}?):$/.exec(text)
         if (labelOnly) {
-          const label = propLabel(labelOnly[1])
+          const label = labelOf(labelOnly[1])
           if (label !== labelOnly[1]) {
             changed = true
             return lead + label + ':'
@@ -103,9 +136,9 @@ export function translateBody(body: string): string {
 /** One "label: value" text node, for the DOM translator (menus included). */
 export function translateLabeledText(text: string): string | null {
   if (!isZh()) return null
-  const m = /^(\s*)(\S+?):(\s+)(.*)$/.exec(text)
+  const m = /^(\s*)([^<\s][^<:]{0,39}?):(\s+)(.*)$/.exec(text)
   if (!m) return null
-  const label = propLabel(m[2])
+  const label = labelOf(m[2])
   const desc = m[4] ? t(m[4]) : ''
   if (label === m[2] && desc === m[4]) return null
   const target = displayWidth(m[2]) + m[3].length

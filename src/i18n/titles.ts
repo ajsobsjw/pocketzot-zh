@@ -186,7 +186,7 @@ export const TITLE_RULES: TitleRule[] = [
   { re: /^It can travel through water\.$/, to: () => '它能在水中移动。' },
   { re: /^It can eat doors\.$/, to: () => '它能吃掉门。' },
   {
-    re: /^It has a (\d+)% chance to notice you each turn\.$/,
+    re: /^It (?:has|have) a (\d+)% chance to notice you each turn\.$/,
     to: (m) => `它每回合有 ${m[1]}% 的概率注意到你。`,
   },
   { re: /^It has about (\d+)% to hit you\.$/, to: (m) => `它命中你的概率约为 ${m[1]}%。` },
@@ -199,8 +199,6 @@ export const TITLE_RULES: TitleRule[] = [
   { re: /^This creature provides no experience or piety when slain\.$/, to: () => '击杀此生物不会提供经验或虔诚。' },
   { re: /^It possesses the following natural abilities:$/, to: () => '它具有以下天生能力：' },
   { re: /^This creature is being targeted by one or more of your allies\.$/, to: () => '这个生物正被你的一个或多个盟友锁定。' },
-  { re: /^You have about (\d+)% to hit with (.+?)\.$/, to: (m) => `你命中${m[2]}的概率约为 ${m[1]}%。` },
-  { re: /^You have about (\d+)% to hit with (.+?) and (\d+)% to hit with (.+?)\.$/, to: (m) => `你命中${m[2]}的概率约为 ${m[1]}%，命中${m[4]}约为 ${m[3]}%。` },
 
   // --- status ticks / misc ---
   { re: /^mildly poisoned \((.+?) -> (.+?)\)$/, to: (m) => `轻度中毒（${m[1]} → ${m[2]}）` },
@@ -268,7 +266,7 @@ export const TITLE_RULES: TitleRule[] = [
     to: (m) => `${PRONOUN_ZH[m[1]]}的命中率约为 ${m[2]}%。`,
   },
   {
-    re: /^(He|She|It|They) has a (\d+)% chance to notice you each turn\.$/,
+    re: /^(He|She|It|They) (?:has|have) a (\d+)% chance to notice you each turn\.$/,
     to: (m) => `${PRONOUN_ZH[m[1]]}每回合有 ${m[2]}% 的概率注意到你。`,
   },
   { re: /^(He|She|It|They) can open doors\.$/, to: (m) => `${PRONOUN_ZH[m[1]]}能打开门。` },

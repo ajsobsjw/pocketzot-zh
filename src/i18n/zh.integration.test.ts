@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { initI18n, setLang, t, tItem, tLabel, tMore, tTitle, getLang } from './index'
 import { translateBody } from './body'
 import { loadDescript } from './describe'
+import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from './monster'
 
 afterAll(() => setLang('en'))
 
@@ -270,6 +271,117 @@ describe('real dictionary', () => {
   it('translates its own UI labels', () => {
     expect(tLabel('Play offline')).toBe('离线游戏')
     expect(tLabel('Control sets')).toBe('控制方案')
+  })
+})
+
+// The monster page is built from engine strings: a stat row whose cells carry
+// colour tags, a to-hit line, the speed line, an attack table, the notice
+// chance, and the Status/Quote blocks. None of them has a dictionary key, so
+// these run through the structural rules against the real database.
+describe('monster panel with the live dictionary', () => {
+  it('translates a whole panel', async () => {
+    await setLang('zh')
+    await loadDescript()
+    const body = [
+      'A small rat.',
+      '',
+      '<lightgrey>Max HP: 3          </lightgrey><lightgrey>Will: +         </lightgrey>'
+        + '<lightgrey>AC: 1           </lightgrey><lightgrey>EV: 15          </lightgrey>',
+      '<lightgrey>Threat: Low         </lightgrey><lightgrey>Class: Natural     </lightgrey>'
+        + '<lightgrey>Size: Little    </lightgrey><lightgrey>Int: Animal</lightgrey>',
+      '',
+      'Speed: 110% (attack: 100%, travel: 80%)',
+      'You have about 85% to hit with your hands and 50% to hit with your off-hand punch (at present).',
+      'They have a 5% chance to notice you each turn.',
+      '',
+      'Attack          Max Damage    Range    After Damaging Hits',
+      'Bite            3             1        Poison',
+      '2x Claw         5             3        Fire damage (max 5 each)',
+      'Throw: 3 darts   9             7        Poison and slowing',
+      '',
+      'It can see invisible.',
+      'It is immune to poison, fire and negative energy.',
+      'It is vulnerable to silver and hated by Zin.',
+      'It inflicts 1d5 acid damage when struck in melee.',
+    ].join('\n')
+
+    const out = translateMonsterBody(body)
+    // Stat row: labels and values both translated, colour tags preserved.
+    expect(out).toContain('最大生命')
+    expect(out).toContain('意志')
+    expect(out).toContain('威胁')
+    expect(out).toContain('类别')
+    expect(out).toContain('体型')
+    expect(out).toContain('智力')
+    expect(out).toContain('自然')
+    expect(out).toContain('动物')
+    expect(out).not.toContain('Max HP')
+    expect(out).not.toMatch(/Class:/)
+
+    // Lines and prose.
+    expect(out).toContain('速度：110%（攻击：100%，移动：80%）')
+    expect(out).toContain('你有约 85% 的几率用你的双手命中')
+    expect(out).toContain('另有 50% 的几率用你的副手拳击命中（目前）')
+    expect(out).toContain('它们每回合有 5% 的几率注意到你')
+    expect(out).toContain('它免疫毒素、火焰与负能量')
+    expect(out).toContain('它惧怕银，并被辛厌恶')
+    expect(out).toContain('近战被击中时会造成 1d5 点强酸伤害')
+
+    // Attack table: every cell translated, columns still aligned.
+    const lines = out.split('\n')
+    const header = lines.find((l) => l.startsWith('攻击'))
+    expect(header).toBeTruthy()
+    expect(header).toContain('最大伤害')
+    expect(header).toContain('射程')
+    expect(header).toContain('命中后效果')
+    expect(lines.some((l) => /^咬\s+3\s+1\s+毒素$/.test(l))).toBe(true)
+    expect(lines.some((l) => /^2x 爪击\s+5\s+3\s+火焰伤害（每次最大 5）$/.test(l))).toBe(true)
+    expect(lines.some((l) => /^投掷：.+9\s+7\s+毒素与减速$/.test(l))).toBe(true)
+  })
+
+  it('translates a multi-paragraph status block and its tag', async () => {
+    await setLang('zh')
+    await loadDescript()
+    // The engine indents continuation lines and turns the blank line inside
+    // the body into a whitespace-only line.
+    const status = [
+      '<white>Asleep:<lightgrey>',
+      '   This creature is unable to move, act, block, or dodge. Any hostile action',
+      '   will awaken it.',
+      '   ',
+      '   <blue>Your melee attacks against this creature will deal greatly',
+      '   increased damage.</blue>',
+    ].join('\n')
+    const out = translateMonsterStatus(status)
+    expect(out).toContain('<white>睡眠：')
+    expect(out).toContain('这个生物无法移动、行动、格挡或闪避')
+    expect(out).toContain('你对该生物进行的近战攻击将造成大幅增加的伤害')
+    // Both paragraphs stay in the block; nothing is left in English.
+    expect(out).not.toContain('This creature')
+    expect(out).not.toContain('Your melee attacks')
+    const followUp = out.split('\n').filter((l) => l.startsWith('   '))
+    expect(followUp.length).toBeGreaterThan(1)
+  })
+
+  it('translates the Quote block from the database', async () => {
+    await setLang('zh')
+    await loadDescript()
+    expect(translateMonsterQuote(
+      'Draconians are versatile hybrids. They mature when reaching level 7 and develop a colour.',
+    )).toBe('龙人是适应面很广的混种生物。他们到达7级时便会成熟，并显现出一种颜色。')
+    // Quotes newer than the database stay as the server sent them.
+    const newer = 'Some line the 0.34.1 database never had.'
+    expect(translateMonsterQuote(newer)).toBe(newer)
+  })
+
+  it('keeps unmatchable rows entirely English', async () => {
+    await setLang('zh')
+    const out = translateMonsterBody([
+      'Attack          Max Damage    Range    After Damaging Hits',
+      'Bite            3             1        Flibbertigibbet',
+    ].join('\n'))
+    expect(out).toContain('Bite            3             1        Flibbertigibbet')
+    expect(out).not.toContain('咬')
   })
 })
 
