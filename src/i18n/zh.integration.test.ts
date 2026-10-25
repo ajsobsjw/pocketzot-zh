@@ -137,6 +137,17 @@ describe('real dictionary', () => {
     expect(t('Powerful equine hybrids who trace their ancestry to the four winds themselves, Gale Centaurs are at their strongest while galloping swiftly towards foes.')).toContain('疾风半人马')
   })
 
+  it('translates hand-written 0.35 additions', async () => {
+    await setLang('zh')
+    await loadDescript()
+    expect(tItem('acid blob')).toBe('酸液团')
+    expect(tItem('potion of mist')).toBe('雾之药水')
+    expect(tItem('Pacify')).toBe('安抚')
+    expect(tItem('Mystic')).toBe('秘术师')
+    expect(t('Casting: Sirocco (safe; 1% risk of failure)')).toBe('施法：热风（安全；失败率 1%）')
+    expect(t('Casting: Bolt of Antimagic (safe; 1% risk of failure)')).toBe('施法：反魔法闪电（安全；失败率 1%）')
+  })
+
   it('translates the menu nav keyhelp', async () => {
     await setLang('zh')
     const out = tMore('[Up|Down] select  [PgDn|>] page down  [Esc] exit')
