@@ -244,7 +244,37 @@ export function localizeSkillRows(rows: string[]): string[] {
     [/^\[\/\] auto\|manual mode$/, '[/] 自动|手动模式'],
     [/^\[\*\] useful\|all skills$/, '[*] 有用|全部技能'],
     [/^\[!\] training\|cost\|targets$/, '[!] 训练|消耗|目标'],
+    [/^In manual mode, experience is spread evenly across all activated skills\.$/, '在手动模式下，经验会平均分配给所有已激活的技能。'],
+    [/^In automatic mode, experience is spread evenly across all activated skills\.$/, '在自动模式下，经验会平均分配给所有已激活的技能。'],
   ]
+  // Toggle footer lines carry inline colour tags around the active/inactive
+  // option: translate the text runs only, never the tags, so the bright/dim
+  // contrast survives.
+  const RUN_WORDS: Array<[RegExp, string]> = [
+    [/\bset a skill target\b/g, '设定技能目标'],
+    [/\bskill descriptions\b/g, '技能说明'],
+    [/\ball skills\b/g, '全部技能'],
+    [/\bauto\b/g, '自动'],
+    [/\bmanual\b/g, '手动'],
+    [/\buseful\b/g, '有用'],
+    [/\btraining\b/g, '训练'],
+    [/\bcost\b/g, '消耗'],
+    [/\btargets\b/g, '目标'],
+    [/\bmode\b/g, '模式'],
+    [/\bHelp\b/g, '帮助'],
+  ]
+  const tidyRuns = (s: string): string => s
+    .replace(/([\u4e00-\u9fff]) (?=[\u4e00-\u9fff|])/g, '$1')
+    .replace(/ 模式/g, '模式')
+  const translateRuns = (html: string): string => html
+    .split(/(<[^>]+>)/)
+    .map((part) => {
+      if (part.startsWith('<')) return part
+      let text = part
+      for (const [re, zh] of RUN_WORDS) text = text.replace(re, zh)
+      return tidyRuns(text)
+    })
+    .join('')
   return rows.map((html) => {
     let out = html
     const plain = plainText(out)
@@ -262,7 +292,9 @@ export function localizeSkillRows(rows: string[]): string[] {
     // Help/footer lines are free text, not grid cells.
     for (const [re, zh] of HELP) {
       if (re.test(plain.trim())) {
-        return out.includes(plain) ? out.replace(plain, zh) : zh
+        // Plain text wrapped in one colour tag: replace in place so the dim/
+        // bright styling stays. Inline tags around words: translate the runs.
+        return out.includes(plain) ? out.replace(plain, zh) : translateRuns(out)
       }
     }
     // "  a + Fighting       0.2   4%  -2": key and sign occupy up to two
