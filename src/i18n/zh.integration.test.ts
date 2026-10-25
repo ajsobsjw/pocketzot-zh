@@ -407,10 +407,10 @@ describe('talisman form panel', () => {
     await setLang('zh')
     await initI18n()
     const out = translateBody([
-      '         Skill    Regen    Shed Tail HP    Distraction Stab Chance',
-      'Min         0        +0.20            12                    +5%',
-      'Max         7        +0.20            24                   +15%',
-      'Cur         0.0      +0.20            12                    +5%',
+      '      Skill   Regen   Shed Tail HP   Distraction Stab Chance',
+      'Min   0       +0.20   12             +5%',
+      'Max   7       +0.20   24             +15%',
+      'Cur   0.0     +0.20   12             +5%',
     ].join('\n'))
     expect(out).toContain('技能')
     expect(out).toContain('再生')
@@ -420,6 +420,27 @@ describe('talisman form panel', () => {
     expect(out).toContain('最大')
     expect(out).toContain('当前')
     expect(out).not.toMatch(/Shed Tail|Distraction|Skill\s+Regen/)
+
+    // Chinese labels are narrower than the English ones; the following cells
+    // must stay at their original display columns (CJK counts as two).
+    const width = (s: string): number => [...s]
+      .reduce((n, ch) => n + (/[^\x00-\xff]/.test(ch) ? 2 : 1), 0)
+    const columns = (line: string): number[] => [...line.matchAll(/\S+/g)]
+      .map((m) => width(line.slice(0, m.index)))
+    const lines = out.split('\n')
+    expect(columns(lines[0])).toEqual([6, 14, 22, 37])
+    expect(columns(lines[1])).toEqual([0, 6, 14, 22, 37])
+    expect(columns(lines[2])).toEqual([0, 6, 14, 22, 37])
+  })
+
+  it('translates the describe footer labels without touching search tokens', async () => {
+    await setLang('zh')
+    const out = translateBody([
+      'Stash search prefixes: {inventory} {talisman}',
+      'Menu/colouring prefixes: (identified)',
+    ].join('\n'))
+    expect(out).toContain('储藏搜索前缀：{inventory} {talisman}')
+    expect(out).toContain('菜单/着色前缀：（已鉴定）')
   })
 
   it('translates the melds, suppressed-mutation and skill-target lines', async () => {
