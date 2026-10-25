@@ -232,16 +232,38 @@ export function localizeSkillRows(rows: string[]): string[] {
   const HEADER_WORDS: Array<[string, string]> = [
     ['Level', '等级'], ['Train', '训练'], ['Apt', '资质'],
   ]
+  // Static lines of the skill screen: explanation text and the command footer.
+  const HELP: Array<[RegExp, string]> = [
+    [/^Press the letter of a skill to read its description\.$/, '按技能对应的字母可查看它的说明。'],
+    [/^Press \? for a general explanation of skilling and the various toggles\.$/, '按 ? 查看技能训练和各种开关的总说明。'],
+    [/^The percentage of incoming experience used to train each skill is in brown\.$/, '用于训练各项技能的可用经验百分比以棕色显示。'],
+    [/^The species aptitude is in white\.$/, '物种资质以白色显示。'],
+    [/^\[\?\] Help \[a-z\] skill descriptions$/, '[?] 帮助  [a-z] 技能说明'],
+    [/^\[\?\] Help$/, '[?] 帮助'],
+    [/^\[=\] set a skill target$/, '[=] 设定技能目标'],
+    [/^\[\/\] auto\|manual mode$/, '[/] 自动|手动模式'],
+    [/^\[\*\] useful\|all skills$/, '[*] 有用|全部技能'],
+    [/^\[!\] training\|cost\|targets$/, '[!] 训练|消耗|目标'],
+  ]
   return rows.map((html) => {
     let out = html
     const plain = plainText(out)
     // Header row: "     Skill     Level Train  Apt" (names are not angles).
     if (/\bLevel\b/.test(plain) && /\bApt\b/.test(plain) && !/^\s*\S\s+[+*]/.test(plain)) {
+      // The name column's "Skill" word (5 columns) keeps its width; the row can
+      // carry both the left and right column headers, so replace every word.
+      out = out.replace(/\bSkill\b/g, '技能 ')
       for (const [en, zh] of HEADER_WORDS) {
         const pad = Math.max(0, en.length - zh.length * 2)
-        out = out.replace(en, zh + ' '.repeat(pad))
+        out = out.replace(new RegExp(`\\b${en}\\b`, 'g'), zh + ' '.repeat(pad))
       }
       return out
+    }
+    // Help/footer lines are free text, not grid cells.
+    for (const [re, zh] of HELP) {
+      if (re.test(plain.trim())) {
+        return out.includes(plain) ? out.replace(plain, zh) : zh
+      }
     }
     // "  a + Fighting       0.2   4%  -2": key and sign occupy up to two
     // space-separated tokens before the name.
