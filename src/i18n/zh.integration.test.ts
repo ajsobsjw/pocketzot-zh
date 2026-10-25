@@ -98,10 +98,10 @@ describe('real dictionary', () => {
     )
   })
 
-  it('keeps the noun when an item brand is unknown', async () => {
+  it('translates a known item brand inside its noun', async () => {
     await setLang('zh')
     expect(t('You see here a parchment of Volatile Blastmotes.')).toBe(
-      'You see here a parchment of Volatile Blastmotes.',
+      '你在这里看到不稳定爆尘的羊皮纸。',
     )
   })
 
@@ -146,6 +146,14 @@ describe('real dictionary', () => {
     expect(tItem('Mystic')).toBe('秘术师')
     expect(t('Casting: Sirocco (safe; 1% risk of failure)')).toBe('施法：热风（安全；失败率 1%）')
     expect(t('Casting: Bolt of Antimagic (safe; 1% risk of failure)')).toBe('施法：反魔法闪电（安全；失败率 1%）')
+  })
+
+  it('translates item names inside sentences', async () => {
+    await setLang('zh')
+    expect(tItem('a parchment of Call Canine Familiar')).toBe('呼唤犬类使魔的羊皮纸')
+    expect(t('You pick up a parchment of Call Canine Familiar and begin reading...')).toContain('呼唤犬类使魔的羊皮纸')
+    expect(t('You see here a dagger and a scratched steel ring.')).toContain('磨损的钢戒指')
+    expect(t('The kobold is quivering stones.')).toBe('狗头人正备有石头。')
   })
 
   it('translates the menu nav keyhelp', async () => {
@@ -198,7 +206,7 @@ describe('real dictionary', () => {
   it('builds item names, and refuses unknowns', () => {
     expect(tItem('a - dagger')).toBe('a - 匕首')
     expect(tItem('+1 dagger of venom')).toBe('淬毒的+1匕首')
-    expect(tItem('a wobbling gizmo')).toBe('a wobbling gizmo')
+    expect(tItem('a flibbertigibbet gizmo')).toBe('a flibbertigibbet gizmo')
   })
 
   it('translates dynamic titles', () => {

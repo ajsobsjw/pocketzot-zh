@@ -24,7 +24,14 @@ const ADJECTIVES: Record<string, string> = {
   yellow: '黄色', orange: '橙色', purple: '紫色', pink: '粉色', brown: '棕色',
   grey: '灰色', gray: '灰色', gold: '金色', silver: '银色', cyan: '青色',
   magenta: '洋红', clear: '无色', glowing: '发光的', runed: '刻纹的',
-  smoky: '烟熏的', dark: '深色', large: '大', small: '小', heavy: '沉重', light: '轻便',
+  smoky: '烟熏的', dark: '深色', scratched: '磨损的', embroidered: '绣花的',
+  engraved: '雕刻的', ornate: '华丽的', polished: '抛光的', dull: '暗淡的',
+  wobbling: '摇晃的', humming: '嗡鸣的', buzzing: '嗡鸣的', carved: '雕刻的',
+  burnt: '烧焦的', twisted: '扭曲的', gnarled: '多节的', chipped: '缺口的',
+  cracked: '裂开的', dented: '凹陷的', scorched: '焦黑的', stained: '沾污的',
+  tattered: '破烂的', frayed: '磨破的', shimmering: '微光的', sparkling: '闪光的',
+  encrusted: '镶嵌的', gilded: '镀金的', moldy: '发霉的', slimy: '黏滑的',
+  large: '大', small: '小', heavy: '沉重', light: '轻便',
 }
 
 const SUFFIXES: Record<string, string> = {
@@ -193,6 +200,8 @@ function phrase(m: Matcher, words: string[]): string | null {
     if (adj) out.push(adj)
     else if (single) out.push(single)
     else if (/^[+][0-9]+$/.test(w) || /^[-–—]$/.test(w)) out.push(w)
+    // Unknown qualifier ("calcified"): still fail rather than silently drop
+    // information. Known adjectives are listed above; add new ones there.
     else return null
     i++
   }
@@ -330,6 +339,19 @@ export function translateItem(m: Matcher, raw: string): string | null {
     const suffix = suffixRaw.toLowerCase()
     base = base.slice(0, ofIdx)
     suffixZh = SUFFIXES[suffix] ?? ''
+    if (!suffixZh) {
+      // "of <spell/item name>": the name is in the engine dictionary
+      // ("parchment of Call Canine Familiar").
+      const rawName = suffixRaw.replace(/^of\s+/i, '')
+      // Only proper names ("Call Canine Familiar"), never lower-case ego words
+      // like "flaming" (that is a suffix, not a name).
+      const named = /^[A-Z]/.test(rawName)
+        ? (m.exact.get(rawName)
+          ?? m.exact.get(rawName.charAt(0).toUpperCase() + rawName.slice(1))
+          ?? m.exact.get(rawName.toLowerCase()))
+        : undefined
+      if (named) suffixZh = named
+    }
     if (!suffixZh) {
       // "of A and B": try each side, else keep the proper name in parentheses
       const both = suffix.split(/\s+and\s+/)
