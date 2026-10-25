@@ -3019,7 +3019,7 @@ diff --git a/src/i18n/index.ts b/src/i18n/index.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/index.ts
-@@ -0,0 +1,658 @@
+@@ -0,0 +1,665 @@
 +// Display-only localization layer.
 +//
 +// Contract (do not break it):
@@ -3411,6 +3411,13 @@ new file mode 100644
 +  if (found) return `你在${translateCapture(found[2])}第 ${found[1]} 层找到了它。`
 +  const pray = /^You pray to (.+)\.$/.exec(plainText)
 +  if (pray) return `你向${translateCapture(pray[1])}祈祷。`
++  // "The kobold is quivering stones." — quivered ammo, not the stone item.
++  const quiver = /^(.+?) is quivering (.+)\.$/.exec(plainText)
++  if (quiver) {
++    const who = translateCapture(quiver[1])
++    const ammo = translateCapture(quiver[2])
++    if (who !== quiver[1] && ammo !== quiver[2]) return `${who}正备有${ammo}。`
++  }
 +  const itemPower = /^At your current (.+) skills, it has a (\d+)% chance to deal up to (\d+) additional (.+) damage\.$/.exec(plainText)
 +  if (itemPower) {
 +    const dmg: Record<string, string> = {
@@ -3682,7 +3689,7 @@ diff --git a/src/i18n/items.ts b/src/i18n/items.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/items.ts
-@@ -0,0 +1,365 @@
+@@ -0,0 +1,372 @@
 +// Item-name grammar.
 +//
 +// The engine composes names from fragments ("+1", "dagger", "of venom",
@@ -3709,7 +3716,7 @@ new file mode 100644
 +  yellow: '黄色', orange: '橙色', purple: '紫色', pink: '粉色', brown: '棕色',
 +  grey: '灰色', gray: '灰色', gold: '金色', silver: '银色', cyan: '青色',
 +  magenta: '洋红', clear: '无色', glowing: '发光的', runed: '刻纹的',
-+  large: '大', small: '小', heavy: '沉重', light: '轻便',
++  smoky: '烟熏的', dark: '深色', large: '大', small: '小', heavy: '沉重', light: '轻便',
 +}
 +
 +const SUFFIXES: Record<string, string> = {
@@ -3989,6 +3996,13 @@ new file mode 100644
 +    // separators so the brace reads the same after translation.
 +    const tokens = inner.split(/(,\s*|\s+)/).map((tok) => (/,|\s/.test(tok) ? tok : propLabel(tok)))
 +    propNote = ` {${tokens.join('')}}`
++  }
++
++  // "a pair of glowing boots" — the pair framing, not an ego suffix.
++  const pair = /^(?:a |an )?pair of (.+)$/i.exec(body)
++  if (pair) {
++    const inner = translateItem(m, pair[1])
++    if (inner) return prefix + parts.hotkey + `一双${inner}`
 +  }
 +
 +  // "dagger of venom", "ring of protection and evasion"
@@ -4825,7 +4839,7 @@ diff --git a/src/i18n/supp-zh.ts b/src/i18n/supp-zh.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/supp-zh.ts
-@@ -0,0 +1,703 @@
+@@ -0,0 +1,706 @@
 +// Supplements for strings the 0.34.1 dictionary does not carry: menu category
 +// headers, prompt questions, and the common item nouns the client composes
 +// names from. The dictionary itself wins on a conflict — this file only fills
@@ -5528,6 +5542,9 @@ new file mode 100644
 +  'Spells (Cast)': '法术（施放）',
 +  'Memorise': '记忆',
 +  'Lair of Beasts': '兽巢',
++  'stones': '石头',
++  "You can't see any susceptible monsters within range!":
++    '射程内没有可影响的怪物！',
 +}
 diff --git a/src/i18n/titles.ts b/src/i18n/titles.ts
 new file mode 100644
@@ -20862,7 +20879,7 @@ diff --git a/src/views/settings-view.ts b/src/views/settings-view.ts
 diff --git a/src/views/skill-reflow.ts b/src/views/skill-reflow.ts
 --- a/src/views/skill-reflow.ts
 +++ b/src/views/skill-reflow.ts
-@@ -1,270 +1,378 @@
+@@ -1,270 +1,391 @@
 -// Reflow the DCSS skill menu (`m`) from its native two-column terminal layout
 -// into a single column, so it fits a phone screen without horizontal panning.
 -//
@@ -21384,6 +21401,13 @@ diff --git a/src/views/skill-reflow.ts b/src/views/skill-reflow.ts
 +    [/^In automatic mode, skills are trained as you use them\.$/, '在自动模式下，技能会随着你的使用而得到训练。'],
 +    [/^In manual mode, skills are trained as you use them\.$/, '在手动模式下，技能会随着你的使用而得到训练。'],
 +    [/^The current training targets, if any\.$/, '当前设定的训练目标（如果有）。'],
++    [/^The percentage of the progress done before reaching next level is in cyan\.$/, '距离下一级还差的进度百分比以青色显示。'],
++    [/^The relative cost of raising each skill is in (?:cyan|red)\.(?: \(or (?:red|cyan) if enhanced by a manual\)\.)?$/, '提升各项技能的相对消耗以青色显示（若受手册强化则为红色）。'],
++    [/^\[\?\] Skill descriptions$/, '[?] 技能说明'],
++    [/^\[\?\] Return to skill selection$/, '[?] 返回技能选择'],
++    [/^\[a-z\] skill descriptions$/, '[a-z] 技能说明'],
++    [/^\[a-z\] set skill target$/, '[a-z] 设定技能目标'],
++    [/^\[\-\] clear selected target$/, '[-] 清除选中目标'],
 +    [/^\[\-\] clear all targets$/, '[-] 清除所有目标'],
 +    [/^\[\-\] clear a skill target$/, '[-] 清除技能目标'],
 +  ]
@@ -21391,7 +21415,13 @@ diff --git a/src/views/skill-reflow.ts b/src/views/skill-reflow.ts
 +  // option: translate the text runs only, never the tags, so the bright/dim
 +  // contrast survives.
 +  const RUN_WORDS: Array<[RegExp, string]> = [
++    [/\bclear all targets\b/g, '清除所有目标'],
++    [/\bclear selected target\b/g, '清除选中目标'],
++    [/\bclear a skill target\b/g, '清除技能目标'],
++    [/\bReturn to skill selection\b/g, '返回技能选择'],
++    [/\bSkill descriptions\b/g, '技能说明'],
 +    [/\bset a skill target\b/g, '设定技能目标'],
++    [/\bset skill target\b/g, '设定技能目标'],
 +    [/\bskill descriptions\b/g, '技能说明'],
 +    [/\ball skills\b/g, '全部技能'],
 +    [/\bauto\b/g, '自动'],
@@ -21416,7 +21446,7 @@ diff --git a/src/views/skill-reflow.ts b/src/views/skill-reflow.ts
 +        return tidyRuns(text)
 +      })
 +      .join('')
-+    return out.replace(/ 模式/g, '模式')
++    return out.replace(/\s*\|\s*/g, '|').replace(/ 模式/g, '模式')
 +  }
 +  // Sentence-level help lines may have colour tags inside the sentence. Their
 +  // whole line is one style (dim or bright), so replacing the full text and

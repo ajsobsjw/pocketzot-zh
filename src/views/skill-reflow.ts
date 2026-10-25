@@ -249,6 +249,13 @@ export function localizeSkillRows(rows: string[]): string[] {
     [/^In automatic mode, skills are trained as you use them\.$/, '在自动模式下，技能会随着你的使用而得到训练。'],
     [/^In manual mode, skills are trained as you use them\.$/, '在手动模式下，技能会随着你的使用而得到训练。'],
     [/^The current training targets, if any\.$/, '当前设定的训练目标（如果有）。'],
+    [/^The percentage of the progress done before reaching next level is in cyan\.$/, '距离下一级还差的进度百分比以青色显示。'],
+    [/^The relative cost of raising each skill is in (?:cyan|red)\.(?: \(or (?:red|cyan) if enhanced by a manual\)\.)?$/, '提升各项技能的相对消耗以青色显示（若受手册强化则为红色）。'],
+    [/^\[\?\] Skill descriptions$/, '[?] 技能说明'],
+    [/^\[\?\] Return to skill selection$/, '[?] 返回技能选择'],
+    [/^\[a-z\] skill descriptions$/, '[a-z] 技能说明'],
+    [/^\[a-z\] set skill target$/, '[a-z] 设定技能目标'],
+    [/^\[\-\] clear selected target$/, '[-] 清除选中目标'],
     [/^\[\-\] clear all targets$/, '[-] 清除所有目标'],
     [/^\[\-\] clear a skill target$/, '[-] 清除技能目标'],
   ]
@@ -256,7 +263,13 @@ export function localizeSkillRows(rows: string[]): string[] {
   // option: translate the text runs only, never the tags, so the bright/dim
   // contrast survives.
   const RUN_WORDS: Array<[RegExp, string]> = [
+    [/\bclear all targets\b/g, '清除所有目标'],
+    [/\bclear selected target\b/g, '清除选中目标'],
+    [/\bclear a skill target\b/g, '清除技能目标'],
+    [/\bReturn to skill selection\b/g, '返回技能选择'],
+    [/\bSkill descriptions\b/g, '技能说明'],
     [/\bset a skill target\b/g, '设定技能目标'],
+    [/\bset skill target\b/g, '设定技能目标'],
     [/\bskill descriptions\b/g, '技能说明'],
     [/\ball skills\b/g, '全部技能'],
     [/\bauto\b/g, '自动'],
@@ -281,7 +294,7 @@ export function localizeSkillRows(rows: string[]): string[] {
         return tidyRuns(text)
       })
       .join('')
-    return out.replace(/ 模式/g, '模式')
+    return out.replace(/\s*\|\s*/g, '|').replace(/ 模式/g, '模式')
   }
   // Sentence-level help lines may have colour tags inside the sentence. Their
   // whole line is one style (dim or bright), so replacing the full text and

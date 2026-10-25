@@ -700,4 +700,7 @@ export const SUPP_ZH: Record<string, string> = {
   'Spells (Cast)': '法术（施放）',
   'Memorise': '记忆',
   'Lair of Beasts': '兽巢',
+  'stones': '石头',
+  "You can't see any susceptible monsters within range!":
+    '射程内没有可影响的怪物！',
 }

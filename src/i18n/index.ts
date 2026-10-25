@@ -389,6 +389,13 @@ function translateOne(text: string): string | null {
   if (found) return `你在${translateCapture(found[2])}第 ${found[1]} 层找到了它。`
   const pray = /^You pray to (.+)\.$/.exec(plainText)
   if (pray) return `你向${translateCapture(pray[1])}祈祷。`
+  // "The kobold is quivering stones." — quivered ammo, not the stone item.
+  const quiver = /^(.+?) is quivering (.+)\.$/.exec(plainText)
+  if (quiver) {
+    const who = translateCapture(quiver[1])
+    const ammo = translateCapture(quiver[2])
+    if (who !== quiver[1] && ammo !== quiver[2]) return `${who}正备有${ammo}。`
+  }
   const itemPower = /^At your current (.+) skills, it has a (\d+)% chance to deal up to (\d+) additional (.+) damage\.$/.exec(plainText)
   if (itemPower) {
     const dmg: Record<string, string> = {

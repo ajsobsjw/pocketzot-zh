@@ -24,7 +24,7 @@ const ADJECTIVES: Record<string, string> = {
   yellow: '黄色', orange: '橙色', purple: '紫色', pink: '粉色', brown: '棕色',
   grey: '灰色', gray: '灰色', gold: '金色', silver: '银色', cyan: '青色',
   magenta: '洋红', clear: '无色', glowing: '发光的', runed: '刻纹的',
-  large: '大', small: '小', heavy: '沉重', light: '轻便',
+  smoky: '烟熏的', dark: '深色', large: '大', small: '小', heavy: '沉重', light: '轻便',
 }
 
 const SUFFIXES: Record<string, string> = {
@@ -304,6 +304,13 @@ export function translateItem(m: Matcher, raw: string): string | null {
     // separators so the brace reads the same after translation.
     const tokens = inner.split(/(,\s*|\s+)/).map((tok) => (/,|\s/.test(tok) ? tok : propLabel(tok)))
     propNote = ` {${tokens.join('')}}`
+  }
+
+  // "a pair of glowing boots" — the pair framing, not an ego suffix.
+  const pair = /^(?:a |an )?pair of (.+)$/i.exec(body)
+  if (pair) {
+    const inner = translateItem(m, pair[1])
+    if (inner) return prefix + parts.hotkey + `一双${inner}`
   }
 
   // "dagger of venom", "ring of protection and evasion"
