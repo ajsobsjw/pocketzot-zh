@@ -31,6 +31,19 @@ const ADJECTIVES: Record<string, string> = {
   cracked: '裂开的', dented: '凹陷的', scorched: '焦黑的', stained: '沾污的',
   tattered: '破烂的', frayed: '磨破的', shimmering: '微光的', sparkling: '闪光的',
   encrusted: '镶嵌的', gilded: '镀金的', moldy: '发霉的', slimy: '黏滑的',
+  // Jewellery/random-item qualifiers (item-name.cc ring/amulet/potion tables).
+  tubular: '管状的', blackened: '熏黑的', shiny: '闪亮的', notched: '带缺口的',
+  knobbly: '多节的', square: '方形的', thick: '厚重', thin: '薄', tiny: '微小',
+  triangular: '三角形的', lumpy: '疙瘩的', bubbling: '冒泡的', fuming: '冒烟的',
+  fizzy: '起泡的', viscous: '黏稠的', sedimented: '有沉淀的', metallic: '金属的',
+  murky: '浑浊的', gluggy: '黏糊的', oily: '油滑的', emulsified: '乳化的',
+  silvery: '银色的', inky: '墨色的', ruby: '红宝石色的', emerald: '翠绿的',
+  coppery: '铜色的', golden: '金色的', puce: '紫褐色的', amethyst: '紫水晶色的',
+  sapphire: '蓝宝石色的', wooden: '木制的', brass: '黄铜', copper: '铜',
+  granite: '花岗岩', ivory: '象牙', marble: '大理石', glass: '玻璃',
+  agate: '玛瑙', bone: '骨', diamond: '钻石', peridot: '橄榄石', garnet: '石榴石',
+  opal: '蛋白石', pearl: '珍珠', coral: '珊瑚', cabochon: '蛋面', onyx: '缟玛瑙',
+  moonstone: '月光石', tourmaline: '电气石', jade: '玉',
   large: '大', small: '小', heavy: '沉重', light: '轻便',
 }
 
@@ -208,6 +221,28 @@ function phrase(m: Matcher, words: string[]): string | null {
   return out.join('')
 }
 
+/**
+ * Last-resort item name: keep known words translated and quarantine unknown
+ * qualifiers in parentheses ("（flibbertigibbet）小装置"). Only used when the
+ * final noun itself is known, so the player still sees what the item is.
+ */
+function loosePhrase(m: Matcher, words: string[]): string | null {
+  if (words.length < 2) return null
+  const known = (w: string): string | undefined => {
+    const lower = w.toLowerCase()
+    return ADJECTIVES[lower]
+      ?? m.exact.get(w)
+      ?? (w === lower ? m.exact.get(singular(lower)) : undefined)
+  }
+  if (!known(words[words.length - 1])) return null
+  let out = ''
+  for (const w of words) {
+    const hit = known(w)
+    out += hit ?? `（${w}）`
+  }
+  return out
+}
+
 export interface ItemParts {
   hotkey: string
   plus: string
@@ -247,7 +282,7 @@ export function splitItem(raw: string): ItemParts {
  * Translate an item name. Returns null when any piece is unknown, so callers
  * can keep the English name rather than print a half-translated one.
  */
-export function translateItem(m: Matcher, raw: string): string | null {
+export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean }): string | null {
   if (!raw || !/[A-Za-z]/.test(raw)) return null
   // Reassignment rows: "s -> M - a potion of mutation".
   let prefix = ''
@@ -362,7 +397,8 @@ export function translateItem(m: Matcher, raw: string): string | null {
     }
   }
 
-  const baseZh = phrase(m, base.split(/\s+/).filter(Boolean))
+  const baseWords = base.split(/\s+/).filter(Boolean)
+  const baseZh = phrase(m, baseWords) ?? (opts?.loose ? loosePhrase(m, baseWords) : null)
   if (!baseZh) return null
 
   // "+0" is noise in Chinese names (and every starting weapon has it).

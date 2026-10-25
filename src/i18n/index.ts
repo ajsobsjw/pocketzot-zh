@@ -468,7 +468,16 @@ function translateOne(text: string): string | null {
     // more Latin letters) means the template cannot be completed: drop the hit
     // and keep the original line rather than print half a sentence.
     const args = r.args.map(translateCapture)
-    if (args.some((a) => /[A-Za-z]{3,}/.test(a))) r = null
+    // A capture that is still English (three or more Latin letters) means the
+    // template cannot be completed. Exception: a known noun with an unknown
+    // qualifier quarantined in parentheses ("（wobbling）小装置") — the sentence
+    // stays Chinese and the unknown word is visibly isolated.
+    const foreign = (a: string): boolean => {
+      if (!/[A-Za-z]{3,}/.test(a)) return false
+      const stripped = a.replace(/（[^）]*）/g, '').replace(/「[^」]*」/g, '')
+      return /[A-Za-z]{3,}/.test(stripped)
+    }
+    if (args.some(foreign)) r = null
     else r = { out: fill(r.tmpl, args), key: r.key }
   } else if (r && r.labelTail !== undefined) {
     const translated = translatePlaceValue(r.labelTail)
@@ -483,7 +492,7 @@ function translateOne(text: string): string | null {
     const title = aim ? null : matchTitle(plain)
     if (title) r = { out: title, key: 'title' }
     else if (/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(plain)) {
-      const item = translateItem(matcher!, plain)
+      const item = translateItem(matcher!, plain, { loose: true })
       if (item) r = { out: item, key: 'item' }
     }
   }
@@ -565,13 +574,13 @@ export function tItem(text: string): string {
   // A row with a hotkey prefix ("g - a potion") must go through the grammar,
   // which re-attaches the prefix; the plain lookup would drop it.
   if (/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(plainText)) {
-    out = translateItem(matcher, plainText)
+    out = translateItem(matcher, plainText, { loose: true })
   }
   if (!out) {
     const plain = lookup(matcher, text, {})
     out = plain ? plain.out : null
   }
-  if (!out) out = translateItem(matcher, plainText)
+  if (!out) out = translateItem(matcher, plainText, { loose: true })
   if (!out) out = matchTitle(plainText)
   cache.set(key, out)
   return out ?? text

@@ -148,6 +148,20 @@ describe('real dictionary', () => {
     expect(t('Casting: Bolt of Antimagic (safe; 1% risk of failure)')).toBe('施法：反魔法闪电（安全；失败率 1%）')
   })
 
+  it('translates generated item names without leaving the sentence English', async () => {
+    await setLang('zh')
+    const names = [
+      'a knobbly wooden ring', 'a tiny brass amulet', 'a scratched steel ring',
+      'a bubbling murky potion', 'a silvery inky potion', 'a gilded opal ring',
+      'a runed granite ring', 'a blackened copper amulet', 'a lumpy glass ring',
+      'a chipped bone ring', 'a tattered leather ring', 'a scorched marble ring',
+    ]
+    for (const name of names) {
+      expect(tItem(name), name).toMatch(/[\u4e00-\u9fff]/)
+      expect(tItem(name), name).not.toMatch(/^a /)
+    }
+  })
+
   it('translates item names inside sentences', async () => {
     await setLang('zh')
     expect(tItem('a parchment of Call Canine Familiar')).toBe('呼唤犬类使魔的羊皮纸')
@@ -206,7 +220,7 @@ describe('real dictionary', () => {
   it('builds item names, and refuses unknowns', () => {
     expect(tItem('a - dagger')).toBe('a - 匕首')
     expect(tItem('+1 dagger of venom')).toBe('淬毒的+1匕首')
-    expect(tItem('a flibbertigibbet gizmo')).toBe('a flibbertigibbet gizmo')
+    expect(tItem('a flibbertigibbet gizmo')).toBe('（flibbertigibbet）小装置')
   })
 
   it('translates dynamic titles', () => {
