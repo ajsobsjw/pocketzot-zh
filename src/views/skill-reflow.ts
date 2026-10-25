@@ -246,6 +246,11 @@ export function localizeSkillRows(rows: string[]): string[] {
     [/^\[!\] training\|cost\|targets$/, '[!] 训练|消耗|目标'],
     [/^In manual mode, experience is spread evenly across all activated skills\.$/, '在手动模式下，经验会平均分配给所有已激活的技能。'],
     [/^In automatic mode, experience is spread evenly across all activated skills\.$/, '在自动模式下，经验会平均分配给所有已激活的技能。'],
+    [/^In automatic mode, skills are trained as you use them\.$/, '在自动模式下，技能会随着你的使用而得到训练。'],
+    [/^In manual mode, skills are trained as you use them\.$/, '在手动模式下，技能会随着你的使用而得到训练。'],
+    [/^The current training targets, if any\.$/, '当前设定的训练目标（如果有）。'],
+    [/^\[\-\] clear all targets$/, '[-] 清除所有目标'],
+    [/^\[\-\] clear a skill target$/, '[-] 清除技能目标'],
   ]
   // Toggle footer lines carry inline colour tags around the active/inactive
   // option: translate the text runs only, never the tags, so the bright/dim
@@ -266,15 +271,27 @@ export function localizeSkillRows(rows: string[]): string[] {
   const tidyRuns = (s: string): string => s
     .replace(/([\u4e00-\u9fff]) (?=[\u4e00-\u9fff|])/g, '$1')
     .replace(/ 模式/g, '模式')
-  const translateRuns = (html: string): string => html
-    .split(/(<[^>]+>)/)
-    .map((part) => {
-      if (part.startsWith('<')) return part
-      let text = part
-      for (const [re, zh] of RUN_WORDS) text = text.replace(re, zh)
-      return tidyRuns(text)
-    })
-    .join('')
+  const translateRuns = (html: string): string => {
+    const out = html
+      .split(/(<[^>]+>)/)
+      .map((part) => {
+        if (part.startsWith('<')) return part
+        let text = part
+        for (const [re, zh] of RUN_WORDS) text = text.replace(re, zh)
+        return tidyRuns(text)
+      })
+      .join('')
+    return out.replace(/ 模式/g, '模式')
+  }
+  // Sentence-level help lines may have colour tags inside the sentence. Their
+  // whole line is one style (dim or bright), so replacing the full text and
+  // re-wrapping it in the line's own outer tags preserves the contrast without
+  // leaving half-English fragments.
+  const wrapWhole = (html: string, zh: string): string => {
+    const lead = /^((?:<[^>]+>)+)/.exec(html)?.[1] ?? ''
+    const trail = /((?:<\/[^>]+>)+)$/.exec(html)?.[1] ?? ''
+    return lead + zh + trail
+  }
   return rows.map((html) => {
     let out = html
     const plain = plainText(out)
@@ -293,8 +310,11 @@ export function localizeSkillRows(rows: string[]): string[] {
     for (const [re, zh] of HELP) {
       if (re.test(plain.trim())) {
         // Plain text wrapped in one colour tag: replace in place so the dim/
-        // bright styling stays. Inline tags around words: translate the runs.
-        return out.includes(plain) ? out.replace(plain, zh) : translateRuns(out)
+        // bright styling stays. Inline tags inside a sentence: wrap the whole
+        // translation in the line's outer tags (the line has one style).
+        if (out.includes(plain)) return out.replace(plain, zh)
+        if (/[.!?]$/.test(plain.trim())) return wrapWhole(out, zh)
+        return translateRuns(out)
       }
     }
     // "  a + Fighting       0.2   4%  -2": key and sign occupy up to two
