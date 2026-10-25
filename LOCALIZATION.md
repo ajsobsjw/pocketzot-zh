@@ -72,8 +72,12 @@ node tools/build-zh-descript.mjs --src "<你的 DCSS 安装>/dat"
    结构化翻译：攻击表按原列起点切片、按中文表头重排；任一格或整块状态未知时整行/整块
    保持英文，不会出现半中半英。未命中的名字仍是英文。
    0.34.1 中文数据没有的 0.35 内容（新法术/怪物/物品/地形/状态/背景、Gale Centaur 等）
-   由 `src/i18n/manual-zh.ts` 手写补充（90 个名字 + 76 段散文，由
-   `tools/build-manual-zh.mjs` 从上游英文原文对齐生成）。
+   由 `src/i18n/manual-zh.ts` 手写补充（90 个名字 + 78 段完整散文，由
+   `tools/build-manual-zh.mjs` 从上游英文原文对齐生成；完整翻译，不删机制与例外）。
+   `{{ … }}` 条件文本按引擎解析后的各分支生成键，否则原始模板键匹配不到。
+   护符变形表（Skill/HP/…/Shed Tail HP 等列）、`Melds:`、`Mutations Suppressed:`、
+   `Stash search prefixes:`、`Menu/colouring prefixes:` 与 `Your skill: …` 由
+   `body.ts` 整行/整表结构化翻译，并按原显示列重排（汉字按 2 列计）。
 2. **帮助/图鉴/CRT 定宽屏**：预排版英文，未翻译（避免破坏 80 列布局）。
 3. **菜单里的固定列行**（法术/技能表）：已在中文下重排为中文列（`menu-columns.ts`、
    `skill-reflow.ts`）；列宽按汉字 2 列计算。

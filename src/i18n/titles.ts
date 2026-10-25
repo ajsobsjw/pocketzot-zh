@@ -157,8 +157,22 @@ export const TITLE_RULES: TitleRule[] = [
     to: (m) => `这把武器的最低攻击延迟（${m[1]}）在技能等级 ${m[2]} 时达到。`,
   },
   {
-    re: /^At (.+?) training you would reach (.+?) in about (.+?) XLs\.$/,
-    to: (m) => `按当前训练（${m[1]}），大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
+    // "At 100% training you would reach 7.0 in about 3.9 XLs."
+    re: /^At (\d+)% training you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
+    to: (m) => `按 ${m[1]}% 训练度，大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
+  },
+  {
+    // "At current training (45%) you would reach 7.0 in about 3.9 XLs."
+    re: /^At current training \((\d+)%\) you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
+    to: (m) => `按当前训练（${m[1]}%），大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
+  },
+  {
+    re: /^At a training level of (\d+)% you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
+    to: (m) => `按 ${m[1]}% 训练度，大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
+  },
+  {
+    re: /^At current training you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
+    to: (m) => `按当前训练，大约 ${m[2]} 个等级后可达到 ${m[1]}。`,
   },
   {
     re: /^Wearing a shield would reduce your attack speed with this weapon\.$/,

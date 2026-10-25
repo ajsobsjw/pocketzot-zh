@@ -2305,7 +2305,7 @@ diff --git a/src/i18n/body.ts b/src/i18n/body.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/body.ts
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,303 @@
 +// Describe overlays arrive as pre-arranged text, so the DOM translator never
 +// sees a sentence on its own: property rows come as "rPois:     It protects…"
 +// and the label/value share one text node. This runs on the assembled body
@@ -2332,6 +2332,107 @@ new file mode 100644
 +  const prop = propLabel(raw)
 +  if (prop !== raw) return prop
 +  return t(raw)
++}
++
++// --- engine-composed lines the dictionary cannot key -----------------------
++//
++// Talisman form panels are assembled in C++ from fragments that never reach the
++// dictionary as a whole line: the "Melds:" list, the suppressed-mutation list,
++// and the "Your skill: …; use (s) to set …" hint. Run through the generic cell
++// matcher they either stay English or, worse, fall into the item-name fallback
++// in dom.ts, which quarantines every leftover word ("（Melds:）身体…").
++// These rules rebuild the complete line in Chinese, and return null when any
++// piece is unknown so the line stays coherently English.
++
++const EQUIP_SLOT_ZH: Record<string, string> = {
++  'Weapon': '武器',
++  'Shield': '盾牌',
++  'Body Armour': '身体护甲',
++  'Gloves': '手套',
++  'Boots': '靴子',
++  'Helmet': '头盔',
++  'Cloak': '斗篷',
++  'Amulet': '护符',
++  'Ring': '戒指',
++  'Barding': '马铠',
++  'Gizmo': '装置',
++  'All Equipment': '全部装备',
++  'All Weapons and Armour': '全部武器与护甲',
++}
++
++const SUPPRESSED_ZH: Record<string, string> = {
++  'Anatomy': '解剖结构',
++  'Substance': '物质',
++  'Blood': '血液',
++  'Bones': '骨骼',
++  'Hands': '双手',
++}
++
++/** item_prefix() tokens as the describe footer prints them. */
++const MENU_PREFIX_ZH: Record<string, string> = {
++  'identified': '已鉴定',
++  'unidentified': '未鉴定',
++  'artefact': '神器',
++  'worn': '已穿戴',
++  'cursed': '被诅咒',
++  'bound': '已束缚',
++}
++
++/** "Body Armour, Gloves, Boots" → "身体护甲、手套、靴子" (null if any unknown). */
++function translateList(raw: string, table: Record<string, string>): string | null {
++  const parts = raw.split(/\s*,\s*/).filter(Boolean)
++  if (!parts.length) return null
++  const zh = parts.map((p) => table[p] ?? (t(p) !== p ? t(p) : null))
++  return zh.every((z): z is string => z != null) ? zh.join('、') : null
++}
++
++/** Complete-line rules for computed describe lines; null keeps the original. */
++function translateComputedLine(line: string): string | null {
++  const lead = line.slice(0, line.length - line.trimStart().length)
++  const plain = line.replace(/<[^>]*>/g, '').trim()
++
++  const melds = /^Melds: (.+)$/.exec(plain)
++  if (melds) {
++    const list = translateList(melds[1], EQUIP_SLOT_ZH)
++    return list ? `${lead}融合部位：${list}` : null
++  }
++
++  const suppressed = /^Mutations Suppressed: (.+)$/.exec(plain)
++  if (suppressed) {
++    const list = translateList(suppressed[1], SUPPRESSED_ZH)
++    return list ? `${lead}抑制的突变：${list}` : null
++  }
++
++  // Technical tokens after this label are stash-search syntax; only the label
++  // is prose. Without this rule the line fell into the item-name fallback and
++  // came out as "（Menu/colouring) （prefixes:) …".
++  const stash = /^Stash search prefixes: (.+)$/.exec(plain)
++  if (stash) return `${lead}储藏搜索前缀：${stash[1]}`
++
++  const menuPrefix = /^Menu\/colouring prefixes: (.+)$/.exec(plain)
++  if (menuPrefix) {
++    const tags = menuPrefix[1].split(/\s+/).filter(Boolean)
++    const zh = tags.map((tag) => {
++      const key = tag.replace(/^\(|\)$/g, '')
++      const hit = MENU_PREFIX_ZH[key]
++      return hit ? `（${hit}）` : null
++    })
++    if (zh.every((z): z is string => z != null)) return `${lead}菜单/着色前缀：${zh.join('')}`
++    return null
++  }
++
++  // "Your skill: 0.0; use (s) to set 7.0 as a target for Shapeshifting."
++  // "Your (base) skill: 12.3." — the target hint is optional.
++  const skill = /^Your (\(base\) )?skill: (\d+(?:\.\d+)?)(?:; use \(s\) to set (\d+(?:\.\d+)?) as a target for (.+?))?\.?$/.exec(plain)
++  if (skill) {
++    const head = `${lead}你的${skill[1] ? '基础' : ''}技能：${skill[2]}`
++    if (!skill[3]) return `${head}。`
++    const name = t(skill[4])
++    if (name === skill[4]) return null
++    return `${head}；使用 (s) 可将${name}的目标设为 ${skill[3]}。`
++  }
++
++  return null
 +}
 +
 +/** Translate one "Label: value" cell, re-padding the value to its old column. */
@@ -2366,10 +2467,82 @@ new file mode 100644
 +  return body.slice(0, body.length - body.trimStart().length) + tidy(whole) + tail
 +}
 +
++/** Translate one pre-split cell (table header, label/value, lone word). */
++function translateCellText(text: string): string {
++  // Label-only cell (the value lives in the next column).
++  const labelOnly = /^([^\s<][^<:]{0,39}?):$/.exec(text)
++  if (labelOnly) {
++    const label = labelOf(labelOnly[1])
++    if (label !== labelOnly[1]) return label + ':'
++  }
++  const cell = translateCell(text)
++  if (cell !== text) return cell
++  const whole = t(text)
++  return whole !== text ? tidy(whole) : text
++}
++
++const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '')
++
++/** Split a cell into leading markup/space, plain core, trailing markup/space. */
++function splitCell(piece: string): { pre: string; core: string; post: string } {
++  const pre = /^(?:\s|<[^>]+>)*/.exec(piece)?.[0] ?? ''
++  const rest = piece.slice(pre.length)
++  const post = /(?:\s|<[^>]+>)*$/.exec(rest)?.[0] ?? ''
++  return { pre, core: rest.slice(0, rest.length - post.length), post }
++}
++
++/**
++ * Re-flow one pre-arranged line cell by cell. The engine pads columns with
++ * runs of spaces; replacing a label with a shorter (or wider) Chinese one must
++ * keep every following cell at its original display column, otherwise the
++ * transposed talisman table turns into ragged columns. Returns null when
++ * nothing changed.
++ */
++function reflowCells(pieces: string[]): string | null {
++  const starts: number[] = []
++  let col = 0
++  for (let i = 0; i < pieces.length; i++) {
++    if (i % 2 === 0) starts[i] = col
++    col += displayWidth(stripTags(pieces[i]))
++  }
++  let out = ''
++  let pos = 0
++  let emitted = false
++  let changed = false
++  for (let i = 0; i < pieces.length; i += 2) {
++    const piece = pieces[i]
++    const target = starts[i]
++    if (!piece) continue
++    const { pre, core, post } = splitCell(piece)
++    const lead = core.slice(0, core.length - core.trimStart().length)
++    const text = core.trim()
++    if (!text) {
++      // Tag-only / whitespace-only cell: keep it verbatim.
++      out += piece
++      pos += displayWidth(stripTags(piece))
++      continue
++    }
++    // A tag inside the text itself (mid-sentence colour change) is left alone:
++    // translating it would drop the markup.
++    const translated = core.includes('<') ? text : translateCellText(text)
++    const gap = emitted ? Math.max(1, target - pos) : Math.max(0, target)
++    out += ' '.repeat(gap) + pre + lead + translated + post
++    pos = target + displayWidth(lead) + displayWidth(translated)
++    emitted = true
++    if (translated !== text) changed = true
++  }
++  return changed ? out.trimEnd() : null
++}
++
 +// A row label is a short Latin phrase at the start of the line ("Max HP",
 +// "Base armour rating", "Attack"), optionally behind colour tags. Keep it
 +// tight: a prose sentence rarely starts with 1–40 word characters and a colon.
 +const LABEL_ROW = /^\s*(?:<[^>]+>)*[A-Za-z][\w .'+-]{0,38}?:\s+\S/
++
++// These lines are complete sentences with their own optional indented
++// continuation ("At current training…"), so the property-row merger must leave
++// them alone.
++const COMPUTED_START = /^\s*(?:<[^>]+>)*(?:Melds:|Mutations Suppressed:|Your (?:\(base\) )?skill:)/
 +
 +/** Translate the property/value rows and stray sentences of a describe body. */
 +export function translateBody(body: string): string {
@@ -2382,11 +2555,12 @@ new file mode 100644
 +  for (let i = 0; i < raw.length; i++) {
 +    const line = raw[i]
 +    const label = LABEL_ROW.exec(line)
-+    if (label && i + 1 < raw.length) {
++    if (label && !COMPUTED_START.test(line) && i + 1 < raw.length) {
 +      let value = line
 +      while (i + 1 < raw.length
 +        && /^\s{2,}\S/.test(raw[i + 1])
 +        && !LABEL_ROW.test(raw[i + 1])
++        && !COMPUTED_START.test(raw[i + 1])
 +        && !/^\s*$/.test(raw[i + 1])) {
 +        value += ' ' + raw[i + 1].trim()
 +        i++
@@ -2397,39 +2571,15 @@ new file mode 100644
 +    lines.push(line)
 +  }
 +  return lines.map((line) => {
++    const computed = translateComputedLine(line)
++    if (computed) return computed
 +    // Rows can carry several labelled cells separated by the engine's column
 +    // gaps ("Base armour rating: 2       Encumbrance rating: 0"): translate
-+    // each cell on its own, keep the gaps.
++    // each cell on its own and keep the following cells in their columns.
 +    const pieces = line.split(/(\s{2,})/)
 +    if (pieces.length > 1) {
-+      let changed = false
-+      const out = pieces.map((piece, i) => {
-+        if (i % 2 === 1) return piece
-+        const lead = piece.slice(0, piece.length - piece.trimStart().length)
-+        const text = piece.trim()
-+        if (!text) return piece
-+        // Label-only cell (the value lives in the next column).
-+        const labelOnly = /^([^\s<][^<:]{0,39}?):$/.exec(text)
-+        if (labelOnly) {
-+          const label = labelOf(labelOnly[1])
-+          if (label !== labelOnly[1]) {
-+            changed = true
-+            return lead + label + ':'
-+          }
-+        }
-+        const cell = translateCell(text)
-+        if (cell !== text) {
-+          changed = true
-+          return lead + cell
-+        }
-+        const whole = t(text)
-+        if (whole !== text) {
-+          changed = true
-+          return lead + tidy(whole)
-+        }
-+        return piece
-+      }).join('')
-+      if (changed) return out
++      const out = reflowCells(pieces)
++      if (out != null) return out
 +    }
 +    const cell = translateCell(line)
 +    if (cell !== line) return cell
@@ -3085,7 +3235,7 @@ diff --git a/src/i18n/index.ts b/src/i18n/index.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/index.ts
-@@ -0,0 +1,693 @@
+@@ -0,0 +1,709 @@
 +// Display-only localization layer.
 +//
 +// Contract (do not break it):
@@ -3663,6 +3813,20 @@ new file mode 100644
 +  return out ?? text
 +}
 +
++/**
++ * The item grammar's "quarantine the unknown qualifier" fallback is only safe
++ * for names. A sentence that happens to end in a known noun ("… a target for
++ * Shapeshifting.") would otherwise be shredded into "（to）（set）…变形术", and
++ * the plural rule turns the article "as" into "a" → 一阵. Keep the fallback to
++ * a single short, punctuation-free name-shaped string.
++ */
++function looksLikeItemName(s: string): boolean {
++  if (!s || s.length > 80) return false
++  if (/[;:,.!?]/.test(s)) return false
++  const words = s.trim().split(/\s+/)
++  return words.length >= 2 && words.length <= 8
++}
++
 +/** Item/monster names: tries the item grammar after the plain lookup. */
 +export function tItem(text: string): string {
 +  if (lang !== 'zh' || !matcher || !text) return text
@@ -3687,7 +3851,9 @@ new file mode 100644
 +    const plain = lookup(matcher, text, {})
 +    out = plain ? plain.out : null
 +  }
-+  if (!out) out = translateItem(matcher, plainText, { loose: true })
++  if (!out && looksLikeItemName(plainText)) {
++    out = translateItem(matcher, plainText, { loose: true })
++  }
 +  if (!out) out = matchTitle(plainText)
 +  cache.set(key, out)
 +  return out ?? text
@@ -3783,7 +3949,7 @@ diff --git a/src/i18n/items.ts b/src/i18n/items.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/items.ts
-@@ -0,0 +1,437 @@
+@@ -0,0 +1,445 @@
 +// Item-name grammar.
 +//
 +// The engine composes names from fragments ("+1", "dagger", "of venom",
@@ -4021,8 +4187,16 @@ new file mode 100644
 + */
 +function loosePhrase(m: Matcher, words: string[]): string | null {
 +  if (words.length < 2) return null
++  // Engine dictionary keys include bare articles and prepositions ("a" is
++  // 一阵, and plurals collapse "as" → "a"). They can never be an item
++  // qualifier, so never let them swallow a word here.
++  const STOP = new Set([
++    'a', 'an', 'the', 'and', 'or', 'as', 'of', 'to', 'for', 'in', 'on', 'at',
++    'by', 'with', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'it', 'its',
++  ])
 +  const known = (w: string): string | undefined => {
 +    const lower = w.toLowerCase()
++    if (w.length < 2 || STOP.has(lower)) return undefined
 +    return ADJECTIVES[lower]
 +      ?? m.exact.get(w)
 +      ?? (w === lower ? m.exact.get(singular(lower)) : undefined)
@@ -4225,7 +4399,7 @@ diff --git a/src/i18n/manual-zh.ts b/src/i18n/manual-zh.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/manual-zh.ts
-@@ -0,0 +1,173 @@
+@@ -0,0 +1,175 @@
 +// Generated by tools/build-manual-zh.mjs — hand-written Chinese for content
 +// the 0.34.1 database lacks (DCSS 0.35 additions).
 +export const MANUAL_NAMES: Record<string, string> = {
@@ -4322,82 +4496,84 @@ new file mode 100644
 +}
 +
 +export const MANUAL_PROSE: Record<string, string> = {
-+  "A living weapon whose forcipules are dagger-sharp and reach is long. Its sting can deliver crippling toxins to those it strikes and at higher levels of enchantment, can even briefly slow or paralyse foes. After performing a moderate number of attacks with this, it will separate itself from your body to attack foes independently for a short while before dying.": "一种活体武器，毒爪如匕首般锋利，攻击距离很长；它的蜇刺能注入致残毒素。",
-+  "A tiny figurine of a centipede coiled around a stone. Gripping it tightly will transform it into a living weapon that merges with one's own body. This weapon functions as a reaching short blade whose attacks can poison targets. After performing a moderate number of attacks with this weapon, it will separate itself from its wielder's body and fight alongside you as an independent ally for a short time before dying. Shapeshifting skill increases the power of this centipede in both weapon and insect form, as well the potency of its toxins - eventually allowing it to sometimes slow or even paralyse foes.": "一尊小蜈蚣雕像，盘绕在石头上。紧紧握住它，它就会变成活体武器。",
-+  "The dried remains of a tail shed under duress. Partially transforms the user into a hypnogecko, a reptile with a remarkable degree of metachrosis. Their skin naturally changes colour to blend in with their surroundings, making them stealthy, and when badly injured, they reflexively shed their own tail and make it scintillate with bright colours as a decoy - allowing them to either flee or even strike at their distracted predators from a blind spot.": "一条在危急时脱落的尾巴干尸。能让使用者部分变成催眠壁虎，这种爬行动物擅于潜行。",
-+  "A small statuette carved out of multi-hued jade which thrums with quiet power. Causes a great mantle of elementally-attuned crystal to grow out of the wearer's head and upper body, increasing their proficiency with fire, ice, earth, and air magic, but impairing all other schools. Each time the wearer casts a spell from one of those four schools, it will empower the corresponding crystal and unleash a burst of damaging magic. If all four crystals become charged at once, the wearer's resistances and fortitude will be temporarily enhanced.": "一尊用多彩玉石雕成的小雕像，散发着沉静的力量。能形成强大的元素护体。",
-+  "A small censer from which pours an endless smoky haze. Transforms the wearer's head into a billowing shroud of mist. Any potions they drink in this form will be rapidly decomposed into gases which they can expel via melee attacks as blasts of harmful clouds. They can also slowly condense the dungeon's air into potions of mist, allowing them to become intangible and blind monsters. However, the lack of typical mouth parts makes it difficult to pronounce incantations, greatly slowing the speed at which they cast spells.": "一座不断冒出烟霾的小香炉。把穿戴者的头部变成翻涌的雾罩。",
-+  "While purporting itself to be the personal account of a famous naturalist, it becomes clear upon reading that this book was compiled from multiple unrelated sources, including notes from a stagehand of a travelling magical circus. The travelogue may be fictitious, but some of the spell diagrams carefully transcribed in the margins seem quite real.": "自称某位著名博物学家的私人游记，读下去却会发现并非如此。",
-+  "While invisible, most monsters have greatly reduced accuracy against you, cannot make attacks of opportunity, and the spells they cast may sometimes be aimed at the wrong location. They may also stumble around and eventually lose track of you, especially if their intelligence is low. In addition, melee attacks you make against such creatures have a chance (proportional to your stealth and weapon skill) of catching them off-guard and dealing increased damage, especially if performed with a short blade. Certain creatures can see through this invisibility and it will always be completely ineffective while standing in water.": "隐形时，大多数怪物对你的命中大幅下降，无法借机攻击。",
-+  "A vial of mist which temporarily turns the imbiber's body insubstantial, protecting them from constriction, petrification, barbs, sticky flame, webs, nets, and being caught by bolas. It will also end most of those effects if they are already afflicted.": "一瓶雾气，暂时让饮用者的身体变得虚体，免受缠绕等效果。",
-+  "A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible{{ if you.get_base_mutation_level(\"+LOS\") > 0 then return \" (but your own vision is already as long as possible).\" else return \", but be warned - creatures perceived this way will perceive you back.\" end }}": "一枚眼睛形状的小护符，赋予穿戴者超自然视力。",
++  "A living weapon whose forcipules are dagger-sharp and reach is long. Its sting can deliver crippling toxins to those it strikes and at higher levels of enchantment, can even briefly slow or paralyse foes. After performing a moderate number of attacks with this, it will separate itself from your body to attack foes independently for a short while before dying.": "一件活体武器，毒爪如匕首般锋利，攻击距离很长。它的蜇刺能向被击中的目标注入致残毒素；附魔等级较高时，甚至能让敌人短暂减速或麻痹。用它进行一定次数的攻击后，它会脱离你的身体，独立攻击敌人一小段时间，随后死去。",
++  "A tiny figurine of a centipede coiled around a stone. Gripping it tightly will transform it into a living weapon that merges with one's own body. This weapon functions as a reaching short blade whose attacks can poison targets. After performing a moderate number of attacks with this weapon, it will separate itself from its wielder's body and fight alongside you as an independent ally for a short time before dying. Shapeshifting skill increases the power of this centipede in both weapon and insect form, as well the potency of its toxins - eventually allowing it to sometimes slow or even paralyse foes.": "一尊小蜈蚣雕像，盘绕在石头上。紧紧握住它，它就会变成一件与持用者身体融合的活体武器。这件武器是一把具有攻击距离的短刃，其攻击能使目标中毒。用它进行一定次数的攻击后，它会脱离持用者的身体，作为独立盟友与你并肩作战一小段时间，随后死去。变形术技能会提升这条蜈蚣在武器与虫形态下的力量，以及毒素的效力——最终甚至能让它偶尔减速或麻痹敌人。",
++  "The dried remains of a tail shed under duress. Partially transforms the user into a hypnogecko, a reptile with a remarkable degree of metachrosis. Their skin naturally changes colour to blend in with their surroundings, making them stealthy, and when badly injured, they reflexively shed their own tail and make it scintillate with bright colours as a decoy - allowing them to either flee or even strike at their distracted predators from a blind spot.": "一条在危急时脱落的尾巴干尸。能让使用者部分变成催眠壁虎——一种变色能力极强的爬行动物。它们的皮肤会随环境自然变色，使它们擅于潜行；受重伤时，它们会反射性地断掉自己的尾巴，并让断尾闪耀鲜艳色彩作为诱饵，从而得以逃跑，甚至从盲区袭击被分心的掠食者。",
++  "A small statuette carved out of multi-hued jade which thrums with quiet power. Causes a great mantle of elementally-attuned crystal to grow out of the wearer's head and upper body, increasing their proficiency with fire, ice, earth, and air magic, but impairing all other schools. Each time the wearer casts a spell from one of those four schools, it will empower the corresponding crystal and unleash a burst of damaging magic. If all four crystals become charged at once, the wearer's resistances and fortitude will be temporarily enhanced.": "一尊用多彩玉石雕成的小雕像，散发着沉静的力量。它会让穿戴者的头部与上半身长出一层巨大的元素水晶护体，提升其火焰、寒冰、大地与空气魔法的本领，但削弱其他所有学派。每当穿戴者施放这四系之一的法术，相应的水晶就会充能，并释放一阵破坏性魔法。若四块水晶同时充能，穿戴者的抗性与坚韧会暂时增强。",
++  "A small censer from which pours an endless smoky haze. Transforms the wearer's head into a billowing shroud of mist. Any potions they drink in this form will be rapidly decomposed into gases which they can expel via melee attacks as blasts of harmful clouds. They can also slowly condense the dungeon's air into potions of mist, allowing them to become intangible and blind monsters. However, the lack of typical mouth parts makes it difficult to pronounce incantations, greatly slowing the speed at which they cast spells.": "一座不断冒出无尽烟霾的小香炉。它会把穿戴者的头部变成一团翻涌的雾罩。在这种形态下喝下的任何药水都会迅速分解为气体，穿戴者可以在近战攻击时将其作为有害云雾喷出。穿戴者还能缓慢地把地牢中的空气凝结成雾之药水，从而变为虚体并致盲怪物。然而，缺少正常的嘴部结构使吟唱变得困难，大幅降低施法速度。",
++  "While purporting itself to be the personal account of a famous naturalist, it becomes clear upon reading that this book was compiled from multiple unrelated sources, including notes from a stagehand of a travelling magical circus. The travelogue may be fictitious, but some of the spell diagrams carefully transcribed in the margins seem quite real.": "这本书自称某位著名博物学家的私人游记，但读下去就会发现它是从多个互不相关的来源汇编而成，其中包括一个巡回魔法马戏团舞台工作人员的笔记。游记或许是虚构的，但页边仔细抄录的一些法术图解似乎相当真实。",
++  "While invisible, most monsters have greatly reduced accuracy against you, cannot make attacks of opportunity, and the spells they cast may sometimes be aimed at the wrong location. They may also stumble around and eventually lose track of you, especially if their intelligence is low. In addition, melee attacks you make against such creatures have a chance (proportional to your stealth and weapon skill) of catching them off-guard and dealing increased damage, especially if performed with a short blade. Certain creatures can see through this invisibility and it will always be completely ineffective while standing in water.": "隐形时，大多数怪物对你的命中率大幅下降，无法进行借机攻击，它们施放的法术有时也会瞄准错误的位置。它们还可能四处踉跄，并最终跟丢你，尤其是在智力较低时。此外，你对这些生物发动的近战攻击有几率（与你的潜行和武器技能成正比）打得它们措手不及并造成额外伤害，使用短刃时尤其如此。某些生物能看穿这种隐形；站在水中时隐形也始终完全无效。",
++  "A vial of mist which temporarily turns the imbiber's body insubstantial, protecting them from constriction, petrification, barbs, sticky flame, webs, nets, and being caught by bolas. It will also end most of those effects if they are already afflicted.": "一瓶雾气，能暂时让饮用者的身体变得虚体，保护其免受缠绕、石化、倒刺、黏性火焰、蛛网、捕网以及被流星锤缠住的影响。如果已经受到这些效果影响，它也会解除其中大部分。",
 +  "You have detected an object here, but you do not know what it is.": "你在这里探测到一个物体，但不知道它是什么。",
 +  "A lump of sickly pustulent flesh, dripping with lethal acid.": "一团病态化脓的肉块，滴着致命酸液。",
 +  "A floating shard of crystaline jade which resonates with your air magic.": "一块漂浮的水晶玉片，与你的气系魔法共鸣。",
 +  "A floating shard of crystaline jade which resonates with your earth magic.": "一块漂浮的水晶玉片，与你的土系魔法共鸣。",
 +  "A floating shard of crystaline jade which resonates with your fire magic.": "一块漂浮的水晶玉片，与你的火系魔法共鸣。",
 +  "A floating shard of crystaline jade which resonates with your ice magic.": "一块漂浮的水晶玉片，与你的冰系魔法共鸣。",
-+  "A mutated devotee of Lugonu, warped by years of living in the Abyss. It has ascended into an exalted representative of Lugonu's spite against the rest of all existence and solemnly tears apart reality in Lugonu's name.": "一名被深渊岁月扭曲的鲁古努信徒，已升华为被尊崇的代表。",
-+  "The shed tail of a hypnogecko, still pulsing with mesmerising colours and compelling any nearby predators to focus their attention on it instead of the unfortunate lizard it once belonged to.": "催眠壁虎脱落的尾巴，仍脉动着迷幻色彩，迫使附近的掠食者失神。",
-+  "Once a gangly and bedraggled vampire with a strange obsession with colour, Blorkula was offered succour by a missionary of Beogh and became a portly and vigorous orc with a strange obsession with colour instead. He wields magic tinged with every hue of the rainbow, and has mastered the art of dividing his own form among its many colours to avoid killing blows - though even he must rest a while before doing so a second time.": "曾是一名瘦长憔悴、痴迷色彩的吸血鬼，后来从某种力量那里获得了庇护。",
-+  "An intrepid goblin who has somehow managed to tame a ghost moth as his mount. While the elaborate snarl of ropes he is using to remain upright on it surely undermines the moth's own mobility, even a hobbled ghost moth can be a deadly adversary. And Goji? Well. He's also here.": "一只勇敢的地精，不知怎么驯服了一只鬼蛾当坐骑。",
-+  "Fires a penetrating bolt of ontologically-paradoxical antimagic, draining its victims' reserves of magic.": "发射一道穿透性的反魔法闪电，抽干受害者的法力。",
-+  "Enhances the caster's physical form, greatly increasing the damage they deal in melee as well as their resistance to all elements.": "强化施法者的肉体，大幅提高近战伤害与抗性。",
-+  "Causes walls of thorny brambles to grow rapidly in a ring around all nearby enemies. The caster's allies may fire projectiles through these briars without hinderance, but anyone else may find removing them rather painful.": "在附近所有敌人周围迅速长出荆棘墙；施法者的盟友可以穿过。",
-+  "Allows the caster to tap into ley lines of elemental energy which pervade the dungeon and channel their destructive power against enemies. Casting it exposes up to four dragon veins on adjacent floor tiles - one corresponding to each of fire, ice, air, and earth magic. Stepping onto any of them will trigger an immediate destructive spellcast at the cost of 1 MP, targeting up to 3 random enemies with an additional property that depends on the element tapped into: Fire (West): Prioritises enemies with the least health. Leaves behind brief fire clouds when it kills something. Ice (East): Prioritises enemies with the most health. Briefly freezes them, slowing their movement. Air (North): Prioritises the most distant enemies. Unlike the other 3 elements, does full damage even to distant targets. Earth (South): Prioritises the closest enemies. Strikes one fewer target and does greatly reduced damage to flying creatures, but enemies hit at close range may be staggered. You may channel from up to two of these dragon veins before the spell expires.": "让施法者接入遍布地牢的元素地脉，引导其毁灭力量。",
-+  "Causes a ring of sharp icy thorns to sprout from the ground around a targeted enemy. These thorns deal damage to any non-flying creature which steps on them and then crumble away. The caster can step onto their own thorns without harm (but they will still crumble when doing so).": "在目标敌人周围的地面长出尖锐冰棘，造成伤害。",
-+  "Summons some glowmurk ghasts, which spread both magical contamination and shallow water in a single attack before disappearing.": "召唤一些幽暗食尸鬼，它们的一次攻击会同时散播魔法污染与浅水。",
-+  "Shifts the caster's body slighty out of phase with normal space, causing their exact position to become blurry and indistinct. Any attackers without supernaturally acute vision will have a much harder time hitting them and also be unable to assess the degree of their injuries.": "让施法者的身体略微偏离正常空间，使其确切位置变得模糊。",
-+  "Unleashes a gust of searingly hot wind, burning up to 3 adjacent creatures and blowing them backwards. Alas, the capricious winds left swirling around those creatures will also speed their movements for several turns afterward. This spell cannot be recast for several turns and moving will delay its recharge.": "释放灼热狂风，烧灼至多 3 个相邻生物并将它们吹退。",
-+  "Charges rapidly in a straight line towards a foe. The user will move at double speed in that direction each turn afterward, attacking any enemies in their path with increased damage and accuracy and pushing them backward, until they either become unable to move or have overshot their target. Can only be used while their target is standing in a compass direction from the user.": "沿直线向敌人猛冲，每回合以双倍速度朝该方向移动。",
-+  "Summons a group of berserk ufetubi; irksome minor demons who will rapidly swarm and surround the caster's enemies.": "召唤一群狂暴的乌费图比——烦人的小恶魔，会迅速包围施法者的敌人。",
-+  "Unmoors a random nearby ally from space, granting it Manifold Assault as a natural ability (which permits it to strike many distant foes with a single melee attack that can't miss), and also giving it a chance to blink when it uses such.": "将一名附近盟友从空间中解缚，赋予其“多重突击”作为天生能力。",
-+  "A dense carpet of colourful mould, rustling with fecundity. The towering fungi which sprout from it can grow back in the blink of an eye, no matter how many times they are cut down.": "一层浓密多彩的霉菌，生机勃勃地沙沙作响；从中长出的高耸真菌会攻击靠近者。",
-+  "An experimental arcane still, brewing some incomplete- if refined- mutagenic serum. Breaking this open will bathe you in mystic mists, imparting upon you one beneficial mutation (excluding those that could restrict equipment slots).": "一座实验性的奥术蒸馏器，正在酿造某种不完整（或许已精炼）的变异血清。打碎它会释放其中的力量。",
-+  "A complex arcane still, cracked open and fully emptied of its contents.": "一座复杂的奥术蒸馏器，已被打碎并倒空。",
-+  "An exposed ley line of earth magic. It can be tapped into by stepping on it, causing shockwaves that damage the 2 closest enemies. This does greatly reduced damage to distant and flying enemies.": "一条裸露的土系地脉。踩上去可引导它，释放震波伤害周围的敌人。",
-+  "An exposed ley line of fire magic. It can be tapped into by stepping on it, blasting the 3 enemies with the least health with fire. Any enemies killed by this will briefly leave behind a cloud of fire.": "一条裸露的火系地脉。踩上去可引导它，轰击 3 个敌人。",
-+  "An exposed ley line of ice magic. It can be tapped into by stepping on it, inflicting cold damage on the 3 enemies with the most health and slowing their movement for a short time.": "一条裸露的冰系地脉。踩上去可引导它，对 3 个敌人造成寒冷伤害。",
-+  "An exposed ley line of air magic. It can be tapped into by stepping on it, blasting the 4 most distant enemies with cutting wind.": "一条裸露的气系地脉。踩上去可引导它，轰击最远的 4 个敌人。",
-+  "A patch of ground covered in sharp frozen spines. It deals a small amount of damage to any non-flying creature that steps onto it (other than its creator) and then crumbles away. Its damage is partially reduced by rC.": "一片覆盖尖锐冰刺的地面，对任何非飞行生物造成少量伤害。",
-+  "A passage leading to a gutter gulch, gradually rusting away. Entering it will inflict three temporary mutations upon you, or decompose you if you're undead.": "一条通往锈蚀沟壑的通道。进入会施加三种临时变异。",
++  "A mutated devotee of Lugonu, warped by years of living in the Abyss. It has ascended into an exalted representative of Lugonu's spite against the rest of all existence and solemnly tears apart reality in Lugonu's name.": "一名被深渊岁月扭曲的鲁古努信徒，已升华为鲁古努对世间万物之憎恨的尊崇代表，以鲁古努之名庄严地撕碎现实。",
++  "The shed tail of a hypnogecko, still pulsing with mesmerising colours and compelling any nearby predators to focus their attention on it instead of the unfortunate lizard it once belonged to.": "催眠壁虎脱落的尾巴，仍脉动着迷幻色彩，迫使附近的掠食者把注意力集中在它身上，而不是它生前所属的那只不幸蜥蜴。",
++  "Once a gangly and bedraggled vampire with a strange obsession with colour, Blorkula was offered succour by a missionary of Beogh and became a portly and vigorous orc with a strange obsession with colour instead. He wields magic tinged with every hue of the rainbow, and has mastered the art of dividing his own form among its many colours to avoid killing blows - though even he must rest a while before doing so a second time.": "布洛库拉曾是一名瘦长憔悴、痴迷色彩的吸血鬼；在比欧弗的一位传教士给予他帮助后，他变成了一名矮胖健壮的兽人，却依然痴迷色彩。他挥舞着染有彩虹每一种色调的魔法，并掌握了将自己的形体分散到诸多色彩中以避开致命一击的技艺——不过即便是他，也要休息一段时间才能再次这么做。",
++  "An intrepid goblin who has somehow managed to tame a ghost moth as his mount. While the elaborate snarl of ropes he is using to remain upright on it surely undermines the moth's own mobility, even a hobbled ghost moth can be a deadly adversary. And Goji? Well. He's also here.": "一只勇敢的地精，不知怎么驯服了一只鬼蛾当坐骑。他用复杂的绳结把自己固定在蛾背上，这无疑削弱了鬼蛾本身的机动性；但即便被束缚的鬼蛾也可能是致命的对手。而戈吉呢？他也在这儿。",
++  "Fires a penetrating bolt of ontologically-paradoxical antimagic, draining its victims' reserves of magic.": "发射一道穿透性的、在本体论上自相矛盾的反魔法闪电，抽干受害者的魔力储备。",
++  "Enhances the caster's physical form, greatly increasing the damage they deal in melee as well as their resistance to all elements.": "强化施法者的肉体，大幅提高其近战伤害以及对所有元素的抗性。",
++  "Causes walls of thorny brambles to grow rapidly in a ring around all nearby enemies. The caster's allies may fire projectiles through these briars without hinderance, but anyone else may find removing them rather painful.": "在附近所有敌人周围迅速长出荆棘墙。施法者的盟友可以毫无阻碍地穿过荆棘发射投射物，但其他人想清除它们可就痛苦了。",
++  "Allows the caster to tap into ley lines of elemental energy which pervade the dungeon and channel their destructive power against enemies. Casting it exposes up to four dragon veins on adjacent floor tiles - one corresponding to each of fire, ice, air, and earth magic. Stepping onto any of them will trigger an immediate destructive spellcast at the cost of 1 MP, targeting up to 3 random enemies with an additional property that depends on the element tapped into: Fire (West): Prioritises enemies with the least health. Leaves behind brief fire clouds when it kills something. Ice (East): Prioritises enemies with the most health. Briefly freezes them, slowing their movement. Air (North): Prioritises the most distant enemies. Unlike the other 3 elements, does full damage even to distant targets. Earth (South): Prioritises the closest enemies. Strikes one fewer target and does greatly reduced damage to flying creatures, but enemies hit at close range may be staggered. You may channel from up to two of these dragon veins before the spell expires.": "让施法者接入遍布地牢的元素能量地脉，引导其毁灭之力攻击敌人。施放后，相邻地砖上会显现至多四条龙脉——分别对应火焰、寒冰、空气与大地魔法。踩上任意一条都会立即触发一次毁灭性施法，消耗 1 点魔力，最多随机瞄准 3 个敌人，并附带一种取决于所引导元素的额外效果：火（西）：优先瞄准生命值最低的敌人，击杀目标后会留下短暂的火焰云雾；冰（东）：优先瞄准生命值最高的敌人，短暂冻结它们，使其移动变慢；气（北）：优先瞄准距离最远的敌人，与其他三种元素不同，即使对远处目标也能造成全额伤害；土（南）：优先瞄准最近的敌人，少攻击一个目标，且对飞行生物造成的伤害大幅降低，但近距离被击中的敌人可能会踉跄。法术失效前，你至多可以从两条龙脉中引导力量。",
++  "Causes a ring of sharp icy thorns to sprout from the ground around a targeted enemy. These thorns deal damage to any non-flying creature which steps on them and then crumble away. The caster can step onto their own thorns without harm (but they will still crumble when doing so).": "在目标敌人周围的地面长出尖锐的冰棘。这些冰棘会伤害任何踩上去的非飞行生物，然后碎裂消失。施法者可以踩在自己的冰棘上而不受伤（但踩上去时它们仍会碎裂）。",
++  "Summons some glowmurk ghasts, which spread both magical contamination and shallow water in a single attack before disappearing.": "召唤一些幽暗食尸鬼；它们会在消失前以一次攻击同时散播魔法污染与浅水。",
++  "Shifts the caster's body slighty out of phase with normal space, causing their exact position to become blurry and indistinct. Any attackers without supernaturally acute vision will have a much harder time hitting them and also be unable to assess the degree of their injuries.": "让施法者的身体略微偏离正常空间，使其确切位置变得模糊不清。任何没有超自然敏锐视力的攻击者都更难命中他们，也无法判断其受伤程度。",
++  "Unleashes a gust of searingly hot wind, burning up to 3 adjacent creatures and blowing them backwards. Alas, the capricious winds left swirling around those creatures will also speed their movements for several turns afterward. This spell cannot be recast for several turns and moving will delay its recharge.": "释放一阵灼热狂风，烧灼至多 3 个相邻生物并将它们吹退。可惜，那些在生物周围盘旋的反复无常的风也会在之后数回合加速它们的移动。此法术数回合内无法再次施放，移动会延长其充能时间。",
++  "Charges rapidly in a straight line towards a foe. The user will move at double speed in that direction each turn afterward, attacking any enemies in their path with increased damage and accuracy and pushing them backward, until they either become unable to move or have overshot their target. Can only be used while their target is standing in a compass direction from the user.": "沿直线向敌人猛冲。此后每回合，使用者都会朝该方向以双倍速度移动，以更高的伤害与命中攻击路径上的任何敌人并将其击退，直到无法移动或冲过了目标。只有目标位于使用者所在的正方向时才能使用。",
++  "Summons a group of berserk ufetubi; irksome minor demons who will rapidly swarm and surround the caster's enemies.": "召唤一群狂暴的乌费图比——一群烦人的小恶魔，它们会迅速蜂拥包围施法者的敌人。",
++  "Unmoors a random nearby ally from space, granting it Manifold Assault as a natural ability (which permits it to strike many distant foes with a single melee attack that can't miss), and also giving it a chance to blink when it uses such.": "将一名附近盟友从空间中解缚，赋予其“多重突击”作为天生能力（使其能以一次无法失手的近战攻击打击多个远处敌人），并使其在使用该能力时有机会闪现。",
++  "A dense carpet of colourful mould, rustling with fecundity. The towering fungi which sprout from it can grow back in the blink of an eye, no matter how many times they are cut down.": "一层浓密多彩的霉菌，生机勃勃地沙沙作响。从中长出的高耸真菌能在眨眼间重新长出，无论被砍倒多少次。",
++  "An experimental arcane still, brewing some incomplete- if refined- mutagenic serum. Breaking this open will bathe you in mystic mists, imparting upon you one beneficial mutation (excluding those that could restrict equipment slots).": "一座实验性的奥术蒸馏器，正在酿造某种不完整——或许已精炼——的变异血清。打碎它会让你沐浴在神秘雾气中，赋予你一项有益变异（不包括可能限制装备栏位的变异）。",
++  "A complex arcane still, cracked open and fully emptied of its contents.": "一座复杂的奥术蒸馏器，已被打碎并倒空其中内容。",
++  "An exposed ley line of earth magic. It can be tapped into by stepping on it, causing shockwaves that damage the 2 closest enemies. This does greatly reduced damage to distant and flying enemies.": "一条裸露的土系地脉。踩上去可引导它，释放震波伤害最近的 2 个敌人。对远处和飞行敌人造成的伤害大幅降低。",
++  "An exposed ley line of fire magic. It can be tapped into by stepping on it, blasting the 3 enemies with the least health with fire. Any enemies killed by this will briefly leave behind a cloud of fire.": "一条裸露的火系地脉。踩上去可引导它，以火焰轰击生命值最低的 3 个敌人。被此效果杀死的敌人会短暂留下火焰云雾。",
++  "An exposed ley line of ice magic. It can be tapped into by stepping on it, inflicting cold damage on the 3 enemies with the most health and slowing their movement for a short time.": "一条裸露的冰系地脉。踩上去可引导它，对生命值最高的 3 个敌人造成寒冷伤害，并短暂减速它们的移动。",
++  "An exposed ley line of air magic. It can be tapped into by stepping on it, blasting the 4 most distant enemies with cutting wind.": "一条裸露的气系地脉。踩上去可引导它，以切割之风轰击最远的 4 个敌人。",
++  "A patch of ground covered in sharp frozen spines. It deals a small amount of damage to any non-flying creature that steps onto it (other than its creator) and then crumbles away. Its damage is partially reduced by rC.": "一片覆盖尖锐冰刺的地面。它会对任何踩上去的非飞行生物（其创造者除外）造成少量伤害，然后碎裂消失。其伤害会被寒冷抗性部分减免。",
++  "A passage leading to a gutter gulch, gradually rusting away. Entering it will inflict three temporary mutations upon you, or decompose you if you're undead.": "一条通往锈蚀沟壑的通道，正逐渐锈蚀消失。进入会对你施加三种临时变异；如果你是亡灵，则会分解你。",
 +  "It seems to be oozing quietly. Best not to touch it.": "它似乎在静静渗液。最好别碰。",
 +  "A scattered mess of fragmented, crumbling garbage, caked in ashes and dirt.": "一堆破碎腐朽的垃圾，覆满灰烬与泥土。",
-+  "The partisan of Prune carries a terrible and insidious curse. Unless its wielder maintains firm self-control, they are doomed to undergo a horrifying (albeit temporary) transformation. This is normally trivial to resist, but incapacitated wielders are certain to succumb, finding themselves nightmarishly purple, squishy, and delicious. They can take comfort in learning that it's surprisingly hard to injure a giant prune.": "普卢恩之戟带着可怕而阴险的诅咒。除非持用者保持坚定的自控，否则它可能反噬。",
-+  "Soon after falling, Yredelemnul attempted to twist holy energy into a dark mockery of itself, turning it against its progenitors and weakening it against undead and demons. It was discovered too late that such a complete perversion was uncontrollable; the foul flame destabilised or destroyed everything it was infused into, except for several demonic test subjects and one stolen holy weapon. A lesser, and more stable, version of the dark energy proved more workable, and became Yredelemnul's umbra. This is that weapon: an eveningstar with its light long fled, despite its name, and a shadow that repulses those its light used to comfort...": "堕落后不久，伊莱德莱姆努尔试图把神圣能量扭曲成自己的黑暗仿制品。",
-+  "An adamantine great sword. Its first wielder was a worshipper of Yredelemnul who eschewed the use of magic in combat, preferring to destroy her enemies with brute force. Unfortunately for her, not all of her opponents shared her limitations. It has felled countless great warriors under her grip, and the souls of those who had their lives taken beckon it to take even more under its new owner.": "一把精金巨剑。它的第一位持用者是一位拒绝魔法的伊莱德莱姆努尔信徒。",
++  "The partisan of Prune carries a terrible and insidious curse. Unless its wielder maintains firm self-control, they are doomed to undergo a horrifying (albeit temporary) transformation. This is normally trivial to resist, but incapacitated wielders are certain to succumb, finding themselves nightmarishly purple, squishy, and delicious. They can take comfort in learning that it's surprisingly hard to injure a giant prune.": "普卢恩之戟带着可怕而阴险的诅咒。除非持用者保持坚定的自控，否则注定会经历一次可怕（尽管是暂时的）变形。通常抵抗它轻而易举，但无力化的持用者必定屈服，会发现自己变成噩梦般的紫色、软塌塌又美味的样子。他们可以欣慰地得知：要弄伤一个巨大的西梅干出乎意料地困难。",
++  "Soon after falling, Yredelemnul attempted to twist holy energy into a dark mockery of itself, turning it against its progenitors and weakening it against undead and demons. It was discovered too late that such a complete perversion was uncontrollable; the foul flame destabilised or destroyed everything it was infused into, except for several demonic test subjects and one stolen holy weapon. A lesser, and more stable, version of the dark energy proved more workable, and became Yredelemnul's umbra. This is that weapon: an eveningstar with its light long fled, despite its name, and a shadow that repulses those its light used to comfort...": "堕落之后不久，伊莱德莱姆努尔试图把神圣能量扭曲成自身的黑暗仿制品，使其转而对抗其造物主，并削弱其对亡灵与恶魔的效果。但人们发现得太晚：如此彻底的扭曲无法控制；那邪恶火焰会使其注入的一切失稳或毁灭，只有几个恶魔实验体和一件被盗的神圣武器例外。一种更次等、也更稳定的黑暗能量被证明更为可行，并成为了伊莱德莱姆努尔的暗影。这就是那件武器：一把晨星锤，名不副实，其光芒早已逃逸，而它的阴影会排斥那些曾受其光芒抚慰之物……",
++  "An adamantine great sword. Its first wielder was a worshipper of Yredelemnul who eschewed the use of magic in combat, preferring to destroy her enemies with brute force. Unfortunately for her, not all of her opponents shared her limitations. It has felled countless great warriors under her grip, and the souls of those who had their lives taken beckon it to take even more under its new owner.": "一把精金巨剑。它的第一位持用者是一位在战斗中拒绝使用魔法的伊莱德莱姆努尔信徒，更喜欢用蛮力摧毁敌人。不幸的是，并非所有对手都像她一样受限。在她手中，这把剑斩杀了无数强大的战士；那些被夺走生命的灵魂正召唤它在新的主人手中夺取更多生命。",
 +  "A pendant made of purest jade. It grants its wearer immense willpower and mental fortitude.": "一枚纯净玉石制成的吊坠，赋予穿戴者强大的意志与精神韧性。",
-+  "A large pair of ghostly claws fashioned into gloves by a fenstrider coven for use in necromantic rites. The magically inclined and pugilistically favoured alike may grasp their connection with the spirits of the dead, but these pincers make grasping anything else an exercise in frustration. (This item prohibits the use of a weapon or shield while equipped.)": "一双巨大的幽灵蟹钳，被沼泽行者 coven 制成手套用于死灵仪式。",
-+  "Even the trolls have their share of nature poets, glassy-eyed dreamers, and starving artists. This is the masterwork of one such restless soul, a paean to the heavens far above.": "就连巨魔也有自己的自然诗人、眼神迷离的梦想家和饥饿的艺术家。",
-+  "A massive polearm hewn in one piece from a coolibah tree. Its blade is no less sharp for being made of wood, and those caught in its enchanted branches will soon find themselves at home in the bog from which this deadly weapon sprouted.": "一把用整棵酷栗树砍削而成的巨型长柄斧，木制刃口同样锋利。",
-+  "The staff of a venerable master monk who drove away her foes as easily as her attachments and (so the legend says) eventually transcended life and death altogether. A worthy wielder may unlock the staff's great potential, provided they follow its former owner's peculiar ideas of balance and comportment.": "一位可敬武僧大师的法杖；她驱散敌人如同驱散执念。",
-+  "An unassuming sword resembling a prop weapon for theatrical use. But behold! A twist here, a press there, and the real blade springs forth; glittering, wicked, murderous. Has it killed before? If so, it left no witnesses. Shall it kill for you? If you're sly enough, it will do just as you like.": "一把看似舞台道具的普通长剑。但这里一拧、那里一按，就会露出真容。",
-+  "The favored sword of one of the battlemage Yara's most illustrious pupils, an alleged demigoddess who often boasted that one spell and one slash were enough to settle any battle. Indeed, all of her duels ended in just such a fashion, including her last.": "战法师亚拉最杰出弟子之一——据传是半神——最钟爱的弯刀。",
-+  "A truly ancient set of armour designed for maximum protection and flexibility. Evidently intended for use by mounted hexslingers, its magic wards and sigils are in a hopeless state of disrepair. Nevertheless, some traces of their power still remain.": "一套真正古老的护甲，为最大防护与灵活性而设计，显然供施法者使用。",
-+  "The half-stitched, or half-unstitched, torso of a bone dragon, fashioned (if one may call it that) into a truly wretched piece of armour. Its jagged bones seem to pulse with unlife, awaiting the command of some unholy master.": "骨龙半缝合（或半拆开）的躯干，被制成一件真正可穿的护甲。",
-+  "A bronze chestpiece of masterful make. It is etched all over with religious imagery, but the focus of the scene is obscured by a great dark stain {{ if you.can_smell() then return \"that smells strongly \" end }}of ashes and salt. It seems somehow blasphemous to wear.": "一件工艺精湛的青铜胸甲，通体刻满宗教图像。",
-+  "Attempts to soothe a hostile creature and convince them to give up their violent ways. If successful, the creature will turn neutral and attempt to leave the floor as quickly as possible. You will be granted its full experience value. This works best on holy and living creatures, with the undead and demons being progressively harder to pacify - particularly if they are intelligent. Neither mindless nor nonliving creatures can be pacified and no monster can be pacified while it is asleep. Invocations skill increases your chance of success and allows you to pacify more powerful creatures.": "尝试安抚一个敌对生物，说服它放弃暴力。若成功，该生物会平静下来。",
-+  "Comforts a friendly creature who is suffering, healing some of its wounds (based on your Invocations skill) and also curing poison, confusion, slowing, sickness, weakness, draining, and petrification. Any summoned creature who is healed by this ability may also be granted a small amount of additional time in this world.": "安抚一个受伤的友方生物，治疗其部分伤势（取决于你的祈神技能）。",
-+  "Greatly increases your maximum health and magic points, depending on Invocations skill. Your current health and magic points will also be increased proportionally. Any friendly creatures near you will also have their health doubled for as long as the effect lasts.": "大幅提高你的最大生命与法力（取决于祈神技能）。",
-+  "Remembers your ancestor as a elementalist, a powerful but fragile mage capable of unleashing destructive spells from a safe distance. This choice is permanent and cannot be undone.": "将你的先祖记忆为元素师——强大但脆弱、能释放毁灭法术的法师。",
-+  "You are stampeding forward. Any movement you take into an enemy will trample them backwards, but your stampede will end as soon as you perform any action {{ if you.mutation(\"East Wind's embodiment\") > 0 then return \"besides rampaging, stampeding, or casting spells.\" else return \"besides rampaging or stampeding.\" end }}": "你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但冲锋结束后你会疲惫。",
++  "A large pair of ghostly claws fashioned into gloves by a fenstrider coven for use in necromantic rites. The magically inclined and pugilistically favoured alike may grasp their connection with the spirits of the dead, but these pincers make grasping anything else an exercise in frustration. (This item prohibits the use of a weapon or shield while equipped.)": "一双巨大的幽灵蟹钳，被沼泽行者巫团制成手套，用于死灵仪式。无论是有魔法天赋者还是擅长拳斗者，都能借此与亡者之灵建立联系，但这些钳子让抓握其他任何东西都令人抓狂。（装备此物品时无法使用武器或盾牌。）",
++  "Even the trolls have their share of nature poets, glassy-eyed dreamers, and starving artists. This is the masterwork of one such restless soul, a paean to the heavens far above.": "就连巨魔也有自己的自然诗人、眼神迷离的梦想家和饥饿的艺术家。这件作品就是这样一个不安灵魂的杰作，一首献给高远苍穹的颂歌。",
++  "A massive polearm hewn in one piece from a coolibah tree. Its blade is no less sharp for being made of wood, and those caught in its enchanted branches will soon find themselves at home in the bog from which this deadly weapon sprouted.": "一把用整棵酷栗树砍削而成的巨型长柄斧。木制刃口同样锋利，而被它附魔枝条缠住的人很快就会发现自己仿佛回到了这致命武器生长其中的沼泽。",
++  "The staff of a venerable master monk who drove away her foes as easily as her attachments and (so the legend says) eventually transcended life and death altogether. A worthy wielder may unlock the staff's great potential, provided they follow its former owner's peculiar ideas of balance and comportment.": "一位可敬武僧大师的法杖；她驱散敌人如同驱散执念，据说最终甚至超脱了生死。有资格的持用者或许能解锁法杖的巨大潜能，前提是遵循其前主人关于平衡与举止的独特理念。",
++  "An unassuming sword resembling a prop weapon for theatrical use. But behold! A twist here, a press there, and the real blade springs forth; glittering, wicked, murderous. Has it killed before? If so, it left no witnesses. Shall it kill for you? If you're sly enough, it will do just as you like.": "一把看似戏剧道具的普通长剑。但瞧！这里一拧、那里一按，真正的剑刃便弹射而出；寒光闪闪、凶险无比、杀气腾腾。它以前杀过生吗？如果有，也没留下目击者。它会为你杀人吗？只要你足够狡黠，它就会如你所愿。",
++  "The favored sword of one of the battlemage Yara's most illustrious pupils, an alleged demigoddess who often boasted that one spell and one slash were enough to settle any battle. Indeed, all of her duels ended in just such a fashion, including her last.": "战法师亚拉最杰出弟子之一——据传是一位半神——最钟爱的弯刀。她常夸口说，一个法术加一记斩击就足以决定任何战斗。确实，她的所有决斗都以这种方式结束，包括最后一场。",
++  "A truly ancient set of armour designed for maximum protection and flexibility. Evidently intended for use by mounted hexslingers, its magic wards and sigils are in a hopeless state of disrepair. Nevertheless, some traces of their power still remain.": "一套真正古老的护甲，为最大防护与灵活性而设计。显然是为骑乘的咒术枪手打造的；它的魔法结界与徽记已破败得无可救药，但其中仍残留着些许力量痕迹。",
++  "The half-stitched, or half-unstitched, torso of a bone dragon, fashioned (if one may call it that) into a truly wretched piece of armour. Its jagged bones seem to pulse with unlife, awaiting the command of some unholy master.": "骨龙半缝合（或半拆开）的躯干，被（如果这也能算的话）制成一件真正可悲的护甲。它参差的骨骼似乎脉动着不死之力，等待着某个邪恶主人的命令。",
++  "Attempts to soothe a hostile creature and convince them to give up their violent ways. If successful, the creature will turn neutral and attempt to leave the floor as quickly as possible. You will be granted its full experience value. This works best on holy and living creatures, with the undead and demons being progressively harder to pacify - particularly if they are intelligent. Neither mindless nor nonliving creatures can be pacified and no monster can be pacified while it is asleep. Invocations skill increases your chance of success and allows you to pacify more powerful creatures.": "尝试安抚一个敌对生物，说服它放弃暴力。若成功，该生物会转为中立，并尽快离开本层。你将获得它的全部经验值。对神圣与活物效果最好；亡灵与恶魔越来越难以安抚——如果它们有智慧则尤其如此。无意识或无生命的生物无法被安抚，任何怪物在睡眠时也无法被安抚。祈神技能会提高成功率，并让你能安抚更强大的生物。",
++  "Comforts a friendly creature who is suffering, healing some of its wounds (based on your Invocations skill) and also curing poison, confusion, slowing, sickness, weakness, draining, and petrification. Any summoned creature who is healed by this ability may also be granted a small amount of additional time in this world.": "安抚一个受伤的友方生物，治疗其部分伤势（取决于你的祈神技能），并解除中毒、混乱、减速、疾病、虚弱、吸取与石化。任何被此能力治疗的召唤生物还可能获得少量额外存在时间。",
++  "Greatly increases your maximum health and magic points, depending on Invocations skill. Your current health and magic points will also be increased proportionally. Any friendly creatures near you will also have their health doubled for as long as the effect lasts.": "大幅提高你的最大生命与魔力（取决于祈神技能）。你当前的生命与魔力也会按比例提高。效果持续期间，附近任何友方生物的生命也会翻倍。",
++  "Remembers your ancestor as a elementalist, a powerful but fragile mage capable of unleashing destructive spells from a safe distance. This choice is permanent and cannot be undone.": "将你的先祖记忆为元素师——一名强大但脆弱、能从安全距离释放毁灭法术的法师。此选择是永久的，无法撤销。",
 +  "You are rapidly regenerating health (at a rate dependent on your max HP) until you have healed the specified amount.": "你正在快速恢复生命（速率取决于最大生命），直到恢复指定数值。",
 +  "Your next several ranged attacks will cause you to fire a flurry of additional shots at other targets in sight.": "你接下来的数次远程攻击会向视野内其他目标额外齐射。",
 +  "Your next Rampage movement will be instant.": "你的下一次“暴走”移动将是瞬间的。",
-+  "You have recently used Divine Exegesis and may repeat the same spell you can this way at a greatly reduced piety cost.": "你刚使用过神谕阐释，可大幅降低虔诚消耗重复同一法术。",
++  "You have recently used Divine Exegesis and may repeat the same spell you can this way at a greatly reduced piety cost.": "你刚使用过神谕阐释，可以大幅降低虔诚消耗重复同一法术。",
 +  "You have recently discharged a full-power jolt of electricity and cannot do this again until you fully heal.": "你刚释放过满功率电击，在完全恢复前无法再次使用。",
 +  "You have recently cast Sirocco and cannot cast it again until you spend several turns without moving.": "你刚施放过热风，在连续数回合不移动前无法再次施放。",
-+  "Your third eye is open, allowing you to see the magical energy left over from spellcasting and convert it into damaging projectiles.": "你的第三只眼睁开，能看见施法残留的魔力并转化为力量。",
-+  "A mass of elemental crystal shrouds your upper body, granting you increased skill with elemental magic and the ability to unleash it in a powerful burst.": "元素水晶覆盖你的上半身，提升元素魔法技能与防护。",
-+  "{{ return you.jademantle_crystals_desc()}}": "你身上的玉甲水晶数量。",
-+  "You are a hypnogecko, a stealthy lizard who can shed their own tail as a decoy when badly injured.": "你是催眠壁虎，一种能在大伤时断尾作为诱饵的隐秘蜥蜴。",
++  "Your third eye is open, allowing you to see the magical energy left over from spellcasting and convert it into damaging projectiles.": "你的第三只眼睁开，能看见施法残留的魔力并转化为有伤害的投射物。",
++  "A mass of elemental crystal shrouds your upper body, granting you increased skill with elemental magic and the ability to unleash it in a powerful burst.": "一团元素水晶笼罩你的上半身，提升你的元素魔法技能，并让你能将其以强大爆发释放出来。",
++  "You are a hypnogecko, a stealthy lizard who can shed their own tail as a decoy when badly injured.": "你是催眠壁虎，一种能在受重伤时断尾作为诱饵的隐秘蜥蜴。",
 +  "You have recently shed your tail and need to explore more of the dungeon before it can grow back again.": "你刚断尾，需要探索更多地牢才能重新长出。",
-+  "Your body is insubstantial, granting you immunity to constriction, petrification, barbs, sticky flame, webs, nets, and being caught by bolas.": "你的身体虚体化，免疫缠绕、石化、倒刺、黏性火焰、蛛网等。",
-+  "A gaseous mixture from a recently-consumed potion swirls within you. Your next melee attack will spew clouds based on the type of potion that was quaffed.": "刚喝下的药水化作气体在你体内翻涌；下一次近战会喷出云雾。",
-+  "Your head is a cloud of swirling mist. Any potions you drink will be metabolised into clouds of baleful gas which you can expel with your melee attack.": "你的头是一团翻涌的雾；喝下的药水会代谢成有害气体。",
-+  "Powerful equine hybrids who trace their ancestry to the four winds themselves, Gale Centaurs are at their strongest while galloping swiftly towards foes.": "强壮的半人马混血种，自称血脉可追溯至四方之风；疾风半人马在向敌人疾驰冲锋时最为强大。",
-+  "Mystics transform their bodies with talismans to be more attuned with magic. Their spells require mobility in combat, but can tap into all four elements.": "秘法师用护符改造身体，以更契合魔法；其法术需要机动性。",
-+  "Stalkers transform their bodies with talismans to better deceive and debilitate their enemies. Eventually they can even transform potions into sprays of harmful clouds.": "潜猎者用护符改造身体，以更好地欺骗和削弱敌人；最终能隐匿于暗影。"
++  "Your body is insubstantial, granting you immunity to constriction, petrification, barbs, sticky flame, webs, nets, and being caught by bolas.": "你的身体虚体化，免疫缠绕、石化、倒刺、黏性火焰、蛛网、捕网以及被流星锤缠住。",
++  "A gaseous mixture from a recently-consumed potion swirls within you. Your next melee attack will spew clouds based on the type of potion that was quaffed.": "刚喝下的药水化作气体在你体内翻涌。你的下一次近战攻击会根据所喝药水的类型喷出云雾。",
++  "Your head is a cloud of swirling mist. Any potions you drink will be metabolised into clouds of baleful gas which you can expel with your melee attack.": "你的头是一团翻涌的雾。你喝下的任何药水都会代谢成有害气体云雾，你可以用近战攻击将其喷出。",
++  "Powerful equine hybrids who trace their ancestry to the four winds themselves, Gale Centaurs are at their strongest while galloping swiftly towards foes.": "强壮的半人马混血种，自称血脉可追溯至四方之风本身；疾风半人马在向敌人疾驰冲锋时最为强大。",
++  "Mystics transform their bodies with talismans to be more attuned with magic. Their spells require mobility in combat, but can tap into all four elements.": "秘法师用护符改造身体，以更契合魔法。他们的法术在战斗中需要机动性，但能汲取全部四种元素的力量。",
++  "Stalkers transform their bodies with talismans to better deceive and debilitate their enemies. Eventually they can even transform potions into sprays of harmful clouds.": "潜猎者用护符改造身体，以更好地欺骗和削弱敌人。最终他们甚至能把药水转化为有害云雾的喷流。",
++  "A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible (but your own vision is already as long as possible).": "一枚眼睛形状的小护符。它赋予穿戴者超自然视力，使其能看见生物施法后残留的魔力云雾。触碰这些云雾，穿戴者就能把残留的魔力转化为射向附近敌人的必中投射物。这只第三只眼甚至能让穿戴者看得比原本更远（但你的视力本已达到最远）。",
++  "A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible, but be warned - creatures perceived this way will perceive you back.": "一枚眼睛形状的小护符。它赋予穿戴者超自然视力，使其能看见生物施法后残留的魔力云雾。触碰这些云雾，穿戴者就能把残留的魔力转化为射向附近敌人的必中投射物。这只第三只眼甚至能让穿戴者看得比原本更远，但要注意——被你这样看见的生物也能反过来看见你。",
++  "A bronze chestpiece of masterful make. It is etched all over with religious imagery, but the focus of the scene is obscured by a great dark stain that smells strongly of ashes and salt. It seems somehow blasphemous to wear.": "一件工艺精湛的青铜胸甲，通体刻满宗教图像，但画面焦点被一大块深色污渍遮住了，那污渍散发着浓烈的灰烬与盐的气味。穿上它似乎有些亵渎。",
++  "A bronze chestpiece of masterful make. It is etched all over with religious imagery, but the focus of the scene is obscured by a great dark stain of ashes and salt. It seems somehow blasphemous to wear.": "一件工艺精湛的青铜胸甲，通体刻满宗教图像，但画面焦点被一大块灰烬与盐形成的深色污渍遮住了。穿上它似乎有些亵渎。",
++  "You are stampeding forward. Any movement you take into an enemy will trample them backwards, but your stampede will end as soon as you perform any action besides rampaging, stampeding, or casting spells.": "你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但只要你执行除暴走、奔踏或施法之外的任何动作，冲锋就会结束。",
++  "You are stampeding forward. Any movement you take into an enemy will trample them backwards, but your stampede will end as soon as you perform any action besides rampaging or stampeding.": "你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但只要你执行除暴走或奔踏之外的任何动作，冲锋就会结束。"
 +}
 diff --git a/src/i18n/miss-log.ts b/src/i18n/miss-log.ts
 new file mode 100644
@@ -6373,7 +6549,7 @@ diff --git a/src/i18n/supp-zh.ts b/src/i18n/supp-zh.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/supp-zh.ts
-@@ -0,0 +1,957 @@
+@@ -0,0 +1,1005 @@
 +// Supplements for strings the 0.34.1 dictionary does not carry: menu category
 +// headers, prompt questions, and the common item nouns the client composes
 +// names from. The dictionary itself wins on a conflict — this file only fills
@@ -6980,6 +7156,54 @@ new file mode 100644
 +  'earth magic': '大地魔法', 'fire magic': '火焰魔法', 'ice magic': '寒冰魔法',
 +  'air magic': '空气魔法', 'stealth': '潜行', 'evocations': '魔力释放',
 +
++  // --- talisman form table (describe.cc `_describe_talisman_form`) ---
++  // Column labels are engine fragments, printed inside a transposed table and
++  // never sent as a sentence: the generic matcher only sees each cell alone.
++  'UC Base Dmg': '徒手基础伤害',
++  'MP Regen': '魔力回复',
++  'Ensnare Chance': '缠绕几率',
++  'Body Armour AC': '身体护甲值',
++  'Bite Dmg': '咬击伤害',
++  'Devour Regen': '吞噬回复',
++  'Blade Dmg': '刃击伤害',
++  'Parry SH': '格挡值',
++  '# of Bees': '蜜蜂数量',
++  '+Slay/Kill': '杀敌/击杀',
++  'Takedown Dmg': '击倒伤害',
++  'Howl Power': '嗥叫威力',
++  'Spell Skill Boost': '法术技能加成',
++  'Rust Breath Size': '锈蚀吐息范围',
++  'Tendril targets': '卷须目标数',
++  'Petrify chance': '石化几率',
++  'Bat Swarm Recharge': '蝙蝠群充能',
++  'Daze Power': '眩晕威力',
++  'Crystal HP': '水晶生命',
++  'Charge heal': '充能治疗',
++  'Elem skill': '元素技能',
++  'Shed Tail HP': '断尾生命',
++  'Distraction Stab Chance': '分心背刺几率',
++  'Cloud range': '云雾范围',
++  'Cloud duration': '云雾持续',
++  'Distill rate': '蒸馏速率',
++  // Ad-hoc form properties printed below the table.
++  'Melee dmg': '近战伤害',
++  'Elec chance': '电击几率',
++  'Aux chance': '副手几率',
++  'Reach': '触及',
++  'Armour egos': '护甲词缀',
++  'LoS': '视野',
++  'Non-elemental magic skill': '非元素魔法技能',
++  'V. Small': '极小',
++  // Wand / evoker "Noise:" values (evoke_noise_string).
++  'Noise': '噪音',
++  'silent': '无声',
++  'quiet': '安静',
++  'slightly loud': '略响',
++  'loud': '响亮',
++  'very loud': '很响',
++  'extremely loud': '极响',
++  'deafening': '震耳欲聋',
++
 +  // --- combat / status sentences the parser does not cover ---
 +  'You are engulfed in flames!': '你被火焰吞没！',
 +  '%s is engulfed in flames.': '%s被火焰吞没。',
@@ -7335,7 +7559,7 @@ diff --git a/src/i18n/titles.ts b/src/i18n/titles.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/titles.ts
-@@ -0,0 +1,433 @@
+@@ -0,0 +1,447 @@
 +// Dynamic titles that the engine composes with numbers or live state, so they
 +// have no dictionary key. Each rule is narrow on purpose: a wrong guess here
 +// would be visible on every menu.
@@ -7495,8 +7719,22 @@ new file mode 100644
 +    to: (m) => `这把武器的最低攻击延迟（${m[1]}）在技能等级 ${m[2]} 时达到。`,
 +  },
 +  {
-+    re: /^At (.+?) training you would reach (.+?) in about (.+?) XLs\.$/,
-+    to: (m) => `按当前训练（${m[1]}），大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
++    // "At 100% training you would reach 7.0 in about 3.9 XLs."
++    re: /^At (\d+)% training you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
++    to: (m) => `按 ${m[1]}% 训练度，大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
++  },
++  {
++    // "At current training (45%) you would reach 7.0 in about 3.9 XLs."
++    re: /^At current training \((\d+)%\) you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
++    to: (m) => `按当前训练（${m[1]}%），大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
++  },
++  {
++    re: /^At a training level of (\d+)% you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
++    to: (m) => `按 ${m[1]}% 训练度，大约 ${m[3]} 个等级后可达到 ${m[2]}。`,
++  },
++  {
++    re: /^At current training you would reach ([\d.]+) in (?:about|the equivalent of) ([\d.]+) XLs?\.$/,
++    to: (m) => `按当前训练，大约 ${m[2]} 个等级后可达到 ${m[1]}。`,
 +  },
 +  {
 +    re: /^Wearing a shield would reduce your attack speed with this weapon\.$/,
@@ -8501,7 +8739,7 @@ diff --git a/src/i18n/zh.integration.test.ts b/src/i18n/zh.integration.test.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/zh.integration.test.ts
-@@ -0,0 +1,387 @@
+@@ -0,0 +1,461 @@
 +// @vitest-environment happy-dom
 +
 +// Integration check against the real dictionary (src/i18n/data/zh.json):
@@ -8684,6 +8922,20 @@ new file mode 100644
 +    expect(tItem('Mystic')).toBe('秘术师')
 +    expect(t('Casting: Sirocco (safe; 1% risk of failure)')).toBe('施法：热风（安全；失败率 1%）')
 +    expect(t('Casting: Bolt of Antimagic (safe; 1% risk of failure)')).toBe('施法：反魔法闪电（安全；失败率 1%）')
++  })
++
++  it('carries the complete 0.35 prose, not a summary', async () => {
++    await setLang('zh')
++    await loadDescript()
++    const prose = t('The dried remains of a tail shed under duress. Partially transforms the user into a hypnogecko, a reptile with a remarkable degree of metachrosis. Their skin naturally changes colour to blend in with their surroundings, making them stealthy, and when badly injured, they reflexively shed their own tail and make it scintillate with bright colours as a decoy - allowing them to either flee or even strike at their distracted predators from a blind spot.')
++    expect(prose).toContain('断尾闪耀鲜艳色彩作为诱饵')
++    expect(prose).toContain('盲区袭击被分心的掠食者')
++    expect(prose.length).toBeGreaterThan(100)
++    // mako-conditioned upstream text is resolved before it reaches the wire;
++    // the resolved variant must be in the table too.
++    const vision = t('A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible, but be warned - creatures perceived this way will perceive you back.')
++    expect(vision).toContain('反过来看见你')
++    expect(vision).not.toContain('{{')
 +  })
 +
 +  it('translates generated item names without leaving the sentence English', async () => {
@@ -8886,6 +9138,66 @@ new file mode 100644
 +    ].join('\n'))
 +    expect(out).toContain('Bite            3             1        Flibbertigibbet')
 +    expect(out).not.toContain('咬')
++  })
++})
++
++describe('talisman form panel', () => {
++  // The form table is composed in C++ from four-cell fragments and sent as a
++  // transposed table. Each header cell is a standalone dictionary key, so a
++  // missing entry leaves English columns in the middle of a Chinese table.
++  it('translates every form-table header cell', async () => {
++    await setLang('zh')
++    await initI18n()
++    const out = translateBody([
++      '         Skill    Regen    Shed Tail HP    Distraction Stab Chance',
++      'Min         0        +0.20            12                    +5%',
++      'Max         7        +0.20            24                   +15%',
++      'Cur         0.0      +0.20            12                    +5%',
++    ].join('\n'))
++    expect(out).toContain('技能')
++    expect(out).toContain('再生')
++    expect(out).toContain('断尾生命')
++    expect(out).toContain('分心背刺几率')
++    expect(out).toContain('最小')
++    expect(out).toContain('最大')
++    expect(out).toContain('当前')
++    expect(out).not.toMatch(/Shed Tail|Distraction|Skill\s+Regen/)
++  })
++
++  it('translates the melds, suppressed-mutation and skill-target lines', async () => {
++    await setLang('zh')
++    const out = translateBody([
++      'Your skill: 0.0; use <white>(s)</white> to set 7.0 as a target for Shapeshifting.',
++      '    At 100% training you would reach 7.0 in about 3.9 XLs.',
++      '',
++      'Melds: Body Armour, Gloves, Boots, Barding',
++      'Mutations Suppressed: Anatomy, Substance, Blood, Bones, Hands',
++    ].join('\n'))
++    expect(out).toContain('你的技能：0.0；使用 (s) 可将变形术的目标设为 7.0。')
++    expect(out).toContain('按 100% 训练度，大约 3.9 个等级后可达到 7.0。')
++    expect(out).toContain('融合部位：身体护甲、手套、靴子、马铠')
++    expect(out).toContain('抑制的突变：解剖结构、物质、血液、骨骼、双手')
++    // No quarantined leftovers and no stray dictionary matches ("a" → 一阵).
++    expect(out).not.toContain('（')
++    expect(out).not.toContain('一阵')
++  })
++
++  it('keeps the skill line English when the skill name is unknown', async () => {
++    await setLang('zh')
++    const line = 'Your skill: 0.0; use (s) to set 7.0 as a target for Flibbertigibbeting.'
++    expect(translateBody(line)).toBe(line)
++  })
++
++  it('never feeds prose through the loose item-name fallback', async () => {
++    await setLang('zh')
++    await initI18n()
++    // These used to become "（Melds:）身体（Armour,）…" / "（to）（set）…变形术".
++    expect(tItem('Melds: Body Armour, Gloves, Boots, Barding'))
++      .toBe('Melds: Body Armour, Gloves, Boots, Barding')
++    expect(tItem('to set 7.0 as a target for Shapeshifting.'))
++      .toBe('to set 7.0 as a target for Shapeshifting.')
++    // A real item name still gets the quarantined-qualifier treatment.
++    expect(tItem('a flibbertigibbet gizmo')).toBe('（flibbertigibbet）小装置')
 +  })
 +})
 +
@@ -30676,14 +30988,19 @@ diff --git a/tools/build-manual-zh.mjs b/tools/build-manual-zh.mjs
 new file mode 100644
 --- /dev/null
 +++ b/tools/build-manual-zh.mjs
-@@ -0,0 +1,147 @@
-+// Build src/i18n/data/manual-zh.json from hand-written Chinese translations of
+@@ -0,0 +1,176 @@
++// Build src/i18n/manual-zh.ts from hand-written Chinese translations of
 +// content the 0.34.1 Chinese database does not carry (mostly DCSS 0.35
 +// additions). English prose is read from the upstream descript files so the
 +// pair keys stay byte-exact; only the Chinese lives here.
 +//
++// Translations are complete: every paragraph (including rules and exceptions)
++// is rendered, not summarised. Entries whose upstream text contains mako
++// {{ … }} are expanded into their resolved variants below, because the wire
++// text the client receives has already been resolved.
++//
 +//   node tools/build-manual-zh.mjs
-+import { readFileSync, writeFileSync } from 'node:fs'
++import { writeFileSync } from 'node:fs'
 +
 +const BASE = 'https://raw.githubusercontent.com/crawl/crawl/master/crawl-ref/source/dat/descript/'
 +const CATEGORIES = ['items', 'monsters', 'spells', 'features', 'unrand', 'ability', 'status', 'species', 'backgrounds']
@@ -30691,15 +31008,15 @@ new file mode 100644
 +// category → English name → [Chinese name, Chinese prose]
 +const T = {
 +  items: {
-+    'assassin centipede': ['刺客蜈蚣', '一种活体武器，毒爪如匕首般锋利，攻击距离很长；它的蜇刺能注入致残毒素。'],
-+    'centipede bauble': ['蜈蚣饰物', '一尊小蜈蚣雕像，盘绕在石头上。紧紧握住它，它就会变成活体武器。'],
-+    'gecko talisman': ['壁虎护身符', '一条在危急时脱落的尾巴干尸。能让使用者部分变成催眠壁虎，这种爬行动物擅于潜行。'],
-+    'jade talisman': ['玉护身符', '一尊用多彩玉石雕成的小雕像，散发着沉静的力量。能形成强大的元素护体。'],
-+    'mist talisman': ['雾护身符', '一座不断冒出烟霾的小香炉。把穿戴者的头部变成翻涌的雾罩。'],
-+    'my sojourns in swampland': ['我的沼泽旅居记', '自称某位著名博物学家的私人游记，读下去却会发现并非如此。'],
-+    'player invis desc': ['隐形描述', '隐形时，大多数怪物对你的命中大幅下降，无法借机攻击。'],
-+    'potion of mist': ['雾之药水', '一瓶雾气，暂时让饮用者的身体变得虚体，免受缠绕等效果。'],
-+    'vision talisman': ['视界护身符', '一枚眼睛形状的小护符，赋予穿戴者超自然视力。'],
++    'assassin centipede': ['刺客蜈蚣', '一件活体武器，毒爪如匕首般锋利，攻击距离很长。它的蜇刺能向被击中的目标注入致残毒素；附魔等级较高时，甚至能让敌人短暂减速或麻痹。用它进行一定次数的攻击后，它会脱离你的身体，独立攻击敌人一小段时间，随后死去。'],
++    'centipede bauble': ['蜈蚣饰物', '一尊小蜈蚣雕像，盘绕在石头上。紧紧握住它，它就会变成一件与持用者身体融合的活体武器。这件武器是一把具有攻击距离的短刃，其攻击能使目标中毒。用它进行一定次数的攻击后，它会脱离持用者的身体，作为独立盟友与你并肩作战一小段时间，随后死去。变形术技能会提升这条蜈蚣在武器与虫形态下的力量，以及毒素的效力——最终甚至能让它偶尔减速或麻痹敌人。'],
++    'gecko talisman': ['壁虎护身符', '一条在危急时脱落的尾巴干尸。能让使用者部分变成催眠壁虎——一种变色能力极强的爬行动物。它们的皮肤会随环境自然变色，使它们擅于潜行；受重伤时，它们会反射性地断掉自己的尾巴，并让断尾闪耀鲜艳色彩作为诱饵，从而得以逃跑，甚至从盲区袭击被分心的掠食者。'],
++    'jade talisman': ['玉护身符', '一尊用多彩玉石雕成的小雕像，散发着沉静的力量。它会让穿戴者的头部与上半身长出一层巨大的元素水晶护体，提升其火焰、寒冰、大地与空气魔法的本领，但削弱其他所有学派。每当穿戴者施放这四系之一的法术，相应的水晶就会充能，并释放一阵破坏性魔法。若四块水晶同时充能，穿戴者的抗性与坚韧会暂时增强。'],
++    'mist talisman': ['雾护身符', '一座不断冒出无尽烟霾的小香炉。它会把穿戴者的头部变成一团翻涌的雾罩。在这种形态下喝下的任何药水都会迅速分解为气体，穿戴者可以在近战攻击时将其作为有害云雾喷出。穿戴者还能缓慢地把地牢中的空气凝结成雾之药水，从而变为虚体并致盲怪物。然而，缺少正常的嘴部结构使吟唱变得困难，大幅降低施法速度。'],
++    'my sojourns in swampland': ['我的沼泽旅居记', '这本书自称某位著名博物学家的私人游记，但读下去就会发现它是从多个互不相关的来源汇编而成，其中包括一个巡回魔法马戏团舞台工作人员的笔记。游记或许是虚构的，但页边仔细抄录的一些法术图解似乎相当真实。'],
++    'player invis desc': ['隐形描述', '隐形时，大多数怪物对你的命中率大幅下降，无法进行借机攻击，它们施放的法术有时也会瞄准错误的位置。它们还可能四处踉跄，并最终跟丢你，尤其是在智力较低时。此外，你对这些生物发动的近战攻击有几率（与你的潜行和武器技能成正比）打得它们措手不及并造成额外伤害，使用短刃时尤其如此。某些生物能看穿这种隐形；站在水中时隐形也始终完全无效。'],
++    'potion of mist': ['雾之药水', '一瓶雾气，能暂时让饮用者的身体变得虚体，保护其免受缠绕、石化、倒刺、黏性火焰、蛛网、捕网以及被流星锤缠住的影响。如果已经受到这些效果影响，它也会解除其中大部分。'],
++    'vision talisman': ['视界护身符', '一枚眼睛形状的小护符。它赋予穿戴者超自然视力，使其能看见生物施法后残留的魔力云雾。触碰这些云雾，穿戴者就能把残留的魔力转化为射向附近敌人的必中投射物。这只第三只眼甚至能让穿戴者看得比原本更远，但要注意——被你这样看见的生物也能反过来看见你。'],
 +    'detected item': ['探测到的物品', '你在这里探测到一个物体，但不知道它是什么。'],
 +  },
 +  monsters: {
@@ -30708,82 +31025,100 @@ new file mode 100644
 +    'earthen jade': ['土玉', '一块漂浮的水晶玉片，与你的土系魔法共鸣。'],
 +    'fiery jade': ['火玉', '一块漂浮的水晶玉片，与你的火系魔法共鸣。'],
 +    'icy jade': ['冰玉', '一块漂浮的水晶玉片，与你的冰系魔法共鸣。'],
-+    'herald of the abyss': ['深渊先驱', '一名被深渊岁月扭曲的鲁古努信徒，已升华为被尊崇的代表。'],
-+    'hypnotail': ['催眠尾', '催眠壁虎脱落的尾巴，仍脉动着迷幻色彩，迫使附近的掠食者失神。'],
-+    'Blorkula the Orcula': ['Blorkula the Orcula', '曾是一名瘦长憔悴、痴迷色彩的吸血鬼，后来从某种力量那里获得了庇护。'],
-+    'Goji': ['Goji', '一只勇敢的地精，不知怎么驯服了一只鬼蛾当坐骑。'],
++    'herald of the abyss': ['深渊先驱', '一名被深渊岁月扭曲的鲁古努信徒，已升华为鲁古努对世间万物之憎恨的尊崇代表，以鲁古努之名庄严地撕碎现实。'],
++    'hypnotail': ['催眠尾', '催眠壁虎脱落的尾巴，仍脉动着迷幻色彩，迫使附近的掠食者把注意力集中在它身上，而不是它生前所属的那只不幸蜥蜴。'],
++    'Blorkula the Orcula': ['Blorkula the Orcula', '布洛库拉曾是一名瘦长憔悴、痴迷色彩的吸血鬼；在比欧弗的一位传教士给予他帮助后，他变成了一名矮胖健壮的兽人，却依然痴迷色彩。他挥舞着染有彩虹每一种色调的魔法，并掌握了将自己的形体分散到诸多色彩中以避开致命一击的技艺——不过即便是他，也要休息一段时间才能再次这么做。'],
++    'Goji': ['Goji', '一只勇敢的地精，不知怎么驯服了一只鬼蛾当坐骑。他用复杂的绳结把自己固定在蛾背上，这无疑削弱了鬼蛾本身的机动性；但即便被束缚的鬼蛾也可能是致命的对手。而戈吉呢？他也在这儿。'],
 +  },
 +  spells: {
-+    'Bolt of Antimagic spell': ['反魔法闪电', '发射一道穿透性的反魔法闪电，抽干受害者的法力。'],
-+    'Bolster spell': ['鼓舞', '强化施法者的肉体，大幅提高近战伤害与抗性。'],
-+    'Cage of Brambles spell': ['荆棘牢笼', '在附近所有敌人周围迅速长出荆棘墙；施法者的盟友可以穿过。'],
-+    'Dragon Veins spell': ['龙脉', '让施法者接入遍布地牢的元素地脉，引导其毁灭力量。'],
-+    'Ice Thorns spell': ['冰棘', '在目标敌人周围的地面长出尖锐冰棘，造成伤害。'],
-+    'Murky Legion spell': ['浑浊军团', '召唤一些幽暗食尸鬼，它们的一次攻击会同时散播魔法污染与浅水。'],
-+    'Phase Shift spell': ['相位偏移', '让施法者的身体略微偏离正常空间，使其确切位置变得模糊。'],
-+    'Sirocco spell': ['热风', '释放灼热狂风，烧灼至多 3 个相邻生物并将它们吹退。'],
-+    'Stampede spell': ['奔踏', '沿直线向敌人猛冲，每回合以双倍速度朝该方向移动。'],
-+    'Ufetubi Swarm spell': ['乌费图比虫群', '召唤一群狂暴的乌费图比——烦人的小恶魔，会迅速包围施法者的敌人。'],
-+    'Touch of Paradox spell': ['悖论之触', '将一名附近盟友从空间中解缚，赋予其“多重突击”作为天生能力。'],
++    'Bolt of Antimagic spell': ['反魔法闪电', '发射一道穿透性的、在本体论上自相矛盾的反魔法闪电，抽干受害者的魔力储备。'],
++    'Bolster spell': ['鼓舞', '强化施法者的肉体，大幅提高其近战伤害以及对所有元素的抗性。'],
++    'Cage of Brambles spell': ['荆棘牢笼', '在附近所有敌人周围迅速长出荆棘墙。施法者的盟友可以毫无阻碍地穿过荆棘发射投射物，但其他人想清除它们可就痛苦了。'],
++    'Dragon Veins spell': ['龙脉', '让施法者接入遍布地牢的元素能量地脉，引导其毁灭之力攻击敌人。施放后，相邻地砖上会显现至多四条龙脉——分别对应火焰、寒冰、空气与大地魔法。踩上任意一条都会立即触发一次毁灭性施法，消耗 1 点魔力，最多随机瞄准 3 个敌人，并附带一种取决于所引导元素的额外效果：火（西）：优先瞄准生命值最低的敌人，击杀目标后会留下短暂的火焰云雾；冰（东）：优先瞄准生命值最高的敌人，短暂冻结它们，使其移动变慢；气（北）：优先瞄准距离最远的敌人，与其他三种元素不同，即使对远处目标也能造成全额伤害；土（南）：优先瞄准最近的敌人，少攻击一个目标，且对飞行生物造成的伤害大幅降低，但近距离被击中的敌人可能会踉跄。法术失效前，你至多可以从两条龙脉中引导力量。'],
++    'Ice Thorns spell': ['冰棘', '在目标敌人周围的地面长出尖锐的冰棘。这些冰棘会伤害任何踩上去的非飞行生物，然后碎裂消失。施法者可以踩在自己的冰棘上而不受伤（但踩上去时它们仍会碎裂）。'],
++    'Murky Legion spell': ['浑浊军团', '召唤一些幽暗食尸鬼；它们会在消失前以一次攻击同时散播魔法污染与浅水。'],
++    'Phase Shift spell': ['相位偏移', '让施法者的身体略微偏离正常空间，使其确切位置变得模糊不清。任何没有超自然敏锐视力的攻击者都更难命中他们，也无法判断其受伤程度。'],
++    'Sirocco spell': ['热风', '释放一阵灼热狂风，烧灼至多 3 个相邻生物并将它们吹退。可惜，那些在生物周围盘旋的反复无常的风也会在之后数回合加速它们的移动。此法术数回合内无法再次施放，移动会延长其充能时间。'],
++    'Stampede spell': ['奔踏', '沿直线向敌人猛冲。此后每回合，使用者都会朝该方向以双倍速度移动，以更高的伤害与命中攻击路径上的任何敌人并将其击退，直到无法移动或冲过了目标。只有目标位于使用者所在的正方向时才能使用。'],
++    'Ufetubi Swarm spell': ['乌费图比虫群', '召唤一群狂暴的乌费图比——一群烦人的小恶魔，它们会迅速蜂拥包围施法者的敌人。'],
++    'Touch of Paradox spell': ['悖论之触', '将一名附近盟友从空间中解缚，赋予其“多重突击”作为天生能力（使其能以一次无法失手的近战攻击打击多个远处敌人），并使其在使用该能力时有机会闪现。'],
 +  },
 +  features: {
-+    'A patch of mould': ['一片霉菌', '一层浓密多彩的霉菌，生机勃勃地沙沙作响；从中长出的高耸真菌会攻击靠近者。'],
-+    'a purified mutation catalyst': ['精炼变异催化剂', '一座实验性的奥术蒸馏器，正在酿造某种不完整（或许已精炼）的变异血清。打碎它会释放其中的力量。'],
-+    'an empty mutation catalyst': ['空的变异催化剂', '一座复杂的奥术蒸馏器，已被打碎并倒空。'],
-+    'an earthen dragon vein': ['土之龙脉', '一条裸露的土系地脉。踩上去可引导它，释放震波伤害周围的敌人。'],
-+    'a fiery dragon vein': ['火之龙脉', '一条裸露的火系地脉。踩上去可引导它，轰击 3 个敌人。'],
-+    'an icy dragon vein': ['冰之龙脉', '一条裸露的冰系地脉。踩上去可引导它，对 3 个敌人造成寒冷伤害。'],
-+    'an airy dragon vein': ['气之龙脉', '一条裸露的气系地脉。踩上去可引导它，轰击最远的 4 个敌人。'],
-+    'A patch of ice thorns': ['一片冰棘', '一片覆盖尖锐冰刺的地面，对任何非飞行生物造成少量伤害。'],
-+    'A mutagenic drain': ['变异枯竭', '一条通往锈蚀沟壑的通道。进入会施加三种临时变异。'],
++    'A patch of mould': ['一片霉菌', '一层浓密多彩的霉菌，生机勃勃地沙沙作响。从中长出的高耸真菌能在眨眼间重新长出，无论被砍倒多少次。'],
++    'a purified mutation catalyst': ['精炼变异催化剂', '一座实验性的奥术蒸馏器，正在酿造某种不完整——或许已精炼——的变异血清。打碎它会让你沐浴在神秘雾气中，赋予你一项有益变异（不包括可能限制装备栏位的变异）。'],
++    'an empty mutation catalyst': ['空的变异催化剂', '一座复杂的奥术蒸馏器，已被打碎并倒空其中内容。'],
++    'an earthen dragon vein': ['土之龙脉', '一条裸露的土系地脉。踩上去可引导它，释放震波伤害最近的 2 个敌人。对远处和飞行敌人造成的伤害大幅降低。'],
++    'a fiery dragon vein': ['火之龙脉', '一条裸露的火系地脉。踩上去可引导它，以火焰轰击生命值最低的 3 个敌人。被此效果杀死的敌人会短暂留下火焰云雾。'],
++    'an icy dragon vein': ['冰之龙脉', '一条裸露的冰系地脉。踩上去可引导它，对生命值最高的 3 个敌人造成寒冷伤害，并短暂减速它们的移动。'],
++    'an airy dragon vein': ['气之龙脉', '一条裸露的气系地脉。踩上去可引导它，以切割之风轰击最远的 4 个敌人。'],
++    'A patch of ice thorns': ['一片冰棘', '一片覆盖尖锐冰刺的地面。它会对任何踩上去的非飞行生物（其创造者除外）造成少量伤害，然后碎裂消失。其伤害会被寒冷抗性部分减免。'],
++    'A mutagenic drain': ['变异枯竭', '一条通往锈蚀沟壑的通道，正逐渐锈蚀消失。进入会对你施加三种临时变异；如果你是亡灵，则会分解你。'],
 +    'A broken fleshy orifice': ['破损的肉质开口', '它似乎在静静渗液。最好别碰。'],
 +    'An assortment of trash': ['一堆垃圾', '一堆破碎腐朽的垃圾，覆满灰烬与泥土。'],
 +  },
 +  unrand: {
-+    'partisan of Prune': ['partisan of Prune', '普卢恩之戟带着可怕而阴险的诅咒。除非持用者保持坚定的自控，否则它可能反噬。'],
-+    'eveningstar "Brilliance"': ['eveningstar "Brilliance"', '堕落后不久，伊莱德莱姆努尔试图把神圣能量扭曲成自己的黑暗仿制品。'],
-+    'sword of the Dread Knight': ['sword of the Dread Knight', '一把精金巨剑。它的第一位持用者是一位拒绝魔法的伊莱德莱姆努尔信徒。'],
++    'partisan of Prune': ['partisan of Prune', '普卢恩之戟带着可怕而阴险的诅咒。除非持用者保持坚定的自控，否则注定会经历一次可怕（尽管是暂时的）变形。通常抵抗它轻而易举，但无力化的持用者必定屈服，会发现自己变成噩梦般的紫色、软塌塌又美味的样子。他们可以欣慰地得知：要弄伤一个巨大的西梅干出乎意料地困难。'],
++    'eveningstar "Brilliance"': ['eveningstar "Brilliance"', '堕落之后不久，伊莱德莱姆努尔试图把神圣能量扭曲成自身的黑暗仿制品，使其转而对抗其造物主，并削弱其对亡灵与恶魔的效果。但人们发现得太晚：如此彻底的扭曲无法控制；那邪恶火焰会使其注入的一切失稳或毁灭，只有几个恶魔实验体和一件被盗的神圣武器例外。一种更次等、也更稳定的黑暗能量被证明更为可行，并成为了伊莱德莱姆努尔的暗影。这就是那件武器：一把晨星锤，名不副实，其光芒早已逃逸，而它的阴影会排斥那些曾受其光芒抚慰之物……'],
++    'sword of the Dread Knight': ['sword of the Dread Knight', '一把精金巨剑。它的第一位持用者是一位在战斗中拒绝使用魔法的伊莱德莱姆努尔信徒，更喜欢用蛮力摧毁敌人。不幸的是，并非所有对手都像她一样受限。在她手中，这把剑斩杀了无数强大的战士；那些被夺走生命的灵魂正召唤它在新的主人手中夺取更多生命。'],
 +    'amulet of Tranquillity': ['amulet of Tranquillity', '一枚纯净玉石制成的吊坠，赋予穿戴者强大的意志与精神韧性。'],
-+    'ghost crab claws': ['ghost crab claws', '一双巨大的幽灵蟹钳，被沼泽行者 coven 制成手套用于死灵仪式。'],
-+    'giant spiked club "Carina at Dusk"': ['giant spiked club "Carina at Dusk"', '就连巨魔也有自己的自然诗人、眼神迷离的梦想家和饥饿的艺术家。'],
-+    'coolibah bardiche': ['coolibah bardiche', '一把用整棵酷栗树砍削而成的巨型长柄斧，木制刃口同样锋利。'],
-+    'staff of Five Virtues': ['staff of Five Virtues', '一位可敬武僧大师的法杖；她驱散敌人如同驱散执念。'],
-+    "Stagehand's Sword": ['Stagehand\'s Sword', '一把看似舞台道具的普通长剑。但这里一拧、那里一按，就会露出真容。'],
-+    "Hana's Scimitar": ['Hana\'s Scimitar', '战法师亚拉最杰出弟子之一——据传是半神——最钟爱的弯刀。'],
-+    'arcane splint mail': ['arcane splint mail', '一套真正古老的护甲，为最大防护与灵活性而设计，显然供施法者使用。'],
-+    'bone scales': ['bone scales', '骨龙半缝合（或半拆开）的躯干，被制成一件真正可穿的护甲。'],
-+    "Forgewarden's cuirass": ['Forgewarden\'s cuirass', '一件工艺精湛的青铜胸甲，通体刻满宗教图像。'],
++    'ghost crab claws': ['ghost crab claws', '一双巨大的幽灵蟹钳，被沼泽行者巫团制成手套，用于死灵仪式。无论是有魔法天赋者还是擅长拳斗者，都能借此与亡者之灵建立联系，但这些钳子让抓握其他任何东西都令人抓狂。（装备此物品时无法使用武器或盾牌。）'],
++    'giant spiked club "Carina at Dusk"': ['giant spiked club "Carina at Dusk"', '就连巨魔也有自己的自然诗人、眼神迷离的梦想家和饥饿的艺术家。这件作品就是这样一个不安灵魂的杰作，一首献给高远苍穹的颂歌。'],
++    'coolibah bardiche': ['coolibah bardiche', '一把用整棵酷栗树砍削而成的巨型长柄斧。木制刃口同样锋利，而被它附魔枝条缠住的人很快就会发现自己仿佛回到了这致命武器生长其中的沼泽。'],
++    'staff of Five Virtues': ['staff of Five Virtues', '一位可敬武僧大师的法杖；她驱散敌人如同驱散执念，据说最终甚至超脱了生死。有资格的持用者或许能解锁法杖的巨大潜能，前提是遵循其前主人关于平衡与举止的独特理念。'],
++    "Stagehand's Sword": ['Stagehand\'s Sword', '一把看似戏剧道具的普通长剑。但瞧！这里一拧、那里一按，真正的剑刃便弹射而出；寒光闪闪、凶险无比、杀气腾腾。它以前杀过生吗？如果有，也没留下目击者。它会为你杀人吗？只要你足够狡黠，它就会如你所愿。'],
++    "Hana's Scimitar": ['Hana\'s Scimitar', '战法师亚拉最杰出弟子之一——据传是一位半神——最钟爱的弯刀。她常夸口说，一个法术加一记斩击就足以决定任何战斗。确实，她的所有决斗都以这种方式结束，包括最后一场。'],
++    'arcane splint mail': ['arcane splint mail', '一套真正古老的护甲，为最大防护与灵活性而设计。显然是为骑乘的咒术枪手打造的；它的魔法结界与徽记已破败得无可救药，但其中仍残留着些许力量痕迹。'],
++    'bone scales': ['bone scales', '骨龙半缝合（或半拆开）的躯干，被（如果这也能算的话）制成一件真正可悲的护甲。它参差的骨骼似乎脉动着不死之力，等待着某个邪恶主人的命令。'],
++    "Forgewarden's cuirass": ['Forgewarden\'s cuirass', '一件工艺精湛的青铜胸甲，通体刻满宗教图像，但画面焦点被一大块深色污渍遮住了，那污渍散发着浓烈的灰烬与盐的气味。穿上它似乎有些亵渎。'],
 +  },
 +  ability: {
-+    'Pacify ability': ['安抚', '尝试安抚一个敌对生物，说服它放弃暴力。若成功，该生物会平静下来。'],
-+    'Divine Alms ability': ['神赐', '安抚一个受伤的友方生物，治疗其部分伤势（取决于你的祈神技能）。'],
-+    'Aura of Vigour ability': ['活力光环', '大幅提高你的最大生命与法力（取决于祈神技能）。'],
-+    'Ancestor Life: Elementalist ability': ['先祖人生：元素师', '将你的先祖记忆为元素师——强大但脆弱、能释放毁灭法术的法师。'],
++    'Pacify ability': ['安抚', '尝试安抚一个敌对生物，说服它放弃暴力。若成功，该生物会转为中立，并尽快离开本层。你将获得它的全部经验值。对神圣与活物效果最好；亡灵与恶魔越来越难以安抚——如果它们有智慧则尤其如此。无意识或无生命的生物无法被安抚，任何怪物在睡眠时也无法被安抚。祈神技能会提高成功率，并让你能安抚更强大的生物。'],
++    'Divine Alms ability': ['神赐', '安抚一个受伤的友方生物，治疗其部分伤势（取决于你的祈神技能），并解除中毒、混乱、减速、疾病、虚弱、吸取与石化。任何被此能力治疗的召唤生物还可能获得少量额外存在时间。'],
++    'Aura of Vigour ability': ['活力光环', '大幅提高你的最大生命与魔力（取决于祈神技能）。你当前的生命与魔力也会按比例提高。效果持续期间，附近任何友方生物的生命也会翻倍。'],
++    'Ancestor Life: Elementalist ability': ['先祖人生：元素师', '将你的先祖记忆为元素师——一名强大但脆弱、能从安全距离释放毁灭法术的法师。此选择是永久的，无法撤销。'],
 +  },
 +  status: {
-+    'Stampede status': ['奔踏', '你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但冲锋结束后你会疲惫。'],
++    'Stampede status': ['奔踏', '你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但只要你执行除暴走或奔踏之外的任何动作，冲锋就会结束。'],
 +    'Indom status': ['不屈', '你正在快速恢复生命（速率取决于最大生命），直到恢复指定数值。'],
 +    'Salvo status': ['齐射', '你接下来的数次远程攻击会向视野内其他目标额外齐射。'],
 +    'Tailwind status': ['顺风', '你的下一次“暴走”移动将是瞬间的。'],
-+    'Exegesis status': ['释经', '你刚使用过神谕阐释，可大幅降低虔诚消耗重复同一法术。'],
++    'Exegesis status': ['释经', '你刚使用过神谕阐释，可以大幅降低虔诚消耗重复同一法术。'],
 +    '-Jolt status': ['电击耗尽', '你刚释放过满功率电击，在完全恢复前无法再次使用。'],
 +    '-Sirocco status': ['热风耗尽', '你刚施放过热风，在连续数回合不移动前无法再次施放。'],
-+    'Vision status': ['视界', '你的第三只眼睁开，能看见施法残留的魔力并转化为力量。'],
-+    'Jade status': ['玉甲', '元素水晶覆盖你的上半身，提升元素魔法技能与防护。'],
++    'Vision status': ['视界', '你的第三只眼睁开，能看见施法残留的魔力并转化为有伤害的投射物。'],
++    'Jade status': ['玉甲', '一团元素水晶笼罩你的上半身，提升你的元素魔法技能，并让你能将其以强大爆发释放出来。'],
 +    'Crystals status': ['水晶', '你身上的玉甲水晶数量。'],
-+    'Gecko status': ['壁虎', '你是催眠壁虎，一种能在大伤时断尾作为诱饵的隐秘蜥蜴。'],
++    'Gecko status': ['壁虎', '你是催眠壁虎，一种能在受重伤时断尾作为诱饵的隐秘蜥蜴。'],
 +    '-Tail status': ['断尾', '你刚断尾，需要探索更多地牢才能重新长出。'],
-+    'Insubst status': ['虚体', '你的身体虚体化，免疫缠绕、石化、倒刺、黏性火焰、蛛网等。'],
-+    'Vapour status': ['蒸汽', '刚喝下的药水化作气体在你体内翻涌；下一次近战会喷出云雾。'],
-+    'Mistmane status': ['雾鬃', '你的头是一团翻涌的雾；喝下的药水会代谢成有害气体。'],
++    'Insubst status': ['虚体', '你的身体虚体化，免疫缠绕、石化、倒刺、黏性火焰、蛛网、捕网以及被流星锤缠住。'],
++    'Vapour status': ['蒸汽', '刚喝下的药水化作气体在你体内翻涌。你的下一次近战攻击会根据所喝药水的类型喷出云雾。'],
++    'Mistmane status': ['雾鬃', '你的头是一团翻涌的雾。你喝下的任何药水都会代谢成有害气体云雾，你可以用近战攻击将其喷出。'],
 +  },
 +  species: {
-+    'Gale Centaur': ['疾风半人马', '强壮的半人马混血种，自称血脉可追溯至四方之风；疾风半人马在向敌人疾驰冲锋时最为强大。'],
++    'Gale Centaur': ['疾风半人马', '强壮的半人马混血种，自称血脉可追溯至四方之风本身；疾风半人马在向敌人疾驰冲锋时最为强大。'],
 +  },
 +  backgrounds: {
-+    'Mystic': ['秘法师', '秘法师用护符改造身体，以更契合魔法；其法术需要机动性。'],
-+    'Stalker': ['潜猎者', '潜猎者用护符改造身体，以更好地欺骗和削弱敌人；最终能隐匿于暗影。'],
++    'Mystic': ['秘法师', '秘法师用护符改造身体，以更契合魔法。他们的法术在战斗中需要机动性，但能汲取全部四种元素的力量。'],
++    'Stalker': ['潜猎者', '潜猎者用护符改造身体，以更好地欺骗和削弱敌人。最终他们甚至能把药水转化为有害云雾的喷流。'],
 +  },
++}
++
++// Upstream prose that contains mako {{ … }} is resolved before it reaches the
++// client, so the raw template key never matches. List the resolved variants
++// here (whitespace is normalised the same way as the fetched descriptions).
++const EXTRA_PAIRS = {
++  'A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible (but your own vision is already as long as possible).':
++    '一枚眼睛形状的小护符。它赋予穿戴者超自然视力，使其能看见生物施法后残留的魔力云雾。触碰这些云雾，穿戴者就能把残留的魔力转化为射向附近敌人的必中投射物。这只第三只眼甚至能让穿戴者看得比原本更远（但你的视力本已达到最远）。',
++  'A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible, but be warned - creatures perceived this way will perceive you back.':
++    '一枚眼睛形状的小护符。它赋予穿戴者超自然视力，使其能看见生物施法后残留的魔力云雾。触碰这些云雾，穿戴者就能把残留的魔力转化为射向附近敌人的必中投射物。这只第三只眼甚至能让穿戴者看得比原本更远，但要注意——被你这样看见的生物也能反过来看见你。',
++  'A bronze chestpiece of masterful make. It is etched all over with religious imagery, but the focus of the scene is obscured by a great dark stain that smells strongly of ashes and salt. It seems somehow blasphemous to wear.':
++    '一件工艺精湛的青铜胸甲，通体刻满宗教图像，但画面焦点被一大块深色污渍遮住了，那污渍散发着浓烈的灰烬与盐的气味。穿上它似乎有些亵渎。',
++  'A bronze chestpiece of masterful make. It is etched all over with religious imagery, but the focus of the scene is obscured by a great dark stain of ashes and salt. It seems somehow blasphemous to wear.':
++    '一件工艺精湛的青铜胸甲，通体刻满宗教图像，但画面焦点被一大块灰烬与盐形成的深色污渍遮住了。穿上它似乎有些亵渎。',
++  'You are stampeding forward. Any movement you take into an enemy will trample them backwards, but your stampede will end as soon as you perform any action besides rampaging, stampeding, or casting spells.':
++    '你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但只要你执行除暴走、奔踏或施法之外的任何动作，冲锋就会结束。',
++  'You are stampeding forward. Any movement you take into an enemy will trample them backwards, but your stampede will end as soon as you perform any action besides rampaging or stampeding.':
++    '你正在奔踏冲锋。任何朝敌人的移动都会将其踩退，但只要你执行除暴走或奔踏之外的任何动作，冲锋就会结束。',
 +}
 +
 +function parse(text) {
@@ -30813,8 +31148,14 @@ new file mode 100644
 +      const bare = name.replace(/\s+(spell|ability|status)$/i, '')
 +      if (bare !== name) names[bare] = zhName
 +    }
-+    pairs[p.replace(/\s+/g, ' ').trim()] = zhProse
++    // Raw mako templates never reach the client (the engine resolves them
++    // before sending), so they cannot be keys. Their resolved variants live in
++    // EXTRA_PAIRS instead.
++    if (!p.includes('{{')) pairs[p.replace(/\s+/g, ' ').trim()] = zhProse
 +  }
++}
++for (const [en, zh] of Object.entries(EXTRA_PAIRS)) {
++  pairs[en.replace(/\s+/g, ' ').trim()] = zh
 +}
 +const out = `// Generated by tools/build-manual-zh.mjs — hand-written Chinese for content
 +// the 0.34.1 database lacks (DCSS 0.35 additions).

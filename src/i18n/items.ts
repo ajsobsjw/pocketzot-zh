@@ -235,8 +235,16 @@ function phrase(m: Matcher, words: string[]): string | null {
  */
 function loosePhrase(m: Matcher, words: string[]): string | null {
   if (words.length < 2) return null
+  // Engine dictionary keys include bare articles and prepositions ("a" is
+  // 一阵, and plurals collapse "as" → "a"). They can never be an item
+  // qualifier, so never let them swallow a word here.
+  const STOP = new Set([
+    'a', 'an', 'the', 'and', 'or', 'as', 'of', 'to', 'for', 'in', 'on', 'at',
+    'by', 'with', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'it', 'its',
+  ])
   const known = (w: string): string | undefined => {
     const lower = w.toLowerCase()
+    if (w.length < 2 || STOP.has(lower)) return undefined
     return ADJECTIVES[lower]
       ?? m.exact.get(w)
       ?? (w === lower ? m.exact.get(singular(lower)) : undefined)

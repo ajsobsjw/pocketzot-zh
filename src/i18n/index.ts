@@ -575,6 +575,20 @@ export function t(text: string): string {
   return out ?? text
 }
 
+/**
+ * The item grammar's "quarantine the unknown qualifier" fallback is only safe
+ * for names. A sentence that happens to end in a known noun ("… a target for
+ * Shapeshifting.") would otherwise be shredded into "（to）（set）…变形术", and
+ * the plural rule turns the article "as" into "a" → 一阵. Keep the fallback to
+ * a single short, punctuation-free name-shaped string.
+ */
+function looksLikeItemName(s: string): boolean {
+  if (!s || s.length > 80) return false
+  if (/[;:,.!?]/.test(s)) return false
+  const words = s.trim().split(/\s+/)
+  return words.length >= 2 && words.length <= 8
+}
+
 /** Item/monster names: tries the item grammar after the plain lookup. */
 export function tItem(text: string): string {
   if (lang !== 'zh' || !matcher || !text) return text
@@ -599,7 +613,9 @@ export function tItem(text: string): string {
     const plain = lookup(matcher, text, {})
     out = plain ? plain.out : null
   }
-  if (!out) out = translateItem(matcher, plainText, { loose: true })
+  if (!out && looksLikeItemName(plainText)) {
+    out = translateItem(matcher, plainText, { loose: true })
+  }
   if (!out) out = matchTitle(plainText)
   cache.set(key, out)
   return out ?? text

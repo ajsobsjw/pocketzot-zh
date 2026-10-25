@@ -182,6 +182,20 @@ describe('real dictionary', () => {
     expect(t('Casting: Bolt of Antimagic (safe; 1% risk of failure)')).toBe('施法：反魔法闪电（安全；失败率 1%）')
   })
 
+  it('carries the complete 0.35 prose, not a summary', async () => {
+    await setLang('zh')
+    await loadDescript()
+    const prose = t('The dried remains of a tail shed under duress. Partially transforms the user into a hypnogecko, a reptile with a remarkable degree of metachrosis. Their skin naturally changes colour to blend in with their surroundings, making them stealthy, and when badly injured, they reflexively shed their own tail and make it scintillate with bright colours as a decoy - allowing them to either flee or even strike at their distracted predators from a blind spot.')
+    expect(prose).toContain('断尾闪耀鲜艳色彩作为诱饵')
+    expect(prose).toContain('盲区袭击被分心的掠食者')
+    expect(prose.length).toBeGreaterThan(100)
+    // mako-conditioned upstream text is resolved before it reaches the wire;
+    // the resolved variant must be in the table too.
+    const vision = t('A small charm bearing the likeness of an eye. It gives the wearer supernatural sight, allowing them to perceive the clouds of magical residue left behind whenever beings cast spells. Touching those clouds allows them to convert that leftover magic into unnerring projectiles against nearby foes. This third eye even allows one to see from further distances than would otherwise be possible, but be warned - creatures perceived this way will perceive you back.')
+    expect(vision).toContain('反过来看见你')
+    expect(vision).not.toContain('{{')
+  })
+
   it('translates generated item names without leaving the sentence English', async () => {
     await setLang('zh')
     const names = [
@@ -382,6 +396,66 @@ describe('monster panel with the live dictionary', () => {
     ].join('\n'))
     expect(out).toContain('Bite            3             1        Flibbertigibbet')
     expect(out).not.toContain('咬')
+  })
+})
+
+describe('talisman form panel', () => {
+  // The form table is composed in C++ from four-cell fragments and sent as a
+  // transposed table. Each header cell is a standalone dictionary key, so a
+  // missing entry leaves English columns in the middle of a Chinese table.
+  it('translates every form-table header cell', async () => {
+    await setLang('zh')
+    await initI18n()
+    const out = translateBody([
+      '         Skill    Regen    Shed Tail HP    Distraction Stab Chance',
+      'Min         0        +0.20            12                    +5%',
+      'Max         7        +0.20            24                   +15%',
+      'Cur         0.0      +0.20            12                    +5%',
+    ].join('\n'))
+    expect(out).toContain('技能')
+    expect(out).toContain('再生')
+    expect(out).toContain('断尾生命')
+    expect(out).toContain('分心背刺几率')
+    expect(out).toContain('最小')
+    expect(out).toContain('最大')
+    expect(out).toContain('当前')
+    expect(out).not.toMatch(/Shed Tail|Distraction|Skill\s+Regen/)
+  })
+
+  it('translates the melds, suppressed-mutation and skill-target lines', async () => {
+    await setLang('zh')
+    const out = translateBody([
+      'Your skill: 0.0; use <white>(s)</white> to set 7.0 as a target for Shapeshifting.',
+      '    At 100% training you would reach 7.0 in about 3.9 XLs.',
+      '',
+      'Melds: Body Armour, Gloves, Boots, Barding',
+      'Mutations Suppressed: Anatomy, Substance, Blood, Bones, Hands',
+    ].join('\n'))
+    expect(out).toContain('你的技能：0.0；使用 (s) 可将变形术的目标设为 7.0。')
+    expect(out).toContain('按 100% 训练度，大约 3.9 个等级后可达到 7.0。')
+    expect(out).toContain('融合部位：身体护甲、手套、靴子、马铠')
+    expect(out).toContain('抑制的突变：解剖结构、物质、血液、骨骼、双手')
+    // No quarantined leftovers and no stray dictionary matches ("a" → 一阵).
+    expect(out).not.toContain('（')
+    expect(out).not.toContain('一阵')
+  })
+
+  it('keeps the skill line English when the skill name is unknown', async () => {
+    await setLang('zh')
+    const line = 'Your skill: 0.0; use (s) to set 7.0 as a target for Flibbertigibbeting.'
+    expect(translateBody(line)).toBe(line)
+  })
+
+  it('never feeds prose through the loose item-name fallback', async () => {
+    await setLang('zh')
+    await initI18n()
+    // These used to become "（Melds:）身体（Armour,）…" / "（to）（set）…变形术".
+    expect(tItem('Melds: Body Armour, Gloves, Boots, Barding'))
+      .toBe('Melds: Body Armour, Gloves, Boots, Barding')
+    expect(tItem('to set 7.0 as a target for Shapeshifting.'))
+      .toBe('to set 7.0 as a target for Shapeshifting.')
+    // A real item name still gets the quarantined-qualifier treatment.
+    expect(tItem('a flibbertigibbet gizmo')).toBe('（flibbertigibbet）小装置')
   })
 })
 
