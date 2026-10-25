@@ -44,6 +44,13 @@ const ADJECTIVES: Record<string, string> = {
   agate: '玛瑙', bone: '骨', diamond: '钻石', peridot: '橄榄石', garnet: '石榴石',
   opal: '蛋白石', pearl: '珍珠', coral: '珊瑚', cabochon: '蛋面', onyx: '缟玛瑙',
   moonstone: '月光石', tourmaline: '电气石', jade: '玉',
+  // Weapon/armour random qualifiers and materials (item-name.cc).
+  jewelled: '镶宝的', curved: '弯曲的', long: '长', short: '短', crooked: '歪曲的',
+  forked: '分叉的', tapered: '锥形的', worn: '破旧的', weird: '怪异的',
+  smoking: '冒烟的', iron: '铁', lead: '铅', fluorescent: '荧光的',
+  bronze: '青铜', platinum: '铂金', zirconium: '锆石',
+  citrine: '黄水晶', cameo: '浮雕', jasper: '碧玉', malachite: '孔雀石',
+  soapstone: '皂石', filigree: '金银丝', beryl: '绿柱石',
   large: '大', small: '小', heavy: '沉重', light: '轻便',
 }
 

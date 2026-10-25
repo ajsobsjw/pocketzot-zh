@@ -155,6 +155,10 @@ describe('real dictionary', () => {
       'a bubbling murky potion', 'a silvery inky potion', 'a gilded opal ring',
       'a runed granite ring', 'a blackened copper amulet', 'a lumpy glass ring',
       'a chipped bone ring', 'a tattered leather ring', 'a scorched marble ring',
+      'a jewelled long sword', 'a crooked short sword', 'a forked spear',
+      'a tapered dagger', 'a worn robe', 'a lead ring', 'a fluorescent potion',
+      'a platinum amulet', 'a citrine ring', 'a jasper ring', 'a soapstone ring',
+      'a filigree ring', 'a beryl ring', 'a cameo amulet',
     ]
     for (const name of names) {
       expect(tItem(name), name).toMatch(/[\u4e00-\u9fff]/)

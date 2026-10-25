@@ -3698,7 +3698,7 @@ diff --git a/src/i18n/items.ts b/src/i18n/items.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/items.ts
-@@ -0,0 +1,430 @@
+@@ -0,0 +1,437 @@
 +// Item-name grammar.
 +//
 +// The engine composes names from fragments ("+1", "dagger", "of venom",
@@ -3745,6 +3745,13 @@ new file mode 100644
 +  agate: '玛瑙', bone: '骨', diamond: '钻石', peridot: '橄榄石', garnet: '石榴石',
 +  opal: '蛋白石', pearl: '珍珠', coral: '珊瑚', cabochon: '蛋面', onyx: '缟玛瑙',
 +  moonstone: '月光石', tourmaline: '电气石', jade: '玉',
++  // Weapon/armour random qualifiers and materials (item-name.cc).
++  jewelled: '镶宝的', curved: '弯曲的', long: '长', short: '短', crooked: '歪曲的',
++  forked: '分叉的', tapered: '锥形的', worn: '破旧的', weird: '怪异的',
++  smoking: '冒烟的', iron: '铁', lead: '铅', fluorescent: '荧光的',
++  bronze: '青铜', platinum: '铂金', zirconium: '锆石',
++  citrine: '黄水晶', cameo: '浮雕', jasper: '碧玉', malachite: '孔雀石',
++  soapstone: '皂石', filigree: '金银丝', beryl: '绿柱石',
 +  large: '大', small: '小', heavy: '沉重', light: '轻便',
 +}
 +
@@ -6714,7 +6721,7 @@ diff --git a/src/i18n/zh.integration.test.ts b/src/i18n/zh.integration.test.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/zh.integration.test.ts
-@@ -0,0 +1,238 @@
+@@ -0,0 +1,242 @@
 +// @vitest-environment happy-dom
 +
 +// Integration check against the real dictionary (src/i18n/data/zh.json):
@@ -6872,6 +6879,10 @@ new file mode 100644
 +      'a bubbling murky potion', 'a silvery inky potion', 'a gilded opal ring',
 +      'a runed granite ring', 'a blackened copper amulet', 'a lumpy glass ring',
 +      'a chipped bone ring', 'a tattered leather ring', 'a scorched marble ring',
++      'a jewelled long sword', 'a crooked short sword', 'a forked spear',
++      'a tapered dagger', 'a worn robe', 'a lead ring', 'a fluorescent potion',
++      'a platinum amulet', 'a citrine ring', 'a jasper ring', 'a soapstone ring',
++      'a filigree ring', 'a beryl ring', 'a cameo amulet',
 +    ]
 +    for (const name of names) {
 +      expect(tItem(name), name).toMatch(/[\u4e00-\u9fff]/)
