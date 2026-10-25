@@ -616,6 +616,270 @@ function translateResistLine(line: string): string | null {
   return `${p}${parts.join('；')}。`
 }
 
+// --- engine-composed monster descriptions ----------------------------------
+//
+// Pandemonium lords, mutant beasts and ghosts get their whole description from
+// describe.cc, assembled out of small fixed tables. Rebuild the sentence only
+// when every component is known; otherwise keep the English line so a table
+// entry added by a future engine version can never leak half a translation.
+
+const DEMON_BODY: Record<string, string> = {
+  armoured: '覆满铠甲',
+  'vast, spindly': '庞大而瘦长',
+  fat: '肥胖',
+  obese: '臃肿',
+  muscular: '肌肉发达',
+  spiked: '带刺',
+  splotchy: '斑驳',
+  slender: '纤细',
+  tentacled: '长满触手',
+  emaciated: '消瘦',
+  'bug-like': '似虫',
+  skeletal: '骨瘦如柴',
+  mantis: '如螳螂',
+  slithering: '滑行',
+}
+
+// colour_to_str(..., true) uses readable names, including the two-word greys.
+const DEMON_COLOURS: Record<string, string> = {
+  black: '黑色',
+  blue: '蓝色',
+  green: '绿色',
+  cyan: '青色',
+  red: '红色',
+  magenta: '品红色',
+  brown: '棕色',
+  'light grey': '浅灰色',
+  'dark grey': '深灰色',
+  'light blue': '浅蓝色',
+  'light green': '浅绿色',
+  'light cyan': '浅青色',
+  'light red': '浅红色',
+  'light magenta': '浅品红色',
+  yellow: '黄色',
+  white: '白色',
+}
+
+const DEMON_WINGS: Record<string, string> = {
+  'with small, bat-like wings': '长着小巧的蝙蝠状翅膀',
+  'with bony wings': '长着骨翼',
+  'with sharp, metallic wings': '长着锋利的金属翅膀',
+  'with the wings of a moth': '长着飞蛾的翅膀',
+  'with thin, membranous wings': '长着薄而膜质的翅膀',
+  'with dragonfly wings': '长着蜻蜓翅膀',
+  'with large, powerful wings': '长着巨大而有力的翅膀',
+  'with fluttering wings': '翅膀不停扑动',
+  'with great, sinister wings': '长着巨大的邪恶翅膀',
+  'with hideous, tattered wings': '长着丑陋破烂的翅膀',
+  'with sparrow-like wings': '长着麻雀般的翅膀',
+  'with hooked wings': '长着带钩的翅膀',
+  'with strange knobs attached': '附着奇怪的圆瘤',
+  'which hovers in mid-air': '悬浮在半空中',
+  'with sacs of gas hanging from its back': '背上挂着气囊',
+}
+
+const DEMON_HEADS: Record<string, string> = {
+  'a cubic structure in place of a head': '一个立方体结构代替头部',
+  'a brain for a head': '以大脑为头',
+  'a hideous tangle of tentacles for a mouth': '一团可怖的触手代替嘴巴',
+  'the head of an elephant': '大象的头',
+  'an eyeball for a head': '以眼球为头',
+  'wears a helmet over its head': '头上戴着头盔',
+  'a horn in place of a head': '一只角代替头部',
+  'a thick, horned head': '粗壮而带角的头',
+  'the head of a horse': '马的头',
+  'a vicious glare': '凶狠的瞪视',
+  'snakes for hair': '一头蛇发',
+  'the face of a baboon': '狒狒的脸',
+  'the head of a mouse': '老鼠的头',
+  "a ram's head": '公羊的头',
+  'the head of a rhino': '犀牛的头',
+  'eerily human features': '诡异的人类五官',
+  'a gigantic mouth': '一张巨口',
+  'a mass of tentacles growing from its neck': '从颈部长出的一团触手',
+  'a thin, worm-like head': '细长如虫的头',
+  'huge, compound eyes': '巨大的复眼',
+  'the head of a frog': '青蛙的头',
+  'an insectoid head': '昆虫般的头',
+  'a great mass of hair': '一大团毛发',
+  'a skull for a head': '以头骨为头',
+  "a cow's skull for a head": '以牛头骨为头',
+  'the head of a bird': '鸟的头',
+  'a large fungus growing from its neck': '从颈部长出的大型真菌',
+  'an ominous eye at the end of a thin stalk': '细柄末端的一只不祥之眼',
+  'a face from nightmares': '噩梦般的面孔',
+}
+
+const DEMON_EXTRAS: Record<string, string> = {
+  'It smells of brimstone.': '它散发着硫磺味。',
+  'It is surrounded by a sickening stench.': '它被令人作呕的恶臭笼罩。',
+  'It smells of rotting flesh.': '它散发着腐肉的气味。',
+  'It stinks of death.': '它散发着死亡的恶臭。',
+  'It stinks of decay.': '它散发着腐败的恶臭。',
+  'It smells delicious!': '它闻起来竟然很香！',
+  'It seethes with hatred of the living.': '它对生者怀着满腔仇恨。',
+  'Tiny orange flames dance around it.': '微小的橙色火焰在它周围舞动。',
+  'Tiny purple flames dance around it.': '微小的紫色火焰在它周围舞动。',
+  'It is surrounded by a weird haze.': '它被诡异的薄雾环绕。',
+  'It glows with a malevolent light.': '它散发着邪恶的光芒。',
+  'It looks incredibly angry.': '它看起来怒不可遏。',
+  'It oozes with slime.': '它不断渗出黏液。',
+  'It dribbles constantly.': '它不停地淌着口水。',
+  'Mould grows all over it.': '它全身长满霉菌。',
+  'Its body is covered in fungus.': '它的身体覆满真菌。',
+  'It is covered with lank hair.': '它披着蓬乱的长毛。',
+  'It looks diseased.': '它看起来病恹恹的。',
+  'It looks as frightened of you as you are of it.': '它看起来和你一样害怕对方。',
+  'It moves in a series of hideous convulsions.': '它以一连串可怖的抽搐动作移动。',
+  'It moves with an unearthly grace.': '它以超凡的优雅姿态移动。',
+  'It leaves a glistening oily trail.': '它留下闪亮的油迹。',
+  'It shimmers before your eyes.': '它在你眼前闪烁。',
+  'It is surrounded by a brilliant glow.': '它被耀眼的光辉环绕。',
+  'It radiates an aura of extreme power.': '它散发出极其强大的气场。',
+  'It seems utterly heartbroken.': '它似乎心碎不已。',
+  'It seems filled with irrepressible glee.': '它似乎满心难以抑制的欢喜。',
+  'It constantly shivers and twitches.': '它不停地颤抖、抽搐。',
+  'Blue sparks crawl across its body.': '蓝色电火花在它身上游走。',
+  'It seems uncertain.': '它似乎犹豫不决。',
+  'A cloud of flies swarms around it.': '一群苍蝇在它周围盘旋。',
+  'The air around it ripples with heat.': '它周围的空气因热浪而扭曲。',
+  'Crystalline structures grow on everything near it.': '它附近的一切都长出了晶体结构。',
+  'It appears supremely confident.': '它显得自信至极。',
+  'Its skin is covered in a network of cracks.': '它的皮肤布满网状裂纹。',
+  'Its skin has a disgusting oily sheen.': '它的皮肤泛着令人作呕的油光。',
+  'It seems somehow familiar.': '它似乎有些面熟。',
+  'It is somehow always in shadow.': '它仿佛总是处于阴影之中。',
+  'It is difficult to look away.': '它令人难以移开目光。',
+  'It is constantly speaking in tongues.': '它不停地说着异语。',
+  'It babbles unendingly.': '它喋喋不休。',
+  'Its body is scourged by damnation.': '它的身体遭受诅咒折磨。',
+  'Its body is extensively scarred.': '它的身体布满大片伤疤。',
+  'You find it difficult to look away.': '你发现自己难以移开目光。',
+  'Oddly mechanical noises accompany its jarring movements.': '它动作突兀，伴随着奇怪的机械声。',
+  'Its skin looks unnervingly wrinkled.': '它的皮肤皱得令人不安。',
+  'It changes colour whenever you look at it.': '每当你注视它时，它都会变色。',
+}
+
+function translateDemonLord(line: string): string | null {
+  const m = /^One of the many lords of Pandemonium, (.+?) has (?:a|an) (.+?) body(?: (.+?))? and (.+?)\.(.*)$/.exec(line)
+  if (!m) return null
+  const [, name, rawBody, rawWings, rawHead, rawTail] = m
+
+  let descriptor = rawBody
+  let colour = ''
+  for (const key of Object.keys(DEMON_COLOURS).sort((a, b) => b.length - a.length)) {
+    if (descriptor.endsWith(` ${key}`)) {
+      colour = DEMON_COLOURS[key]
+      descriptor = descriptor.slice(0, -key.length - 1)
+      break
+    }
+  }
+  const body = DEMON_BODY[descriptor]
+  const head = DEMON_HEADS[rawHead]
+  const wings = rawWings ? DEMON_WINGS[rawWings] : ''
+  if (!body || !head || (rawWings && !wings)) return null
+
+  const tail = rawTail.trim()
+  const extras: string[] = []
+  if (tail) {
+    // Every trailing sentence ends in "." or "!", so leftover text means an
+    // unknown sentence and the whole description must stay English.
+    if (tail.replace(/[^.!]+[.!]/g, '').trim()) return null
+    for (const sentence of tail.match(/[^.!]+[.!]/g) ?? []) {
+      const zh = DEMON_EXTRAS[sentence.trim()]
+      if (!zh) return null
+      extras.push(zh)
+    }
+  }
+
+  const bodyZh = `${body}的${colour}身躯`
+  return `群魔殿众多领主之一，${name}拥有${bodyZh}${wings ? `，${wings}` : ''}，以及${head}。${extras.join('')}`
+}
+
+const BEAST_TIERS: Record<string, string> = {
+  'It is of an unusually buggy age.': '它处于异常古怪的年龄。',
+  "It is larval and weak, freshly emerged from its mother's pouch.": '它尚处幼体，十分虚弱，刚从母亲的育儿袋中钻出。',
+  'It is a juvenile, no longer larval but below its mature strength.': '它是幼兽，已脱离幼体阶段，但尚未达到成年力量。',
+  'It is mature, stronger than a juvenile but weaker than its elders.': '它已成熟，比幼兽强壮，但弱于长者。',
+  'It is an elder, stronger than mature beasts.': '它是长者，比成年个体更强壮。',
+  'It is a primal beast, the most powerful of its kind.': '它是原初之兽，是同族中最强大的。',
+}
+
+const BEAST_FACETS: Record<string, string> = {
+  ' seems unusually buggy': '看起来异常古怪',
+  ' sports a set of venomous tails': '长有一组有毒的尾巴',
+  ' flies swiftly and unpredictably': '飞行迅捷且难以预测',
+  's breath smoulders ominously': '呼吸阴燃着，预示不祥',
+  ' is covered with eyes and tentacles': '覆满眼睛与触手',
+  ' flickers and crackles with electricity': '闪烁着电光并噼啪作响',
+  ' is covered in dense fur and muscle': '覆有浓密的毛皮与肌肉',
+}
+
+function translateMutantBeast(line: string): string | null {
+  let rest = line.trim()
+  let tier = ''
+  for (const [en, zh] of Object.entries(BEAST_TIERS)) {
+    if (rest === en) {
+      tier = zh
+      rest = ''
+      break
+    }
+    if (rest.endsWith(` ${en}`)) {
+      tier = zh
+      rest = rest.slice(0, -en.length - 1)
+      break
+    }
+  }
+  if (!tier) return null
+
+  let facets = ''
+  if (rest) {
+    const m = /^It(.+)\.$/.exec(rest)
+    if (!m) return null
+    // comma_separated_fn joins facets with ", it" or ", and it"; the engine's
+    // "breath" facet therefore starts with a bare "s" after the split.
+    const parts = m[1].split(/, (?:and )?it/)
+    const zh = parts.map((part) => BEAST_FACETS[part])
+    if (zh.some((part) => !part)) return null
+    facets = `它${zh[0]}${zh.length > 1 ? `，并且${zh.slice(1).join('，并且')}` : ''}。`
+  }
+  return facets + tier
+}
+
+function translateActorName(raw: string): string | null {
+  const m = /^(your|the|a|an) (.+)$/.exec(raw)
+  if (!m) return null
+  const name = t(m[2])
+  const translated = name !== m[2] ? name : tItem(m[2])
+  if (translated === m[2] || /[A-Za-z]{3,}/.test(translated)) return null
+  return m[1] === 'your' ? `你的${translated}` : translated
+}
+
+// _monster_current_target_description() builds these from the ally/target
+// names; the surrounding sentence is fixed, the name is a monster name.
+function translateTargetLine(line: string): string | null {
+  const lead = /^\s*/.exec(line)?.[0] ?? ''
+  const text = line.slice(lead.length)
+  const header = /^(It|They|He|She) (?:is|are) currently targeted by:$/.exec(text)
+  if (header) return `${lead}${PRONOUN[header[1]]}目前正被以下对象锁定：`
+  const listing = /^((?:your|the|a|an) .+)$/.exec(text)
+  if (listing) {
+    const name = translateActorName(listing[1])
+    return name ? lead + name : null
+  }
+  const by = /^(It|They|He|She) (?:is|are) currently targeted by (.+)\.$/.exec(text)
+  if (by) {
+    const name = translateActorName(by[2])
+    return name ? `${lead}${PRONOUN[by[1]]}目前正被${name}锁定。` : null
+  }
+  const targeting = /^(It|They|He|She) (?:is|are) currently targeting (.+)\.$/.exec(text)
+  if (targeting) {
+    const name = translateActorName(targeting[2])
+    return name ? `${lead}${PRONOUN[targeting[1]]}目前正锁定${name}。` : null
+  }
+  return null
+}
+
 function translateMonsterSentence(line: string): string | null {
   const pron = /^(It|They|He|She)\b/.exec(line)
   const p = pron ? PRONOUN[pron[1]] : null
@@ -628,6 +892,11 @@ function translateMonsterSentence(line: string): string | null {
       : `若被击中，${self}很快会死亡。`
   }
 
+  const hide = /^If (it|they|he|she) (?:is|are) slain, it may be possible to recover (?:its|their|his|her) hide, which can be used as armour\.$/.exec(line)
+  if (hide) {
+    const self = { it: '\u5b83', they: '\u5b83\u4eec', he: '\u4ed6', she: '\u5979' }[hide[1]]
+    return '若' + self + '被击杀，可能可以剥下' + self + '的皮，用来制作护甲。'
+  }
   if (p) {
     const simple: Array<[RegExp, string]> = [
       [/^(?:It|They|He|She) (?:is|are) incapable of using stairs\.$/, `${p}无法使用楼梯。`],
@@ -737,6 +1006,8 @@ function translateMonsterSentence(line: string): string | null {
     return null
   }
 
+  if (line.startsWith('If this monster') && line.includes('program bug'))
+    return '如果这个怪物是“程序错误”，建议你保存游戏并重新加载。请向相关部门举报那些伪装成程序错误，或在地牢里游荡却没有正常描述的怪物。'
   // Sentences that do not vary with the monster.
   const fixed: Record<string, string> = {
     'It will release varied jellies when damaged or killed, with the number of jellies proportional to the amount of damage.':
@@ -757,11 +1028,17 @@ export function translateMonsterLine(line: string): string | null {
   const plain = line.replace(/<[^>]*>/g, '')
   const idx = plain ? line.indexOf(plain) : -1
   const leading = idx > 0 ? line.slice(0, idx) : ''
-  const out = translateHitLine(plain)
+  const apparition = /^The apparition of (.+)\.$/.exec(plain)
+  const illusion = /^An illusion of (.+)\.$/.exec(plain)
+  const ghost = apparition ? apparition[1] + '\u7684\u4ea1\u9b42\u3002' : illusion ? illusion[1] + '\u7684\u5e7b\u5f71\u3002' : null
+  const out = ghost ?? translateHitLine(plain)
     ?? translateMonsToHitYou(plain)
     ?? translateNoticeLine(plain)
     ?? translateSpeedLine(plain)
     ?? translateDraconian(plain)
+    ?? translateDemonLord(plain)
+    ?? translateMutantBeast(plain)
+    ?? translateTargetLine(plain)
     ?? translateResistLine(plain)
     ?? translateMonsterSentence(plain)
   if (out === null) return null
@@ -809,5 +1086,10 @@ export function translateMonsterBody(body: string): string {
     const single = translateMonsterLine(line)
     out.push(single ?? line)
   }
-  return translateBody(out.join('\n'))
+  // Regen is a computed row ("None" or "%d/turn"), not a dictionary phrase.
+  // Rewrite the whole cell so translateBody leaves the Chinese untouched.
+  const assembled = out.join('\n')
+    .replace(/Regen:\s*None\b/g, '再生：无')
+    .replace(/Regen:\s*(\d+)\/turn\b/g, (_match, amount: string) => `再生：每回合 ${amount}`)
+  return translateBody(assembled)
 }

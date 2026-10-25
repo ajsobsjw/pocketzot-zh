@@ -55,6 +55,65 @@ describe('monster panel lines', () => {
       .toBe('速度：100%（移动：50%，通常比你快）')
   })
 
+  it('translates generated demon lord descriptions component by component', () => {
+    expect(translateMonsterLine(
+      'One of the many lords of Pandemonium, Gloorx Vloq has an armoured red body with small, bat-like wings and a cubic structure in place of a head. It smells of brimstone. It glows with a malevolent light.',
+    )).toBe('群魔殿众多领主之一，Gloorx Vloq拥有覆满铠甲的红色身躯，长着小巧的蝙蝠状翅膀，以及一个立方体结构代替头部。它散发着硫磺味。它散发着邪恶的光芒。')
+    // No wings, a two-word colour and no trailing sentences.
+    expect(translateMonsterLine(
+      'One of the many lords of Pandemonium, Mnoleg has an obese light blue body and a brain for a head.',
+    )).toBe('群魔殿众多领主之一，Mnoleg拥有臃肿的浅蓝色身躯，以及以大脑为头。')
+    // An unknown component must keep the whole sentence English.
+    expect(translateMonsterLine(
+      'One of the many lords of Pandemonium, X has a fat body and a brain for a head. It smells of roses.',
+    )).toBeNull()
+  })
+
+  it('translates generated mutant beast descriptions', () => {
+    expect(translateMonsterLine(
+      'It sports a set of venomous tails, and it flies swiftly and unpredictably. It is a juvenile, no longer larval but below its mature strength.',
+    )).toBe('它长有一组有毒的尾巴，并且飞行迅捷且难以预测。它是幼兽，已脱离幼体阶段，但尚未达到成年力量。')
+    // The "breath" facet is joined as "It" + "s breath ..." by the engine.
+    expect(translateMonsterLine(
+      'Its breath smoulders ominously. It is a primal beast, the most powerful of its kind.',
+    )).toBe('它呼吸阴燃着，预示不祥。它是原初之兽，是同族中最强大的。')
+    // A facet-less beast starts with a space in the engine output.
+    expect(translateMonsterLine(' It is mature, stronger than a juvenile but weaker than its elders.'))
+      .toBe('它已成熟，比幼兽强壮，但弱于长者。')
+  })
+
+  it('translates ghost and illusion frames, target lines and hide sentences', () => {
+    expect(translateMonsterLine('The apparition of Aria the Firebug, a legendary Deep Elf Fire Elementalist of Vehumet.'))
+      .toBe('Aria the Firebug, a legendary Deep Elf Fire Elementalist of Vehumet的亡魂。')
+    expect(translateMonsterLine('An illusion of Aria the Firebug, a legendary Deep Elf Fire Elementalist.'))
+      .toBe('Aria the Firebug, a legendary Deep Elf Fire Elementalist的幻影。')
+    expect(translateMonsterLine('It is currently targeted by your kobold.'))
+      .toBe('它目前正被你的狗头人锁定。')
+    expect(translateMonsterLine('It is currently targeting the orc.'))
+      .toBe('它目前正锁定兽人。')
+    expect(translateMonsterLine('It is currently targeted by:')).toBe('它目前正被以下对象锁定：')
+    expect(translateMonsterLine('  your kobold')).toBe('  你的狗头人')
+    expect(translateMonsterLine(
+      'If it is slain, it may be possible to recover its hide, which can be used as armour.',
+    )).toBe('若它被击杀，可能可以剥下它的皮，用来制作护甲。')
+    expect(translateMonsterLine(
+      'If they are slain, it may be possible to recover their hide, which can be used as armour.',
+    )).toBe('若它们被击杀，可能可以剥下它们的皮，用来制作护甲。')
+  })
+
+  it('translates the program bug warning', () => {
+    expect(translateMonsterLine(
+      'If this monster is a "program bug", then it\'s recommended that you save your game and reload. Please report monsters who masquerade as program bugs or run around the dungeon without a proper description to the authorities.',
+    )).toBe('如果这个怪物是“程序错误”，建议你保存游戏并重新加载。请向相关部门举报那些伪装成程序错误，或在地牢里游荡却没有正常描述的怪物。')
+  })
+
+  it('translates the computed Regen row', () => {
+    expect(translateMonsterBody('Regen: 2/turn')).toBe('再生：每回合 2')
+    expect(translateMonsterBody('Regen: None')).toBe('再生：无')
+    expect(translateMonsterBody('Size: V. Small    Regen: 3/turn'))
+      .toContain('再生：每回合 3')
+  })
+
   it('keeps unknown lines English', () => {
     expect(translateMonsterLine('You have about 85% to hit with your flooble.')).toBeNull()
     expect(translateMonsterLine('Some other sentence.')).toBeNull()
