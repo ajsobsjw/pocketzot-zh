@@ -35,6 +35,35 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+// The wire text often uses typographic punctuation (the engine's own
+// apostrophes: "can’t", curly quotes, en/em dashes, "…"), while the dictionary
+// keys are plain ASCII. Normalize both sides for *matching only*: the rendered
+// text always comes from the dictionary or from the untouched original, so a
+// miss still shows exactly what the server sent.
+const SMART_QUOTES = /[\u2018\u2019\u201a\u201b\u2032]/g
+const SMART_DQUOTES = /[\u201c\u201d\u201e\u201f\u2033]/g
+const SMART_DASHES = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g
+
+export function normalizePunct(s: string): string {
+  return s
+    .replace(SMART_QUOTES, "'")
+    .replace(SMART_DQUOTES, '"')
+    .replace(SMART_DASHES, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/\u00a0/g, ' ')
+}
+
+// Build the literal part of a template regex so it accepts either punctuation
+// style while the match still runs on the original string (captured names keep
+// the server's punctuation unchanged).
+function flexEscape(s: string): string {
+  return escapeRe(s)
+    .replace(/\\\.\\\.\\\./g, '(?:\\.\\.\\.|\u2026)')
+    .replace(/'/g, "['\u2018\u2019]")
+    .replace(/"/g, '["\u201c\u201d]')
+    .replace(/-/g, '[-\u2010-\u2015\u2212]')
+}
+
 /** Build a regex from an engine template, capturing each placeholder. */
 function compile(key: string, tmpl: string): Compiled | null {
   const kinds: string[] = []
@@ -53,7 +82,7 @@ function compile(key: string, tmpl: string): Compiled | null {
   let score = 0
   let best = ''
   parts.forEach((part, i) => {
-    body += escapeRe(part)
+    body += flexEscape(part)
     score += part.replace(/\s+/g, ' ').trim().length
     const chunk = part.replace(/\s+/g, ' ').trim()
     if (chunk.length > best.length) best = chunk
@@ -69,7 +98,12 @@ function compile(key: string, tmpl: string): Compiled | null {
   // for the very common "Found %s." / "%s is nearby!" shapes.
   if (score < 5) return null
   if (best.length < 4) return null
-  return { key, tmpl, re: new RegExp(`^${body}$`), anchor: best, score, slots: kinds.length }
+  return {
+    key, tmpl, re: new RegExp(`^${body}$`),
+    // The candidate is compared after punctuation normalization, so the anchor
+    // must be normalized too (a curly apostrophe never appears in a key).
+    anchor: normalizePunct(best), score, slots: kinds.length,
+  }
 }
 
 /** First letter of a key, used as the match bucket ("0" for placeholder-led). */
@@ -102,7 +136,7 @@ export function compileDict(entries: Dict): Matcher {
       labelPrefix.push({
         key,
         tmpl,
-        re: new RegExp(`^${escapeRe(key)}([^\\n!?]{1,48})$`),
+        re: new RegExp(`^${flexEscape(key)}([^\\n!?]{1,48})$`),
         anchor,
         score: anchor.length,
         slots: 1,
@@ -137,9 +171,21 @@ export interface Variants {
 
 const HOTKEY_PREFIX = /^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/
 
+const ENTITIES: Record<string, string> = {
+  '&apos;': "'", '&#39;': "'", '&#x27;': "'",
+  '&quot;': '"', '&#34;': '"', '&#x22;': '"',
+  '&amp;': '&',
+}
+
+/** Decode the few HTML entities a wire line can carry, for matching only. */
+function decodeEntities(s: string): string {
+  return s.replace(/&(?:apos|quot|amp|#39|#34|#x27|#x22);/gi,
+    (m) => ENTITIES[m.toLowerCase()] ?? m)
+}
+
 export function variantsOf(text: string): Variants {
   const trimmed = text.trim()
-  const plain = text.replace(/<[^>]*>/g, '')
+  const plain = decodeEntities(text.replace(/<[^>]*>/g, ''))
   // Markup removal leaves double spaces ("Casting: <white>X<cyan> <lightgrey>(…"),
   // which would stop every template from matching; collapse them.
   const plainTrimmed = plain.replace(/\s+/g, ' ').trim()
@@ -170,23 +216,27 @@ export function lookup(
   if (!text) return null
   const v = variantsOf(text)
   const exact = m.exact
-  for (const cand of [v.trimmed, v.plainTrimmed, v.noHotkey]) {
+  const candidates = [v.trimmed, v.plainTrimmed, v.noHotkey]
+  for (const cand of candidates) {
     if (!cand) continue
-    const hit = exact.get(cand)
+    const hit = exact.get(cand) ?? exact.get(normalizePunct(cand))
     if (hit) return { out: hit, key: cand }
   }
 
   const maxSlots = opts.maxSlots ?? 3
-  const candidates = [v.trimmed, v.plainTrimmed, v.noHotkey]
   for (const cand of candidates) {
     if (!cand) continue
     const first = /[A-Za-z]/.exec(cand)
     const lists = [first ? m.buckets.get(first[0].toLowerCase()) : undefined, m.buckets.get('0')]
+    // Anchor test on the normalized candidate: the template regex accepts both
+    // punctuation styles, but the plain substring test would not.
+    let normCand: string | undefined
     for (const list of lists) {
       if (!list) continue
       for (const t of list) {
         if (t.slots > maxSlots) continue
-        if (!cand.includes(t.anchor)) continue
+        normCand ??= normalizePunct(cand)
+        if (!normCand.includes(t.anchor)) continue
         const hit = t.re.exec(cand)
         if (!hit) continue
         const args = hit.slice(1) as string[]
@@ -198,11 +248,13 @@ export function lookup(
   if (opts.allowLabels) {
     for (const cand of candidates) {
       if (!cand) continue
+      const normCand = normalizePunct(cand)
       for (const t of m.labelPrefix) {
-        if (!cand.startsWith(t.key)) continue
+        const key = normalizePunct(t.key)
+        if (!normCand.startsWith(key)) continue
         const hit = t.re.exec(cand)
         if (!hit) continue
-        const tail = cand.slice(t.key.length)
+        const tail = normCand.slice(key.length)
         return { out: t.tmpl + tail, key: t.key, labelTail: tail }
       }
     }

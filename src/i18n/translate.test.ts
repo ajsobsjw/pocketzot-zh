@@ -13,6 +13,10 @@ const dict = new Map<string, string>([
   ['Base armour rating: ', '基础护甲值：'],
   ['It can be maximally enchanted to +%s.', '最多可强化到+%s。'],
   ['%s%s.', '坏模板'],
+  ["You can't see the kobold.", '你看不到狗头人。'],
+  ["You don't hit %s.", '你没有击中%s。'],
+  ['a well-known item', '一件著名物品'],
+  ['Wait...', '等等……'],
   ['a potion of magic', '魔法药水'],
   ['dagger', '匕首'],
   ['potion', '药水'],
@@ -65,6 +69,21 @@ describe('dictionary matcher', () => {
   it('reports the value tail of a label row', () => {
     const hit = lookup(m, 'Base armour rating: 2', { allowLabels: true })
     expect(hit?.labelTail).toBe('2')
+  })
+
+  it('matches typographic punctuation without rewriting the capture', () => {
+    // The 0.35 engine emits curly apostrophes; the keys are straight ASCII.
+    expect(lookup(m, 'You can\u2019t see the kobold.')?.out).toBe('你看不到狗头人。')
+    const hit = lookup(m, 'You don\u2019t hit the kobold\u2019s ghost.')
+    expect(hit?.tmpl).toBe('你没有击中%s。')
+    expect(hit?.args).toEqual(['the kobold\u2019s ghost'])
+    // En/em dashes and the ellipsis behave the same way.
+    expect(lookup(m, 'a well\u2013known item')?.out).toBe('一件著名物品')
+    expect(lookup(m, 'Wait\u2026')?.out).toBe('等等……')
+  })
+
+  it('decodes HTML entities for matching only', () => {
+    expect(lookup(m, 'You can&#39;t see the kobold.')?.out).toBe('你看不到狗头人。')
   })
 })
 

@@ -64,6 +64,39 @@ describe('real dictionary', () => {
     expect(t('The yak snorts and paws the ground.')).toBe('牦牛喷着鼻息，用蹄子刨着地面。')
   })
 
+  it('matches typographic punctuation and HTML entities', async () => {
+    await setLang('zh')
+    const straight = "You can't see any susceptible monsters within range! (Use Z to cast anyway.)"
+    const curly = "You can\u2019t see any susceptible monsters within range! (Use Z to cast anyway.)"
+    expect(t(curly)).toBe(t(straight))
+    expect(t(curly)).toContain('范围')
+    expect(t('You don\u2019t have enough magic to cast this spell.'))
+      .toBe(t("You don't have enough magic to cast this spell."))
+    // Some wire paths HTML-escape the apostrophe before it reaches the log.
+    expect(t('You can&#39;t see any susceptible monsters within range! (Use Z to cast anyway.)'))
+      .toBe(t(straight))
+  })
+
+  it('translates the regular combat verbs and no-damage shapes', async () => {
+    await setLang('zh')
+    expect(t('You slash the kobold!')).toBe('你砍了狗头人！')
+    expect(t('The kobold slashes you.')).toBe('狗头人砍了你。')
+    expect(t('You hit the kobold, but do no damage.')).toBe('你击中了狗头人，但没有造成伤害。')
+    expect(t('You completely miss the kobold.')).toBe('你完全没有击中狗头人。')
+    // 0.35 dropped the leading article on this one.
+    expect(t('Acid dripping from the walls corrodes you.')).toBe('从墙上滴落的酸液腐蚀了你。')
+  })
+
+  it('translates the common post-0.34 combat lines', async () => {
+    await setLang('zh')
+    expect(t('You are caught in the blast!')).toBe('你被爆炸波及了！')
+    expect(t('You resist the poison.')).toBe('你抵抗住了毒素。')
+    expect(t('The poison wears off.')).toBe('毒素消退了。')
+    expect(t('Your life force is drained.')).toBe('你的生命力被吸取了。')
+    expect(t('Attack anyway?')).toBe('仍然攻击吗？')
+    expect(t('Cast it anyway?')).toBe('仍然施放吗？')
+  })
+
   it('translates compound messages sentence by sentence', async () => {
     await setLang('zh')
     expect(t('The rat squeaks loudly. You hear a shout!')).toBe('老鼠吱吱大叫。你听到一声喊叫！')

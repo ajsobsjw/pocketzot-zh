@@ -739,7 +739,7 @@ diff --git a/LOCALIZATION.md b/LOCALIZATION.md
 new file mode 100644
 --- /dev/null
 +++ b/LOCALIZATION.md
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,84 @@
 +# 中文化说明（display-only localization）
 +
 +这份改动只作用于**渲染层**：游戏消息、菜单、HUD、PocketZot 自己的界面在写到屏幕前被翻译成中文。
@@ -751,7 +751,7 @@ new file mode 100644
 +| 文件 | 作用 |
 +|---|---|
 +| `src/i18n/data/zh.json` | 由 DCSS 0.34.1 汉化版的 `dat/i18n/zh/source.txt` 生成的 13,984 条对照表（懒加载 chunk，brotli 约 320 KB）|
-+| `src/i18n/supp-zh.ts` | 词库缺口的手工补充：菜单分类词、提示问句、常见物品名词 |
++| `src/i18n/supp-zh.ts` | 词库缺口的手工补充：菜单分类词、提示问句、常见物品名词，以及 0.34.1 词库没有的 0.35 战斗/状态句 |
 +| `src/i18n/ui-zh.ts` | PocketZot 自己的界面文案（登录/大厅/设置/离线大厅/记录/操作名）|
 +| `src/i18n/translate.ts` | 匹配器：整句精确匹配 → 去掉颜色标记/热键前缀 → 带占位符的模板 → `label: 12` 规则；**匹配不成功一律返回原文** |
 +| `src/i18n/items.ts` | 物品名语法：`+1 dagger of venom` → `淬毒的+1匕首`、`2 black potions` → `黑色药水×2` |
@@ -774,6 +774,12 @@ new file mode 100644
 +- **动态战斗句**：模板编译不再拒绝“以 %s 开头”的条目（`%s bites you.` 这类曾被误判为
 +  相邻占位符），并补了咬击/重伤/靠近/进入视野/浅水等常用句式与 `pair of gloves`、
 +  `of infusion` 等物品片段。
++- **标点归一化只用于匹配**：引擎会发弯引号 `can’t`、`“…”`、短破折号 `–`、省略号 `…` 和
++  `&apos;`，而词库键是 ASCII。匹配器在候选串上做等价归一化（输出仍取词库/原文），并把模板
++  里的这些字符编译成兼容正则，因此 `%s` 捕获到的名字不会被改写。
++- **0.35 新增句**：词库来自 0.34.1，0.35 引擎新增/改写的战斗、施法、状态句从 0.35 wasm
++  字符串审计后补进 `supp-zh.ts`（约 200 条）。同一套审计也用于发现 `The` 冠词被删、
++  `, but do no damage` 逗号、`completely miss` 等句式差异。
 +
 +## 未命中清单（提高覆盖率的主要手段）
 +
@@ -3020,7 +3026,7 @@ diff --git a/src/i18n/index.ts b/src/i18n/index.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/index.ts
-@@ -0,0 +1,674 @@
+@@ -0,0 +1,693 @@
 +// Display-only localization layer.
 +//
 +// Contract (do not break it):
@@ -3233,13 +3239,25 @@ new file mode 100644
 +  grabs: '抓住了', grab: '抓住了', hits: '击中了', hit: '击中了',
 +  misses: '没有击中', miss: '没有击中', pecks: '啄了', peck: '啄了',
 +  engulfs: '吞没了', engulf: '吞没了',
++  slashes: '砍了', slash: '砍了', stabs: '刺了', stab: '刺了',
++  cuts: '割了', cut: '割了', chops: '劈了', chop: '劈了',
++  crushes: '压碎了', crush: '压碎了', bludgeons: '重击了', bludgeon: '重击了',
++  pierces: '刺穿了', pierce: '刺穿了', impales: '贯穿了', impale: '贯穿了',
++  mauls: '撕咬了', maul: '撕咬了', rends: '撕扯了', rend: '撕扯了',
++  tears: '撕开了', tear: '撕开了', rips: '撕裂了', rip: '撕裂了',
++  smashes: '砸碎了', smash: '砸碎了', strikes: '打击了', strike: '打击了',
++  punches: '揍了', punch: '揍了', zaps: '电击了', zap: '电击了',
++  squeezes: '挤压了', squeeze: '挤压了', buffets: '拍打了', buffet: '拍打了',
++  whips: '鞭打了', whip: '鞭打了', lashes: '抽打了', lash: '抽打了',
++  butts: '顶了', butt: '顶了', gnaws: '啃咬了', gnaw: '啃咬了',
++  nibbles: '轻咬了', nibble: '轻咬了', blasts: '轰击了', blast: '轰击了',
 +}
 +
 +/** Generic "actor verb target" sentence, the shape most combat lines share. */
 +function translateCombat(plain: string): string | null {
 +  // "You bite the cane toad but do no damage." — the player's own action has no
 +  // actor noun, so it needs its own shape.
-+  const youM = /^You\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|drains?|constricts?|grabs?|hits?|misses?|pecks?|engulfs?)\s+(.+?)(\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
++  const youM = /^You\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
 +  if (youM) {
 +    const target = translateCapture(youM[3])
 +    if (target === youM[3]) return null
@@ -3247,7 +3265,7 @@ new file mode 100644
 +    let body: string
 +    if (verb.startsWith('miss')) {
 +      body = youM[1] === 'barely' ? `你勉强没有击中${target}`
-+        : youM[1] === 'closely' ? `你险些击中${target}`
++        : youM[1] === 'closely' ? `你差一点击中${target}`
 +          : youM[1] === 'completely' ? `你完全没有击中${target}`
 +            : `你没有击中${target}`
 +    } else {
@@ -3256,7 +3274,7 @@ new file mode 100644
 +    if (youM[4]) body += '，但没有造成伤害'
 +    return body + (youM[5].includes('!') ? '！' : '。')
 +  }
-+  const m = /^(The|A|An|Your|You)\s+(.+?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|misses?|pecks?|engulfs?)\s+(.+?)(\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
++  const m = /^(The|A|An|Your|You)\s+(.+?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
 +  if (m) {
 +    const actor = m[1] === 'You' ? '你' : translateCapture(`${m[1]} ${m[2]}`)
 +    if (actor === `${m[1]} ${m[2]}`) return null
@@ -3267,7 +3285,7 @@ new file mode 100644
 +    return combatBody(actor, target, m[4], m[3], !!m[6], m[7])
 +  }
 +  // Rows without an article: "frilled lizard barely misses you."
-+  const bare = /^([a-z][A-Za-z' -]{1,30}?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|misses?|pecks?|engulfs?)\s+(.+?)(\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
++  const bare = /^([a-z][A-Za-z' -]{1,30}?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
 +  if (!bare) return null
 +  const actor = translateCapture(bare[1])
 +  if (actor === bare[1]) return null
@@ -3281,7 +3299,7 @@ new file mode 100644
 +  let body: string
 +  if (verb.startsWith('miss')) {
 +    body = adverb === 'barely' ? `${actor}勉强没有击中${target}`
-+      : adverb === 'closely' ? `${actor}险些击中${target}`
++      : adverb === 'closely' ? `${actor}差一点击中${target}`
 +        : adverb === 'completely' ? `${actor}完全没有击中${target}`
 +          : `${actor}没有击中${target}`
 +  } else {
@@ -3518,6 +3536,13 @@ new file mode 100644
 +      const item = translateItem(matcher!, plain, { loose: true })
 +      if (item) r = { out: item, key: 'item' }
 +    }
++  }
++  if (!r && !/^The\s/i.test(plainText)) {
++    // 0.35 dropped the leading article on a few messages ("Acid dripping from
++    // the walls corrodes you." vs the 0.34 key "The acid dripping…"). Exact
++    // keys only: a template match would see the whole line as its noun slot.
++    const withThe = lookup(matcher!, `The ${plainText}`, {})
++    if (withThe && !withThe.args && withThe.labelTail === undefined) r = withThe
 +  }
 +  if (!r && text.includes('\n') && text.split('\n').length <= 8) {
 +    // Multi-line titles/headers: translate line by line, keep the rest.
@@ -4914,7 +4939,7 @@ diff --git a/src/i18n/supp-zh.ts b/src/i18n/supp-zh.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/supp-zh.ts
-@@ -0,0 +1,706 @@
+@@ -0,0 +1,911 @@
 +// Supplements for strings the 0.34.1 dictionary does not carry: menu category
 +// headers, prompt questions, and the common item nouns the client composes
 +// names from. The dictionary itself wins on a conflict — this file only fills
@@ -5620,6 +5645,211 @@ new file mode 100644
 +  'stones': '石头',
 +  "You can't see any susceptible monsters within range!":
 +    '射程内没有可影响的怪物！',
++
++  // --- 0.35 message lines the 0.34.1 dictionary predates ---
++  'A cacophony of accursed wailing tears at your sanity!': '一阵受诅咒的哀嚎撕裂了你的理智！',
++  'A divine shield manifests in front of you!': '一面神圣之盾出现在你面前！',
++  'A draining tide of despair and horror washes over you and your surroundings!': '一股令人绝望与恐惧的汲取之潮席卷了你和周围的一切！',
++  'A nearby %s withers and dies.': '附近的一个%s枯萎而死。',
++  'Acid dripping from the walls corrodes you.': '从墙上滴落的酸液腐蚀了你。',
++  'All of your actions are slow.': '你所有的行动都变得迟缓。',
++  'An ego can only be applied to a weapon, missile or armour.': '自我只能附加在武器、弹药或护甲上。',
++  'Attack anyway?': '仍然攻击吗？',
++  "Becoming undead will pull you out of death's doorway! Transform anyway?": '变为亡灵会使你脱离死亡之门！仍然变形吗？',
++  'Bitter cold erupts, blasting rock from the ceiling!': '刺骨的严寒爆发，将岩石从天花板炸落！',
++  'Cast it anyway?': '仍然施放吗？',
++  'Casting this now could dangerously contaminate you. Continue?': '现在施放可能会使你受到危险的污染。继续吗？',
++  'Constricted by %s.': '被%s缠绕。',
++  'Electricity arcs towards the magnetite!': '电流向磁铁矿弧射而去！',
++  'Foes you strike become dangerously contaminated with transmutational energy.': '被你击中的敌人会受到危险的转化能量污染。',
++  'If struck, it will die soon after.': '若被击中，它很快就会死去。',
++  'If you enter this portal, the magical contamination on the other side will temporarily mutate you thrice. Continue?': '如果你进入这个传送门，另一侧的魔法污染会使你暂时变异三次。继续吗？',
++  'Magic courses through your body.': '魔力流遍你的全身。',
++  'Magic washes over you without effect.': '魔力拂过你，却毫无效果。',
++  'Really drink that potion of mutation while resistant to mutation?': '你在抗突变状态下仍要喝下那瓶突变药水吗？',
++  'Something drains the heat from around you.': '有什么东西吸取了你周围的热量。',
++  'Something sends a blast of sound all around you.': '有什么东西向你四周发出一阵声波冲击。',
++  'Sound blasts the surrounding area!': '声波冲击了周围区域！',
++  'The ambient heat is drained!': '周围的热量被吸取了！',
++  'The crystal ball is unable to connect with your magical essence.': '水晶球无法与你的魔力本质连接。',
++  'The curse of the Prune overcomes you.': '梅干长柄刀的诅咒压倒了你的抵抗。',
++  'The darkness slowly releases its grasp on your magic.': '黑暗缓缓松开了对你魔力的束缚。',
++  'The flame cauterises the wound!': '火焰灼烧并封住了伤口！',
++  'The gloves are unable to connect with your magical essence.': '手套无法与你的魔力本质连接。',
++  'The heat is drained from your surroundings.': '你周围的热量被吸取了。',
++  "The kraken's tentacles disappear.": '海妖的触手消失了。',
++  'The liquid fire falls away from your body.': '液态火焰从你身上脱落。',
++  'The liquid fire finally exhausts itself.': '液态火焰终于耗尽了。',
++  'The Orb lets out a furious burst of light and becomes a dead weight against your magic!': '宝球爆发出一阵狂暴的光芒，并在你的魔法面前变得沉重如死物！',
++  'The Orb lets out a furious burst of light as your magic touches it!': '当你的魔法触及宝球时，它爆发出一阵狂暴的光芒！',
++  'The Orb shrieks and becomes a dead weight against your magic!': '宝球尖啸着，在你的魔法面前变得沉重如死物！',
++  'The Orb shrieks as your magic touches it!': '当你的魔法触及宝球时，它发出了尖啸！',
++  'The power to cast %s wells up from within.': '施放%s的力量从你体内涌起。',
++  'The residue of %s spell condenses into glimmer.': '%s法术的残余凝聚成微光。',
++  'The residue of your spell condenses into glimmer.': '你法术的残余凝聚成微光。',
++  'The roots constricting %s sink back into the ground.': '缠绕%s的根须缩回了地下。',
++  'The shaft disappears in a puff of logic!': '箭杆在一缕逻辑青烟中消失了！',
++  'The Shining One may bless your followers whenever you slay foes.': '光辉者会在你杀死敌人时祝福你的追随者。',
++  'The Shining One sometimes blesses your followers when you slay foes.': '光辉者有时会在你杀死敌人时祝福你的追随者。',
++  'The Shining One will no longer blesses your followers when you slay foes.': '光辉者将不再在你杀死敌人时祝福你的追随者。',
++  'The spilling of your atemporal blood hastes your allies!': '你超越时间的血液洒出，加速了你的盟友！',
++  'The starcursed mass shrieks in your mind.': '受星诅咒的聚合体在你的脑海中尖啸。',
++  "The starspawn's tentacles wither and die.": '星裔的触手枯萎而死。',
++  'The tentacle is hauled back through the portal!': '触手被拖回了传送门！',
++  'The zombie hands constricting %s return to the earth.': '抓住%s的尸手沉回了地下。',
++  'The zombie hands constricting you return to the earth.': '抓住你的尸手沉回了地下。',
++  'With a roar, the tentacle is hauled back through the portal!': '伴随着一声咆哮，触手被拖回了传送门！',
++  'You and everything else in sight slow down!': '你与视野内的一切都慢了下来！',
++  'You are blinded by the light of %s divine shield.': '你被%s的神圣之盾光芒致盲。',
++  'You are blinded for an even longer time.': '你失明的时间更长了。',
++  'You are completely saturated with residual magic!': '你已完全被残余魔力浸透！',
++  'You are confused and cannot control your aim.': '你陷入困惑，无法控制瞄准。',
++  'You are dangerously contaminated with residual magic.': '你受到残余魔力的危险污染。',
++  'You are extremely contaminated with residual magic.': '你受到残余魔力的极度污染。',
++  'You are faintly contaminated with residual magic.': '你受到残余魔力的微弱污染。',
++  'You are immune to unholy torment and negative energy.': '你免疫邪恶折磨与负能量。',
++  'You are insubstantial and cannot be petrified, ensnared, or set on fire.': '你没有实体，无法被石化、束缚或点燃。',
++  'You are lightly contaminated with residual magic.': '你受到残余魔力的轻微污染。',
++  'You are magically locked in place.': '你被魔法锁定在原地。',
++  'You are resistant to acid and immune to corrosive walls.': '你抗酸，并免疫腐蚀性墙壁。',
++  'You are resistant to damage.': '你抗伤害。',
++  'You are slowed.': '你变慢了。',
++  'You are stealthy and inflict bonus damage to unaware enemies.': '你善于潜行，对未察觉的敌人造成额外伤害。',
++  'You are susceptible to poisons. (rPois-)': '你易受毒素影响。（rPois-）',
++  'You are unable to cast Sirocco.': '你无法施放西罗科风。',
++  "You aren't wearing any armour!": '你没有穿任何护甲！',
++  'You become terrified and freeze when enemies are visible.': '敌人可见时，你会陷入恐惧并僵住。',
++  'You bleed smoke when taking damage.': '你受伤时会冒出烟雾。',
++  'You body stops petrifying.': '你的身体停止了石化。',
++  'You can breathe arcing electricity.': '你能呼出弧状电流。',
++  'You can breathe blasts of antimagic.': '你能呼出反魔法冲击。',
++  'You can breathe blasts of explosive embers.': '你能呼出爆炸余烬。',
++  'You can breathe blasts of noxious fumes.': '你能呼出毒烟。',
++  'You can breathe blasts of scalding, opaque steam.': '你能呼出灼热的不透明蒸汽。',
++  'You can breathe waves of cold which freeze foes solid.': '你能呼出将敌人冻成坚冰的寒潮。',
++  'You can cast Fire magic much more easily.': '你施放火焰魔法容易得多。',
++  'You can cast Ice magic more easily.': '你施放冰霜魔法更容易。',
++  'You can devour enemies to increase your regeneration.': '你可以吞噬敌人来提升再生。',
++  'You can devour living enemies to heal.': '你可以吞噬活着的敌人来治疗。',
++  'You can gain power from killing the unholy and evil.': '你可以通过杀死邪恶与不洁者获得力量。',
++  'You can heal yourself by infusing magical energy.': '你可以通过注入魔力来治疗自己。',
++  'You can ignite nearby creatures when you spit burning liquid.': '你吐出燃烧液体时可以点燃附近的生物。',
++  'You can leap distances in the blink of an eye.': '你可以眨眼间跃过一段距离。',
++  'You can leap to fearful enemies and eviscerate them.': '你可以跃向恐惧的敌人并撕碎他们。',
++  "You can memorise some of Vehumet's spells.": '你可以记忆维胡梅特的部分法术。',
++  'You can no longer gain power from killing the unholy and evil.': '你不再能通过杀死邪恶与不洁者获得力量。',
++  'You can now gain power from killing the unholy and evil.': '你现在可以通过杀死邪恶与不洁者获得力量。',
++  'You can perform multiple auxiliary attacks with your blades.': '你可以用刀刃进行多次辅助攻击。',
++  'You can spit globs of burning liquid.': '你可以吐出燃烧的液球。',
++  'You can torment nearby foes to heal from their wounds.': '你可以折磨附近的敌人，从他们的伤口中治疗自己。',
++  'You can weaponise the residue left behind from casting spells.': '你可以将施法留下的残余武器化。',
++  "You can't fall asleep in your current state!": '以你当前的状态无法入睡！',
++  "You can't repeat controlled blinks.": '你无法重复控制闪现。',
++  "You can't see a target there. Cast anyway?": '你在那里看不到目标。仍然施放吗？',
++  "You can't see anything to fire at!": '你看不到任何可以射击的目标！',
++  'You cannot be hasted, slowed, berserked, paralysed or teleported.': '你无法被加速、减速、狂暴、麻痹或传送。',
++  'You cannot be teleported.': '你无法被传送。',
++  'You cannot cast spells above level 4.': '你无法施放 4 级以上的法术。',
++  'You cannot coerce anything to answer your summons.': '你无法强迫任何东西回应你的召唤。',
++  'You cannot wear most types of armour.': '你无法穿戴大多数类型的护甲。',
++  'You cast all spells with heavily decreased power.': '你施放的所有法术威力都大幅降低。',
++  'You channel a blast of cleansing flame!': '你引导出一道净化之焰冲击！',
++  'You cheat death using unusual wizardly powers.': '你使用不寻常的巫师力量欺骗了死亡。',
++  "You don't have enough health at the moment.": '你目前的生命值不足。',
++  "You don't have enough magic at the moment.": '你目前的魔力不足。',
++  "You don't have enough magic capacity.": '你的魔力容量不足。',
++  'You draw %s magic from the ground and channel it!': '你从地面汲取%s魔力并加以引导！',
++  'You exhale a blast of noxious fumes.': '你呼出一股毒烟。',
++  'You exhale a blast of poison gas.': '你呼出一股毒气。',
++  'You exhale a blast of scalding steam.': '你呼出一股灼热蒸汽。',
++  'You exhale a wave of glacial cold.': '你呼出一阵冰川寒气。',
++  'You feel a force failing to suppress your magic.': '你感到一股力量未能压制你的魔力。',
++  'You feel an overwhelming desire to slay dragons!': '你感到一股压倒性的屠龙欲望！',
++  'You feel an uncomfortable desire to slay dragons.': '你感到一股令人不适的屠龙欲望。',
++  'You feel as though you will be slow longer.': '你感觉自己会迟缓更久。',
++  'You feel as though your hastened speed will last longer.': '你感觉自己的加速会持续更久。',
++  'You feel as though your spells will be weakened for longer.': '你感觉自己的法术会虚弱更久。',
++  'You feel drained.': '你感到被吸取了。',
++  'You feel magically purged.': '你感到魔力被净化了。',
++  'You feel momentarily confused.': '你感到短暂的困惑。',
++  'You feel oddly protected from the elements.': '你奇怪地感到自己受到了元素保护。',
++  'You feel slightly less contaminated with magical energies.': '你感到魔力污染稍微减轻了。',
++  "You feel unable to tap into the sword's magical power.": '你感到无法汲取这把剑的魔力。',
++  'You feel your attacks grow feeble.': '你感到自己的攻击变得无力。',
++  'You feel your spells grow feeble.': '你感到自己的法术变得无力。',
++  'You feel your willpower being sapped.': '你感到意志力正在被削弱。',
++  'You freeze nearby walls in an area that expands as you fight.': '你冻结附近的墙壁，范围会随着战斗扩大。',
++  'You no longer feel protected from the elements.': '你不再感到受到元素保护。',
++  'You regenerate HP and MP more quickly.': '你的生命与魔力恢复得更快。',
++  'You revel in your kill!': '你沉醉于自己的杀戮！',
++  'You send a blast of sound all around you.': '你向四周发出一阵声波冲击。',
++  'You shake off some of the fire as you move.': '你移动时抖落了一些火焰。',
++  'You shake off the liquid fire.': '你抖落了液态火焰。',
++  'You start resting.': '你开始休息。',
++  "You're already berserk!": '你已经处于狂暴状态！',
++  "You're still recovering from your berserk rage.": '你仍在从狂暴中恢复。',
++  'Your actions are hasted.': '你的行动被加速了。',
++  'Your assassin centipede withers and dies.': '你的刺客蜈蚣枯萎而死。',
++  'Your attacks are very weak.': '你的攻击非常微弱。',
++  'Your attacks do half damage.': '你的攻击只造成一半伤害。',
++  'Your body glows slightly and disappears.': '你的身体微微发光，然后消失了。',
++  'Your body glows slightly brighter and disappears.': '你的身体发出更亮的光，然后消失了。',
++  'Your body glows too brightly to become invisible.': '你的身体光芒太盛，无法隐形。',
++  'Your body is flooded with magical radiation.': '你的身体充满了魔法辐射。',
++  'Your clarity of mind shields you.': '你清晰的头脑保护了你。',
++  'Your divine stamina protects you from disease!': '你的神圣耐力保护你免受疾病侵袭！',
++  'Your divine stamina protects you from the miasma!': '你的神圣耐力保护你免受瘴气侵袭！',
++  'Your faint swarm of sparks and cinders peters out.': '你微弱的火花与余烬之群逐渐熄灭了。',
++  'Your inugami has been summoned.': '你的犬神被召唤出来了。',
++  'Your life force is drained.': '你的生命力被吸取了。',
++  'Your life force is extremely drained.': '你的生命力被极度吸取。',
++  'Your life force is heavily drained.': '你的生命力被大量吸取。',
++  'Your life force is lightly drained.': '你的生命力被轻微吸取。',
++  'Your life force is very heavily drained.': '你的生命力被严重吸取。',
++  'Your magical contamination has faded to a safe level.': '你的魔法污染已消退到安全水平。',
++  'Your regeneration is inhibited by nearby monsters.': '附近的怪物抑制了你的再生。',
++  'Your reserves of magic are already full.': '你的魔力储备已满。',
++  'Your shape twists and changes as you die.': '你的形体在死亡时扭曲变化。',
++  'Your stasis prevents you from being paralysed.': '你的停滞状态阻止了你被麻痹。',
++  'Your stasis prevents you from being slowed.': '你的停滞状态阻止了你被减速。',
++  'Your stasis prevents you from going berserk.': '你的停滞状态阻止了你进入狂暴。',
++  'Your stasis prevents you from teleporting.': '你的停滞状态阻止了你传送。',
++  'Your strength is siphoned away, and you feel your attacks grow feeble!': '你的力量被吸取，你感到自己的攻击变得无力！',
++  'Your system partially rejects the healing.': '你的身体部分排斥了治疗。',
++  'Your system rejects the healing.': '你的身体排斥了治疗。',
++  'The nature of this place prevents you from teleporting.': '这个地方的性质阻止了你传送。',
++  'The poison wears off.': '毒素消退了。',
++  'You already are as slow as you could be.': '你已经慢得不能再慢了。',
++  'You are about to teleport to other enemies.': '你即将传送到其他敌人身边。',
++  'You are caught in the blast!': '你被爆炸波及了！',
++  'You are dead.': '你已经死了。',
++  'You break open the mutation catalyst, and crackling magic pours forth!': '你打碎了突变催化剂，噼啪作响的魔法喷涌而出！',
++  "You can't survive in this terrain! You fly above the %s, but the process is draining.": '你无法在这种地形中生存！你飞到%s上方，但这个过程令你疲惫。',
++  'You cannot resist fire.': '你无法抵抗火焰。',
++  'You condense the glimmer around your %s and fire it at %s!': '你凝聚%s周围的微光并向%s发射！',
++  "You don't have enough magical energy left to tap into this dragon vein.": '你剩余的魔力不足以汲取这条龙脉。',
++  'You feel slightly better.': '你感觉稍微好了一些。',
++  'You have %d tentacle%s available for constriction.': '你有 %d 条触手可用于缠绕。',
++  'You have died.': '你已经死亡。',
++  'You have increased skill with all magical schools.': '你所有魔法学派的技能都提升了。',
++  'You hear a faint sloshing from %s as it returns to readiness.': '你听到%s传来微弱的晃动声，它重新准备好了。',
++  "You hear chittering from %s. It's ready.": '你听到%s传来咔哒声。它准备好了。',
++  'You resist the poison.': '你抵抗住了毒素。',
++  'You slide down the stairs, becoming coated in regenerative ooze.': '你滑下楼梯，身上覆满了再生软泥。',
++  'You sometimes unleash a terrifying howl when you kill enemies in melee.': '你在近战中杀死敌人时，有时会发出恐怖的长嚎。',
++  'You sometimes web enemies you hit.': '你有时会用蛛网缠住被你击中的敌人。',
++  'You tap into the flow of magic beneath your %s.': '你汲取脚下%s中的魔法之流。',
++  'Your body armour is fused into your shell, improving its AC and properties.': '你的身体护甲融入了甲壳，提升了 AC 与属性。',
++  'Your capacity for spells is full, and you lose access to an earlier spell.': '你的法术容量已满，你失去了一个先前法术的使用权。',
++  'Your magnetic shrapnel fails to attach to any target and your spell fizzles.': '你的磁性弹片未能附着任何目标，法术失效了。',
++  'Your maw has eaten a hole through body armour, reducing its AC.': '你的巨口在身体护甲上咬出一个洞，降低了它的 AC。',
++  'Your servitor can be imbued with this spell.': '你的仆从可以注入此法术。',
++  'Your skill with all non-elemental magic is decreased (-33%).': '你所有非元素魔法的技能降低了（-33%）。',
++  'Your skill with elemental magic is increased (+2).': '你的元素魔法技能提升了（+2）。',
++  'Your spells are much less powerful.': '你的法术威力大幅降低。',
++  'Your spells take twice as long to cast.': '你的施法时间加倍。',
++  'Your unholy armour drains life force from %s.': '你的邪恶护甲从%s身上吸取生命力。',
++  "you're too confused to cast spells.": '你太困惑了，无法施法。',
 +}
 diff --git a/src/i18n/titles.ts b/src/i18n/titles.ts
 new file mode 100644
@@ -6065,7 +6295,7 @@ diff --git a/src/i18n/translate.test.ts b/src/i18n/translate.test.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/translate.test.ts
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,117 @@
 +import { describe, expect, it } from 'vitest'
 +import { compileDict, lookup } from './translate'
 +import { translateItem } from './items'
@@ -6081,6 +6311,10 @@ new file mode 100644
 +  ['Base armour rating: ', '基础护甲值：'],
 +  ['It can be maximally enchanted to +%s.', '最多可强化到+%s。'],
 +  ['%s%s.', '坏模板'],
++  ["You can't see the kobold.", '你看不到狗头人。'],
++  ["You don't hit %s.", '你没有击中%s。'],
++  ['a well-known item', '一件著名物品'],
++  ['Wait...', '等等……'],
 +  ['a potion of magic', '魔法药水'],
 +  ['dagger', '匕首'],
 +  ['potion', '药水'],
@@ -6134,6 +6368,21 @@ new file mode 100644
 +    const hit = lookup(m, 'Base armour rating: 2', { allowLabels: true })
 +    expect(hit?.labelTail).toBe('2')
 +  })
++
++  it('matches typographic punctuation without rewriting the capture', () => {
++    // The 0.35 engine emits curly apostrophes; the keys are straight ASCII.
++    expect(lookup(m, 'You can\u2019t see the kobold.')?.out).toBe('你看不到狗头人。')
++    const hit = lookup(m, 'You don\u2019t hit the kobold\u2019s ghost.')
++    expect(hit?.tmpl).toBe('你没有击中%s。')
++    expect(hit?.args).toEqual(['the kobold\u2019s ghost'])
++    // En/em dashes and the ellipsis behave the same way.
++    expect(lookup(m, 'a well\u2013known item')?.out).toBe('一件著名物品')
++    expect(lookup(m, 'Wait\u2026')?.out).toBe('等等……')
++  })
++
++  it('decodes HTML entities for matching only', () => {
++    expect(lookup(m, 'You can&#39;t see the kobold.')?.out).toBe('你看不到狗头人。')
++  })
 +})
 +
 +describe('item names', () => {
@@ -6168,7 +6417,7 @@ diff --git a/src/i18n/translate.ts b/src/i18n/translate.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/translate.ts
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,263 @@
 +// Core matcher for the DCSS zh dictionary.
 +//
 +// The dictionary keys are *pre-format* engine strings ("You hit %s."), so a
@@ -6206,6 +6455,35 @@ new file mode 100644
 +  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 +}
 +
++// The wire text often uses typographic punctuation (the engine's own
++// apostrophes: "can’t", curly quotes, en/em dashes, "…"), while the dictionary
++// keys are plain ASCII. Normalize both sides for *matching only*: the rendered
++// text always comes from the dictionary or from the untouched original, so a
++// miss still shows exactly what the server sent.
++const SMART_QUOTES = /[\u2018\u2019\u201a\u201b\u2032]/g
++const SMART_DQUOTES = /[\u201c\u201d\u201e\u201f\u2033]/g
++const SMART_DASHES = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g
++
++export function normalizePunct(s: string): string {
++  return s
++    .replace(SMART_QUOTES, "'")
++    .replace(SMART_DQUOTES, '"')
++    .replace(SMART_DASHES, '-')
++    .replace(/\u2026/g, '...')
++    .replace(/\u00a0/g, ' ')
++}
++
++// Build the literal part of a template regex so it accepts either punctuation
++// style while the match still runs on the original string (captured names keep
++// the server's punctuation unchanged).
++function flexEscape(s: string): string {
++  return escapeRe(s)
++    .replace(/\\\.\\\.\\\./g, '(?:\\.\\.\\.|\u2026)')
++    .replace(/'/g, "['\u2018\u2019]")
++    .replace(/"/g, '["\u201c\u201d]')
++    .replace(/-/g, '[-\u2010-\u2015\u2212]')
++}
++
 +/** Build a regex from an engine template, capturing each placeholder. */
 +function compile(key: string, tmpl: string): Compiled | null {
 +  const kinds: string[] = []
@@ -6224,7 +6502,7 @@ new file mode 100644
 +  let score = 0
 +  let best = ''
 +  parts.forEach((part, i) => {
-+    body += escapeRe(part)
++    body += flexEscape(part)
 +    score += part.replace(/\s+/g, ' ').trim().length
 +    const chunk = part.replace(/\s+/g, ' ').trim()
 +    if (chunk.length > best.length) best = chunk
@@ -6240,7 +6518,12 @@ new file mode 100644
 +  // for the very common "Found %s." / "%s is nearby!" shapes.
 +  if (score < 5) return null
 +  if (best.length < 4) return null
-+  return { key, tmpl, re: new RegExp(`^${body}$`), anchor: best, score, slots: kinds.length }
++  return {
++    key, tmpl, re: new RegExp(`^${body}$`),
++    // The candidate is compared after punctuation normalization, so the anchor
++    // must be normalized too (a curly apostrophe never appears in a key).
++    anchor: normalizePunct(best), score, slots: kinds.length,
++  }
 +}
 +
 +/** First letter of a key, used as the match bucket ("0" for placeholder-led). */
@@ -6273,7 +6556,7 @@ new file mode 100644
 +      labelPrefix.push({
 +        key,
 +        tmpl,
-+        re: new RegExp(`^${escapeRe(key)}([^\\n!?]{1,48})$`),
++        re: new RegExp(`^${flexEscape(key)}([^\\n!?]{1,48})$`),
 +        anchor,
 +        score: anchor.length,
 +        slots: 1,
@@ -6308,9 +6591,21 @@ new file mode 100644
 +
 +const HOTKEY_PREFIX = /^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/
 +
++const ENTITIES: Record<string, string> = {
++  '&apos;': "'", '&#39;': "'", '&#x27;': "'",
++  '&quot;': '"', '&#34;': '"', '&#x22;': '"',
++  '&amp;': '&',
++}
++
++/** Decode the few HTML entities a wire line can carry, for matching only. */
++function decodeEntities(s: string): string {
++  return s.replace(/&(?:apos|quot|amp|#39|#34|#x27|#x22);/gi,
++    (m) => ENTITIES[m.toLowerCase()] ?? m)
++}
++
 +export function variantsOf(text: string): Variants {
 +  const trimmed = text.trim()
-+  const plain = text.replace(/<[^>]*>/g, '')
++  const plain = decodeEntities(text.replace(/<[^>]*>/g, ''))
 +  // Markup removal leaves double spaces ("Casting: <white>X<cyan> <lightgrey>(…"),
 +  // which would stop every template from matching; collapse them.
 +  const plainTrimmed = plain.replace(/\s+/g, ' ').trim()
@@ -6341,23 +6636,27 @@ new file mode 100644
 +  if (!text) return null
 +  const v = variantsOf(text)
 +  const exact = m.exact
-+  for (const cand of [v.trimmed, v.plainTrimmed, v.noHotkey]) {
++  const candidates = [v.trimmed, v.plainTrimmed, v.noHotkey]
++  for (const cand of candidates) {
 +    if (!cand) continue
-+    const hit = exact.get(cand)
++    const hit = exact.get(cand) ?? exact.get(normalizePunct(cand))
 +    if (hit) return { out: hit, key: cand }
 +  }
 +
 +  const maxSlots = opts.maxSlots ?? 3
-+  const candidates = [v.trimmed, v.plainTrimmed, v.noHotkey]
 +  for (const cand of candidates) {
 +    if (!cand) continue
 +    const first = /[A-Za-z]/.exec(cand)
 +    const lists = [first ? m.buckets.get(first[0].toLowerCase()) : undefined, m.buckets.get('0')]
++    // Anchor test on the normalized candidate: the template regex accepts both
++    // punctuation styles, but the plain substring test would not.
++    let normCand: string | undefined
 +    for (const list of lists) {
 +      if (!list) continue
 +      for (const t of list) {
 +        if (t.slots > maxSlots) continue
-+        if (!cand.includes(t.anchor)) continue
++        normCand ??= normalizePunct(cand)
++        if (!normCand.includes(t.anchor)) continue
 +        const hit = t.re.exec(cand)
 +        if (!hit) continue
 +        const args = hit.slice(1) as string[]
@@ -6369,11 +6668,13 @@ new file mode 100644
 +  if (opts.allowLabels) {
 +    for (const cand of candidates) {
 +      if (!cand) continue
++      const normCand = normalizePunct(cand)
 +      for (const t of m.labelPrefix) {
-+        if (!cand.startsWith(t.key)) continue
++        const key = normalizePunct(t.key)
++        if (!normCand.startsWith(key)) continue
 +        const hit = t.re.exec(cand)
 +        if (!hit) continue
-+        const tail = cand.slice(t.key.length)
++        const tail = normCand.slice(key.length)
 +        return { out: t.tmpl + tail, key: t.key, labelTail: tail }
 +      }
 +    }
@@ -6722,7 +7023,7 @@ diff --git a/src/i18n/zh.integration.test.ts b/src/i18n/zh.integration.test.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/zh.integration.test.ts
-@@ -0,0 +1,242 @@
+@@ -0,0 +1,275 @@
 +// @vitest-environment happy-dom
 +
 +// Integration check against the real dictionary (src/i18n/data/zh.json):
@@ -6787,6 +7088,39 @@ new file mode 100644
 +    expect(t('You hit the rat but do no damage.')).toBe('你击中了老鼠，但没有造成伤害。')
 +    expect(t('A hobgoblin comes into view.')).toBe('大地精进入了视野。')
 +    expect(t('The yak snorts and paws the ground.')).toBe('牦牛喷着鼻息，用蹄子刨着地面。')
++  })
++
++  it('matches typographic punctuation and HTML entities', async () => {
++    await setLang('zh')
++    const straight = "You can't see any susceptible monsters within range! (Use Z to cast anyway.)"
++    const curly = "You can\u2019t see any susceptible monsters within range! (Use Z to cast anyway.)"
++    expect(t(curly)).toBe(t(straight))
++    expect(t(curly)).toContain('范围')
++    expect(t('You don\u2019t have enough magic to cast this spell.'))
++      .toBe(t("You don't have enough magic to cast this spell."))
++    // Some wire paths HTML-escape the apostrophe before it reaches the log.
++    expect(t('You can&#39;t see any susceptible monsters within range! (Use Z to cast anyway.)'))
++      .toBe(t(straight))
++  })
++
++  it('translates the regular combat verbs and no-damage shapes', async () => {
++    await setLang('zh')
++    expect(t('You slash the kobold!')).toBe('你砍了狗头人！')
++    expect(t('The kobold slashes you.')).toBe('狗头人砍了你。')
++    expect(t('You hit the kobold, but do no damage.')).toBe('你击中了狗头人，但没有造成伤害。')
++    expect(t('You completely miss the kobold.')).toBe('你完全没有击中狗头人。')
++    // 0.35 dropped the leading article on this one.
++    expect(t('Acid dripping from the walls corrodes you.')).toBe('从墙上滴落的酸液腐蚀了你。')
++  })
++
++  it('translates the common post-0.34 combat lines', async () => {
++    await setLang('zh')
++    expect(t('You are caught in the blast!')).toBe('你被爆炸波及了！')
++    expect(t('You resist the poison.')).toBe('你抵抗住了毒素。')
++    expect(t('The poison wears off.')).toBe('毒素消退了。')
++    expect(t('Your life force is drained.')).toBe('你的生命力被吸取了。')
++    expect(t('Attack anyway?')).toBe('仍然攻击吗？')
++    expect(t('Cast it anyway?')).toBe('仍然施放吗？')
 +  })
 +
 +  it('translates compound messages sentence by sentence', async () => {

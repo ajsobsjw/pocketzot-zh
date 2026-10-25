@@ -210,13 +210,25 @@ const VERB_ZH: Record<string, string> = {
   grabs: '抓住了', grab: '抓住了', hits: '击中了', hit: '击中了',
   misses: '没有击中', miss: '没有击中', pecks: '啄了', peck: '啄了',
   engulfs: '吞没了', engulf: '吞没了',
+  slashes: '砍了', slash: '砍了', stabs: '刺了', stab: '刺了',
+  cuts: '割了', cut: '割了', chops: '劈了', chop: '劈了',
+  crushes: '压碎了', crush: '压碎了', bludgeons: '重击了', bludgeon: '重击了',
+  pierces: '刺穿了', pierce: '刺穿了', impales: '贯穿了', impale: '贯穿了',
+  mauls: '撕咬了', maul: '撕咬了', rends: '撕扯了', rend: '撕扯了',
+  tears: '撕开了', tear: '撕开了', rips: '撕裂了', rip: '撕裂了',
+  smashes: '砸碎了', smash: '砸碎了', strikes: '打击了', strike: '打击了',
+  punches: '揍了', punch: '揍了', zaps: '电击了', zap: '电击了',
+  squeezes: '挤压了', squeeze: '挤压了', buffets: '拍打了', buffet: '拍打了',
+  whips: '鞭打了', whip: '鞭打了', lashes: '抽打了', lash: '抽打了',
+  butts: '顶了', butt: '顶了', gnaws: '啃咬了', gnaw: '啃咬了',
+  nibbles: '轻咬了', nibble: '轻咬了', blasts: '轰击了', blast: '轰击了',
 }
 
 /** Generic "actor verb target" sentence, the shape most combat lines share. */
 function translateCombat(plain: string): string | null {
   // "You bite the cane toad but do no damage." — the player's own action has no
   // actor noun, so it needs its own shape.
-  const youM = /^You\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|drains?|constricts?|grabs?|hits?|misses?|pecks?|engulfs?)\s+(.+?)(\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
+  const youM = /^You\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
   if (youM) {
     const target = translateCapture(youM[3])
     if (target === youM[3]) return null
@@ -224,7 +236,7 @@ function translateCombat(plain: string): string | null {
     let body: string
     if (verb.startsWith('miss')) {
       body = youM[1] === 'barely' ? `你勉强没有击中${target}`
-        : youM[1] === 'closely' ? `你险些击中${target}`
+        : youM[1] === 'closely' ? `你差一点击中${target}`
           : youM[1] === 'completely' ? `你完全没有击中${target}`
             : `你没有击中${target}`
     } else {
@@ -233,7 +245,7 @@ function translateCombat(plain: string): string | null {
     if (youM[4]) body += '，但没有造成伤害'
     return body + (youM[5].includes('!') ? '！' : '。')
   }
-  const m = /^(The|A|An|Your|You)\s+(.+?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|misses?|pecks?|engulfs?)\s+(.+?)(\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
+  const m = /^(The|A|An|Your|You)\s+(.+?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
   if (m) {
     const actor = m[1] === 'You' ? '你' : translateCapture(`${m[1]} ${m[2]}`)
     if (actor === `${m[1]} ${m[2]}`) return null
@@ -244,7 +256,7 @@ function translateCombat(plain: string): string | null {
     return combatBody(actor, target, m[4], m[3], !!m[6], m[7])
   }
   // Rows without an article: "frilled lizard barely misses you."
-  const bare = /^([a-z][A-Za-z' -]{1,30}?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|misses?|pecks?|engulfs?)\s+(.+?)(\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
+  const bare = /^([a-z][A-Za-z' -]{1,30}?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
   if (!bare) return null
   const actor = translateCapture(bare[1])
   if (actor === bare[1]) return null
@@ -258,7 +270,7 @@ function combatBody(actor: string, target: string, verb: string, adverb: string 
   let body: string
   if (verb.startsWith('miss')) {
     body = adverb === 'barely' ? `${actor}勉强没有击中${target}`
-      : adverb === 'closely' ? `${actor}险些击中${target}`
+      : adverb === 'closely' ? `${actor}差一点击中${target}`
         : adverb === 'completely' ? `${actor}完全没有击中${target}`
           : `${actor}没有击中${target}`
   } else {
@@ -495,6 +507,13 @@ function translateOne(text: string): string | null {
       const item = translateItem(matcher!, plain, { loose: true })
       if (item) r = { out: item, key: 'item' }
     }
+  }
+  if (!r && !/^The\s/i.test(plainText)) {
+    // 0.35 dropped the leading article on a few messages ("Acid dripping from
+    // the walls corrodes you." vs the 0.34 key "The acid dripping…"). Exact
+    // keys only: a template match would see the whole line as its noun slot.
+    const withThe = lookup(matcher!, `The ${plainText}`, {})
+    if (withThe && !withThe.args && withThe.labelTail === undefined) r = withThe
   }
   if (!r && text.includes('\n') && text.split('\n').length <= 8) {
     // Multi-line titles/headers: translate line by line, keep the rest.
