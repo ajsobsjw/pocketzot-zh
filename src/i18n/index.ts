@@ -16,6 +16,7 @@ import { matchTitle } from './titles'
 import { UI_ZH } from './ui-zh'
 import { SUPP_ZH } from './supp-zh'
 import { ABILITY_NAMES, ITEM_NAMES, MONSTER_NAMES, featureName } from './names-zh'
+import { MANUAL_NAMES } from './manual-zh'
 import { noteMiss } from './miss-log'
 import { getPref, setPref } from '../prefs'
 
@@ -60,7 +61,7 @@ export function loadDict(): Promise<void> {
       const merged = new Map(Object.entries(SUPP_ZH))
       // Curated names the engine dictionary lacks (monster types, item bases,
       // abilities); the engine entry still wins where both exist.
-      for (const table of [MONSTER_NAMES, ITEM_NAMES, ABILITY_NAMES]) {
+      for (const table of [MONSTER_NAMES, ITEM_NAMES, ABILITY_NAMES, MANUAL_NAMES]) {
         for (const [k, v] of Object.entries(table)) if (!merged.has(k)) merged.set(k, v)
       }
       const COUNT = /%[-+ 0#]*\d*(?:\.\d+)?[sdxc]/g

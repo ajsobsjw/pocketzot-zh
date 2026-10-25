@@ -26,6 +26,7 @@ import { dcssToHtml, escHtml, uiColor } from '../game/dcss-colors'
 import { stripDcss } from './overlay-body'
 import type { OverlayScreenCtx, UiPushMsg } from './game-overlays'
 import { parseNewgameChoice, balanceRows, toItem, type NgcItem, type NgcShape } from './newgame-model'
+import { isZh, t, tItem } from '../i18n'
 
 // DEV insurance: override the item shape everywhere (see spec "C→B
 // insurance" — every shape must stay one flip away). Driven by
@@ -200,9 +201,11 @@ export function showNewgameChoice(ctx: OverlayScreenCtx, msg: UiPushMsg): Newgam
     if (item) {
       const head = document.createElement('div')
       head.className = 'ngv-desc'
+      const name = isZh() ? tItem(item.name) : item.name
+      const desc = item.description && isZh() ? t(item.description) : (item.description ?? '')
       head.innerHTML =
-        `<strong>${escHtml(item.name)}</strong>` +
-        (item.description ? `<br>${escHtml(item.description)}` : '') +
+        `<strong>${escHtml(name)}</strong>` +
+        (desc ? `<br>${escHtml(desc)}` : '') +
         // "highlighted item", not "again": the armed state also arises
         // from server focus (screen open, arrow nav), where no first tap
         // ever happened.

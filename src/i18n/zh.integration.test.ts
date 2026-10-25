@@ -1,4 +1,4 @@
-﻿// @vitest-environment happy-dom
+// @vitest-environment happy-dom
 
 // Integration check against the real dictionary (src/i18n/data/zh.json):
 // loading, a few known engine strings, item grammar and the safety rules.
@@ -125,6 +125,16 @@ describe('real dictionary', () => {
     expect(
       t('Aim: a kobold, wielding a +0 whip and quivering stones (severely wounded, 100% to hit)'),
     ).toContain('备有石头')
+  })
+
+  it('translates single-word species names and new-version prose', async () => {
+    await setLang('zh')
+    await loadDescript()
+    expect(tItem('Gnoll')).toBe('豺狼人')
+    expect(tItem('Human')).toBe('人类')
+    expect(tItem('Mummy')).toBe('木乃伊')
+    expect(tItem('Gale Centaur')).toBe('疾风半人马')
+    expect(t('Powerful equine hybrids who trace their ancestry to the four winds themselves, Gale Centaurs are at their strongest while galloping swiftly towards foes.')).toContain('疾风半人马')
   })
 
   it('translates the menu nav keyhelp', async () => {

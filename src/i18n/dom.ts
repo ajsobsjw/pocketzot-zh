@@ -73,8 +73,13 @@ function translateText(node: Text): void {
   const trail = value.slice(value.trimEnd().length)
   const core = value.trim()
   const words = core.split(/\s+/)
-  const fragment = !/[.!?]/.test(core) && (
-    (words.length <= 1 && core.length < 6) || /^[,;:]/.test(core) || STOP_WORDS.has(core.toLowerCase())
+  // A single word is usually an inline fragment ("and", "Features"), but it can
+  // also be a proper name rendered alone ("Gnoll", "Mummy"). Let the item/name
+  // lookup decide before falling back to the UI table only.
+  const single = words.length === 1
+  const named = single && tItem(value) !== value
+  const fragment = !/[.!?]/.test(core) && !named && (
+    (single && core.length < 6) || /^[,;:]/.test(core) || STOP_WORDS.has(core.toLowerCase())
   )
   const hotkeyRow = /^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(value)
 

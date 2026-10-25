@@ -4,6 +4,7 @@
 // kept below the prose and translated by the normal label rules.
 
 import { getLang, setProseLookup } from './index'
+import { MANUAL_PROSE } from './manual-zh'
 
 type DescDict = Record<string, Record<string, string>> & { pairs?: Record<string, string> }
 
@@ -25,6 +26,8 @@ export function loadDescript(): Promise<void> {
       // wire text is reflowed and the database keeps hard line breaks.
       const map = new Map<string, string>()
       for (const [en, zh] of Object.entries(raw.pairs ?? {})) map.set(norm(en), zh)
+      // Hand-written prose for content newer than the 0.34.1 Chinese database.
+      for (const [en, zh] of Object.entries(MANUAL_PROSE)) map.set(norm(en), zh)
       proseMap = map
       setProseLookup((text) => map.get(norm(text)) ?? null)
     })
