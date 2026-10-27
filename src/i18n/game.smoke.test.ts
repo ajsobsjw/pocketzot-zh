@@ -38,6 +38,23 @@ afterAll(async () => {
 })
 
 describe('game view in Chinese', () => {
+  it('translates the reported encounter and brand lines at the rendering boundary', async () => {
+    await setLang('zh')
+    const view = mount([{
+      msg: 'msgs', messages: [
+        { text: '<red>You encounter Iiyb the Inquisitive. She is wielding a +5 dagger of holy wrath and carrying a wand of flame.', channel: 0 },
+        { text: 'You can’t see any susceptible monsters within range! (Use Z to cast anyway.)', channel: 0 },
+        { text: 'Iiyb zaps a wand.', channel: 0 },
+      ],
+    }] as ServerMsg[])
+    await tick()
+    const log = view.querySelector('#game-messages')?.textContent ?? ''
+    expect(log).toContain('神圣之怒')
+    expect(log).toContain('魔杖')
+    expect(log).not.toMatch(/encounter|wielding|susceptible|zaps/)
+    disposeView(view)
+  })
+
   it('translates log lines through the real view', async () => {
     await setLang('zh')
     const view = mount(fixture.messages as ServerMsg[])

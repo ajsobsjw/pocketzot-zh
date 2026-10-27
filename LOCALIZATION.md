@@ -90,7 +90,9 @@ node tools/build-zh-descript.mjs --src "<你的 DCSS 安装>/dat"
    护符变形表（Skill/HP/…/Shed Tail HP 等列）、`Melds:`、`Mutations Suppressed:`、
    `Stash search prefixes:`、`Menu/colouring prefixes:` 与 `Your skill: …` 由
    `body.ts` 整行/整表结构化翻译，并按原显示列重排（汉字按 2 列计）。
-2. **帮助/图鉴/CRT 定宽屏**：预排版英文，未翻译（避免破坏 80 列布局）。
+2. **帮助/手册/CRT 定宽屏**：现在经 `pages.ts` 在渲染副本上翻译；帮助目录和跨层旅行帮助
+   已逐项覆盖并测试，其他页面按整段词库、整句词库、分列规则依次匹配。保留行数、快捷键和
+   列间距；未命中的正文仍保留英文，不能据此宣称全部手册内容已翻译。
 3. **菜单里的固定列行**（法术/技能表）：已在中文下重排为中文列（`menu-columns.ts`、
    `skill-reflow.ts`）；列宽按汉字 2 列计算。
 4. **玩家名、聊天、角色存档文件**：不翻译。

@@ -598,7 +598,7 @@ diff --git a/LOCALIZATION.md b/LOCALIZATION.md
 new file mode 100644
 --- /dev/null
 +++ b/LOCALIZATION.md
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,105 @@
 +# 中文化说明（display-only localization）
 +
 +这份改动只作用于**渲染层**：游戏消息、菜单、HUD、PocketZot 自己的界面在写到屏幕前被翻译成中文。
@@ -691,7 +691,9 @@ new file mode 100644
 +   护符变形表（Skill/HP/…/Shed Tail HP 等列）、`Melds:`、`Mutations Suppressed:`、
 +   `Stash search prefixes:`、`Menu/colouring prefixes:` 与 `Your skill: …` 由
 +   `body.ts` 整行/整表结构化翻译，并按原显示列重排（汉字按 2 列计）。
-+2. **帮助/图鉴/CRT 定宽屏**：预排版英文，未翻译（避免破坏 80 列布局）。
++2. **帮助/手册/CRT 定宽屏**：现在经 `pages.ts` 在渲染副本上翻译；帮助目录和跨层旅行帮助
++   已逐项覆盖并测试，其他页面按整段词库、整句词库、分列规则依次匹配。保留行数、快捷键和
++   列间距；未命中的正文仍保留英文，不能据此宣称全部手册内容已翻译。
 +3. **菜单里的固定列行**（法术/技能表）：已在中文下重排为中文列（`menu-columns.ts`、
 +   `skill-reflow.ts`）；列宽按汉字 2 列计算。
 +4. **玩家名、聊天、角色存档文件**：不翻译。
@@ -3082,7 +3084,7 @@ diff --git a/src/i18n/game.smoke.test.ts b/src/i18n/game.smoke.test.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/game.smoke.test.ts
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,66 @@
 +// @vitest-environment happy-dom
 +
 +// Game-view smoke in Chinese: a captured server frame goes through the real
@@ -3123,6 +3125,23 @@ new file mode 100644
 +})
 +
 +describe('game view in Chinese', () => {
++  it('translates the reported encounter and brand lines at the rendering boundary', async () => {
++    await setLang('zh')
++    const view = mount([{
++      msg: 'msgs', messages: [
++        { text: '<red>You encounter Iiyb the Inquisitive. She is wielding a +5 dagger of holy wrath and carrying a wand of flame.', channel: 0 },
++        { text: 'You can’t see any susceptible monsters within range! (Use Z to cast anyway.)', channel: 0 },
++        { text: 'Iiyb zaps a wand.', channel: 0 },
++      ],
++    }] as ServerMsg[])
++    await tick()
++    const log = view.querySelector('#game-messages')?.textContent ?? ''
++    expect(log).toContain('神圣之怒')
++    expect(log).toContain('魔杖')
++    expect(log).not.toMatch(/encounter|wielding|susceptible|zaps/)
++    disposeView(view)
++  })
++
 +  it('translates log lines through the real view', async () => {
 +    await setLang('zh')
 +    const view = mount(fixture.messages as ServerMsg[])
@@ -6504,6 +6523,150 @@ new file mode 100644
 +  expect(misses).toEqual({ monsters: [], items: [], spells: [], ability: [], species: [], backgrounds: [], skills: [] })
 +  expect(tItem('dagger')).toBe('匕首')
 +})
+diff --git a/src/i18n/pages.test.ts b/src/i18n/pages.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/i18n/pages.test.ts
+@@ -0,0 +1,34 @@
++// @vitest-environment happy-dom
++import { afterAll, expect, it } from 'vitest'
++import { setLang } from './index'
++import { translatePage, translateTerminalLine } from './pages'
++import help from '../golden/07-lookup-input-dialog.golden.json'
++import travel from '../golden/12-travel-prompt-help.golden.json'
++
++afterAll(() => setLang('en'))
++
++it('translates the full captured help index and travel help', async () => {
++  await setLang('zh')
++  for (const fixture of [help, travel]) {
++    for (const message of fixture.messages as Array<{ msg: string; type?: string; text?: string }>) {
++      if (message.msg !== 'ui-push' || message.type !== 'formatted-scroller') continue
++      const plain = message.text!.replace(/<[^>]*>/g, '')
++      const out = translatePage(plain)
++      expect(out.split('\n')).toHaveLength(plain.split('\n').length)
++      // Only actual hotkeys may remain Latin, not untranslated help sentences.
++      expect(out).not.toMatch(/[A-Za-z]{5,}/)
++    }
++  }
++})
++
++it('retains parser-facing search keywords and player input', async () => {
++  await setLang('zh')
++  expect(translatePage('Stash search prefixes: weapon ego holy wrath'))
++    .toContain('weapon ego holy wrath')
++  expect(translateTerminalLine('a - Minotaur')).toContain('牛头人')
++})
++
++it('is reversible by rerendering original English', async () => {
++  await setLang('en')
++  expect(translatePage('Dungeon Crawl Help')).toBe('Dungeon Crawl Help')
++})
+diff --git a/src/i18n/pages.ts b/src/i18n/pages.ts
+new file mode 100644
+--- /dev/null
++++ b/src/i18n/pages.ts
+@@ -0,0 +1,100 @@
++// Display copies only. Never feed translated help, search tokens or terminal
++// rows back to the engine. Keep the number of rows stable for scroll messages.
++import { isZh, t, tItem } from './index'
++import { lookupProse } from './describe'
++
++const HELP: Record<string, string> = {
++  'Dungeon Crawl Help': '地下城探索帮助',
++  'Manual Contents': '手册目录',
++  'Press one of the following keys to': '按下列按键，查看地下城探索',
++  'obtain more information on a certain': '对应主题的详细说明。',
++  'aspect of Dungeon Crawl.': '',
++  'Table of contents': '目录', 'Overview': '总览',
++  'Starting Screen': '开始界面', 'Attributes and Stats': '属性与数值',
++  'Exploring the Dungeon': '探索地下城', 'Experience and Skills': '经验与技能',
++  'Monsters': '怪物', 'Items': '物品', 'Spellcasting': '施法',
++  'Targeting': '瞄准', 'Religion': '宗教', 'Mutations': '突变',
++  'Licence, Contact, History': '许可、联系与历史',
++  'Macros, Options, Performance': '宏、选项与性能', 'Philosophy': '设计理念',
++  'List of Character Species': '角色种族列表',
++  'List of Character Backgrounds': '角色职业列表',
++  'List of Skills': '技能列表', 'List of Keys and Commands': '按键与命令列表',
++  'Inscriptions': '铭文', 'Dungeon sprint modes': '地下城冲刺模式',
++  'List of commands': '命令列表', 'Quickstart Guide': '快速入门',
++  'Browse character notes': '浏览角色笔记', 'Browse character dump': '浏览角色记录',
++  'Macros help': '宏帮助', 'Options help': '选项帮助',
++  'Table of aptitudes': '资质表', 'Lookup description': '查询说明',
++  'FAQ': '常见问题', 'Version information': '版本信息',
++  'Display diagnostics': '显示诊断信息', 'This screen': '本页',
++  'Interlevel Travel (choose a branch):': '跨层旅行（选择分支）：',
++  'Use the shortcut letter for a branch to select the branch for travel.': '按分支的快捷字母，选择旅行目的分支。',
++  'Once you select a branch, you will be prompted for a depth in that': '选定分支后，游戏会询问目的层数。',
++  'branch (more help is available there).': '届时还可查看进一步帮助。',
++  'Repeat last interlevel travel.': '重复上次跨层旅行。',
++  'Travel to a level in the current branch.': '前往当前分支的指定层。',
++  'Go up the nearest stairs.': '从最近的楼梯上楼。',
++  'Go down the nearest stairs.': '从最近的楼梯下楼。',
++  'Travel to a level in the branch above this one.': '前往上级分支的指定层。',
++  'Show available waypoints (if any are set).': '显示已设置的路径点。',
++  'Go to the numbered waypoint.': '前往对应编号的路径点。',
++  'Show available altars (if any are discovered).': '显示已发现的祭坛。',
++}
++
++function cell(text: string): string {
++  const trimmed = text.trim()
++  if (!trimmed || !/[A-Za-z]/.test(trimmed)) return text
++  // Engine-facing inscription and search syntax must remain verbatim.
++  if (/^(?:Stash search prefixes|Menu\/colouring prefixes):/.test(trimmed)) return text
++  const direct = HELP[trimmed]
++  if (direct !== undefined) return direct
++  const keyHelp = /^(\S+\s*[:.]\s*)(.+)$/.exec(trimmed)
++  if (keyHelp) {
++    const body = HELP[keyHelp[2]] ?? t(keyHelp[2])
++    if (body !== keyHelp[2]) return keyHelp[1] + body
++  }
++  const colon = /^(:\s*)(.+)$/.exec(trimmed)
++  if (colon && HELP[colon[2]]) return colon[1] + HELP[colon[2]]
++  return lookupProse(trimmed) ?? t(trimmed)
++}
++
++function width(s: string): number {
++  return [...s].reduce((n, c) => n + (c.charCodeAt(0) > 255 ? 2 : 1), 0)
++}
++
++/** Plain text only: callers strip DCSS/HTML before passing a display copy. */
++export function translatePage(text: string): string {
++  if (!isZh()) return text
++  const whole = lookupProse(text) ?? t(text)
++  if (whole !== text) return whole
++  // Prose dictionaries contain paragraphs, whereas manual/scroller messages
++  // contain multiple paragraphs and may wrap every sentence at 80 columns.
++  const blocks = text.split(/(\n[ \t]*\n)/)
++  if (blocks.length > 1) {
++    return blocks.map((block, i) => i % 2 ? block : translatePage(block)).join('')
++  }
++  return text.split('\n').map((line) => {
++    const keyed = /^(\s*\S*\s*:\s*)(.+)$/.exec(line)
++    if (keyed && HELP[keyed[2]]) return keyed[1] + HELP[keyed[2]]
++    const parts = line.split(/(\s{2,})/)
++    if (parts.length === 1) return cell(line)
++    let out = ''
++    let sourceColumn = 0
++    for (let i = 0; i < parts.length; i++) {
++      const part = parts[i]
++      sourceColumn += width(part)
++      if (i % 2) out += ' '.repeat(Math.max(1, sourceColumn - width(out)))
++      else out += cell(part)
++    }
++    return out
++  }).join('\n')
++}
++
++/** Conservative terminal fallback for isolated species/item rows. */
++export function translateTerminalLine(text: string): string {
++  const page = translatePage(text)
++  if (page !== text) return page
++  const entry = /^(\s*[A-Za-z0-9]\s+[-+.)]\s+)([^\d]+?)(\s{2,}.*)?$/.exec(text)
++  if (!entry) return text
++  const name = tItem(entry[2].trim())
++  return name !== entry[2].trim() ? entry[1] + name + (entry[3] ?? '') : text
++}
 diff --git a/src/i18n/skill.test.ts b/src/i18n/skill.test.ts
 new file mode 100644
 --- /dev/null
@@ -10013,7 +10176,7 @@ diff --git a/src/prefs.ts b/src/prefs.ts
 diff --git a/src/views/crt-view.ts b/src/views/crt-view.ts
 --- a/src/views/crt-view.ts
 +++ b/src/views/crt-view.ts
-@@ -1,104 +1,108 @@
+@@ -1,104 +1,115 @@
 -// The CRT screen (#crt-display): the reference's text.js display side — a
 -// `menu type:"crt"` frame's rows, filled by `txt` messages — plus our skills
 -// (`m`) reflow and its letter-button bar. The frame and its lines live on
@@ -10128,6 +10291,8 @@ diff --git a/src/views/crt-view.ts b/src/views/crt-view.ts
 +import type { MenuBar } from './menu-bar'
 +import { extractSkillHotkeys } from './skill-hotkeys'
 +import { reflowSkillCrt, plainText, localizeSkillRows } from './skill-reflow'
++import { translateTerminalLine } from '../i18n/pages'
++import { escHtml } from '../game/dcss-colors'
 +
 +export interface CrtViewDeps {
 +  // The live overlay content root — never the inert copy of a covered frame.
@@ -10215,6 +10380,11 @@ diff --git a/src/views/crt-view.ts b/src/views/crt-view.ts
 +    // names are translated afterwards for display only.
 +    const skillLetters = crt.tag === 'skills' ? extractSkillHotkeys(rows.map(plainText)) : null
 +    if (crt.tag === 'skills') rows = localizeSkillRows(rows)
++    else rows = rows.map((html) => {
++      const plain = plainText(html)
++      const translated = translateTerminalLine(plain)
++      return translated === plain ? html : escHtml(translated)
++    })
 +    for (const html of rows) {
 +      const line = document.createElement('div')
 +      line.className = 'crt-line'
@@ -21787,7 +21957,7 @@ diff --git a/src/views/game-view.ts b/src/views/game-view.ts
 diff --git a/src/views/layout-view.ts b/src/views/layout-view.ts
 --- a/src/views/layout-view.ts
 +++ b/src/views/layout-view.ts
-@@ -1,528 +1,572 @@
+@@ -1,528 +1,579 @@
 -// ui-push layouts: the reference's ui-layouts.js display side for the
 -// generic title/body/actions frame (describe-*, formatted-scroller,
 -// game-over, version, …), the formatted scroller's client-owned scrolling,
@@ -22341,9 +22511,10 @@ diff --git a/src/views/layout-view.ts b/src/views/layout-view.ts
 +  splitGodPowerCosts, unpadMutationCategory, renderSpellbook, stripDcss,
 +} from './overlay-body'
 +import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
-+import { LANG_CHANGED_EVENT, t } from '../i18n'
++import { LANG_CHANGED_EVENT, t, isZh } from '../i18n'
 +import { zhDescribe } from '../i18n/describe'
 +import { translateBody } from '../i18n/body'
++import { translatePage } from '../i18n/pages'
 +import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 +
 +interface ExportSource { runs: () => DcssRun[][]; slug: string }
@@ -22557,6 +22728,12 @@ diff --git a/src/views/layout-view.ts b/src/views/layout-view.ts
 +      // panel also has an attack table, a to-hit line and a notice chance, so
 +      // it gets the structural rules first.
 +      rawBody = msg.type === 'describe-monster' ? translateMonsterBody(rawBody) : translateBody(rawBody)
++    } else if (isZh()) {
++      // Scrollers include help/manual pages and history, not just describes.
++      // Translate the entire display copy before colour spans split sentences.
++      const plain = stripDcss(rawBody)
++      const translated = translatePage(plain)
++      if (translated !== plain) rawBody = translated
 +    }
 +    const spellset = msg.spellset
 +    // Strip the placeholder when there's no spellset to render in its place;

@@ -8,6 +8,8 @@
 import type { MenuBar } from './menu-bar'
 import { extractSkillHotkeys } from './skill-hotkeys'
 import { reflowSkillCrt, plainText, localizeSkillRows } from './skill-reflow'
+import { translateTerminalLine } from '../i18n/pages'
+import { escHtml } from '../game/dcss-colors'
 
 export interface CrtViewDeps {
   // The live overlay content root — never the inert copy of a covered frame.
@@ -95,6 +97,11 @@ export class CrtView {
     // names are translated afterwards for display only.
     const skillLetters = crt.tag === 'skills' ? extractSkillHotkeys(rows.map(plainText)) : null
     if (crt.tag === 'skills') rows = localizeSkillRows(rows)
+    else rows = rows.map((html) => {
+      const plain = plainText(html)
+      const translated = translateTerminalLine(plain)
+      return translated === plain ? html : escHtml(translated)
+    })
     for (const html of rows) {
       const line = document.createElement('div')
       line.className = 'crt-line'

@@ -23,9 +23,10 @@ import {
   splitGodPowerCosts, unpadMutationCategory, renderSpellbook, stripDcss,
 } from './overlay-body'
 import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
-import { LANG_CHANGED_EVENT, t } from '../i18n'
+import { LANG_CHANGED_EVENT, t, isZh } from '../i18n'
 import { zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
+import { translatePage } from '../i18n/pages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 
 interface ExportSource { runs: () => DcssRun[][]; slug: string }
@@ -239,6 +240,12 @@ export class LayoutView {
       // panel also has an attack table, a to-hit line and a notice chance, so
       // it gets the structural rules first.
       rawBody = msg.type === 'describe-monster' ? translateMonsterBody(rawBody) : translateBody(rawBody)
+    } else if (isZh()) {
+      // Scrollers include help/manual pages and history, not just describes.
+      // Translate the entire display copy before colour spans split sentences.
+      const plain = stripDcss(rawBody)
+      const translated = translatePage(plain)
+      if (translated !== plain) rawBody = translated
     }
     const spellset = msg.spellset
     // Strip the placeholder when there's no spellset to render in its place;
