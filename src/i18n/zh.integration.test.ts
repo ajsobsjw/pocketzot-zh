@@ -40,6 +40,32 @@ describe('real dictionary', () => {
     expect(t('You encounter a ball python.')).toBe('你遭遇了球蟒。')
   })
 
+  it('translates monster equipment detail rows from encounters', async () => {
+    await setLang('zh')
+    expect(t('You encounter Iiyb the Inquisitive.'))
+      .toBe('你遭遇了好奇的伊伊布。')
+    expect(t('You encounter Sigmund the Dreaded.'))
+      .toBe('你遭遇了恐怖的西格蒙德。')
+    expect(t('She is wielding a +5 dagger of holy wrath and carrying a wand of flame.'))
+      .toBe('她手持神圣之怒的+5匕首，携带火焰魔杖。')
+    expect(t('He is wielding a +0 scythe.')).toBe('他手持镰刀。')
+    expect(t('Iiyb screams, “Me am play god!”'))
+      .toBe('伊伊布尖叫道：“我就是神！”')
+    expect(t('You can’t see any susceptible monsters within range! (Use Z to cast anyway.)'))
+      .toContain('范围')
+    expect(t('Iiyb zaps a wand.')).toBe('伊伊布挥动了一根魔杖。')
+    expect(tItem('a +5 dagger of holy wrath')).toBe('神圣之怒的+5匕首')
+    expect(tItem('a +2 dagger (draining)')).toBe('+2匕首（汲取）')
+    expect(tItem('a +5 dagger (holy wrath)')).toBe('+5匕首（神圣之怒）')
+    expect(tItem('a +0 ring mail')).toBe('环甲')
+    expect(tTitle('a - a +0 robe (worn).')).toBe('长袍（已穿戴）')
+    expect(tItem('Hand Weapons   (go to first with ))')).toBe('近战武器（) 跳到第一项）')
+    expect(t('You encounter Sigmund the Dreaded. He is wielding a +0 scythe.'))
+      .toBe('你遭遇了恐怖的西格蒙德。他手持镰刀。')
+    expect(t('You encounter Iiyb the Inquisitive. She is wielding a +5 dagger of holy wrath\nand carrying a wand of flame.'))
+      .toBe('你遭遇了好奇的伊伊布。她手持神圣之怒的+5匕首，携带火焰魔杖。')
+  })
+
   it('translates a HUD label with a branch depth', async () => {
     await setLang('zh')
     expect(t('Place: Dungeon:1')).toBe('位置: 地牢:1')
@@ -479,4 +505,3 @@ describe('talisman form panel', () => {
     expect(tItem('a flibbertigibbet gizmo')).toBe('（flibbertigibbet）小装置')
   })
 })
-

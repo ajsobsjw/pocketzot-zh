@@ -49,6 +49,8 @@ const SCHOOL_ZH: Record<string, string> = {
   Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术',
   Transmutation: '变形术', Fire: '火系', Ice: '冰系', Air: '气系',
   Earth: '土系', Poison: '毒系', Hexes: '诅咒系', Charms: '魅惑系',
+  Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系',
+  Translocations: '传送系', Conjurations: '咒法系', Summonings: '召唤系',
 }
 
 /** Translate a "Ice/Conjuration" schools cell, or null when unknown. */
@@ -257,7 +259,9 @@ export function columnTable(cols: MenuColumns, items: MenuItem[]): ColumnTable |
   const rows = [...parsed.values()]
   const nameW = 4 + Math.max(...rows.map(r => (zh ? width(tItem(r.namePlain)) : r.nameLen))) + 2
   const restW = widths.reduce((a, b) => a + b, 0) + widths.length - 1
-  const subW = grid ? 0 : Math.max(width(cols.heads[0]), ...rows.map(r => width(zhSchools(r.sub ?? '') ?? r.sub ?? ''))) + 2
+  const subW = grid ? 0 : Math.max(width(cols.heads[0]), ...rows.map(r => width(
+    isZh() ? (zhSchools(r.sub ?? '') ?? r.sub ?? '') : (r.sub ?? ''),
+  ))) + 2
   const tracks = grid ? `${nameW}ch auto` : `${nameW}ch ${subW}ch auto`
   // +1ch: a row's label can be a scrollbar narrower than the heading row.
   const stick = `<span class="mcol-stick" style="width:${nameW + subW + restW + 1}ch"></span>`

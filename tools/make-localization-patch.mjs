@@ -22,8 +22,8 @@ const BASE = resolve(arg('--base', '../_research/pocketzot-main'))
 const PROJECT = resolve(arg('--project', '.'))
 const OUT = resolve(arg('--out', 'localization.patch'))
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.tmp', '.tmp-esbuild', 'coverage', '.vite', '.npm-cache', '.vitest'])
-const SKIP_FILES = new Set(['HANDOVER.md', 'source.zip', 'pocketzot-dist.zip', 'localization.patch'])
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.github', '.wrangler', '.tmp', '.tmp-esbuild', 'coverage', '.vite', '.npm-cache', '.vitest'])
+const SKIP_FILES = new Set(['HANDOVER.md', 'FULL_DIAGNOSTIC_REPORT.md', 'TRANSLATION_IMPROVEMENTS.md', '完善总结.md', 'source.zip', 'pocketzot-dist.zip', 'localization.patch'])
 const isSkipped = (rel) => {
   const parts = rel.split('/')
   if (parts.some((p) => SKIP_DIRS.has(p))) return true
@@ -40,9 +40,9 @@ function walk(root) {
   const visit = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
-      if (entry.isDirectory()) { visit(full); continue }
       const rel = relative(root, full).split('\\').join('/')
       if (isSkipped(rel)) continue
+      if (entry.isDirectory()) { visit(full); continue }
       out.set(rel, readFileSync(full))
     }
   }

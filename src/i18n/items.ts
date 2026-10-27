@@ -93,8 +93,16 @@ const SUFFIXES: Record<string, string> = {
   'of flaming': '烈焰',
   'of electrocution': '电击',
   'of draining': '汲取',
-  'of distortion': '扭曲',
+  'of holy wrath': '神圣之怒',
+  'of pain': '痛苦',
+  'of antimagic': '反魔法',
+  'of vampirism': '吸血',
+  'of heavy': '沉重',
+  'of spectral': '幽灵',
+  'of penetration': '穿透',
+  'of reaping': '收割',
   'of chaos': '混沌',
+  'of distortion': '扭曲',
   'of protection': '防护',
   'of evasion': '闪避',
   'of fire resistance': '抗火',
@@ -146,6 +154,12 @@ const PROP_LABELS: Record<string, string> = {
   Alch: '炼金', Summ: '召唤', Necro: '死灵', Hex: '诅咒',
   Ice: '冰系', Fire: '火系', Air: '气系', Earth: '土系', Poison: '毒系',
   'one-handed': '单手', 'two-handed': '双手',
+  draining: '汲取', 'holy wrath': '神圣之怒', flaming: '烈焰',
+  freezing: '冰冻', electrocution: '电击', venom: '淬毒',
+  distortion: '扭曲', chaos: '混沌', vamp: '吸血', vampirism: '吸血',
+  antimagic: '反魔法', pain: '痛苦', heavy: '沉重', spectral: '幽灵',
+  speed: '急速', flame: '烈焰', freeze: '冰冻', drain: '汲取',
+  Harm: '伤害', Death: '死亡',
 }
 
 /** Label of a property row: "rPois" → 毒抗, "*Rats" → 鼠群, "MP+10" → 法力+10. */
@@ -268,7 +282,7 @@ export interface ItemParts {
 
 /** Split a name into its mechanical pieces without translating anything. */
 export function splitItem(raw: string): ItemParts {
-  let rest = raw
+  let rest = raw.trim().replace(/[.。]$/, '')
   const hotkey = HOTKEY_PREFIX.exec(rest)?.[1] ?? ''
   if (hotkey) rest = rest.slice(hotkey.length)
   let paren = ''
@@ -312,6 +326,11 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   const feat = featureName(text)
   if (feat && feat !== text) return prefix + feat
   const noHot = (hotkey ? text.slice(hotkey.length) : text).trim()
+  const location = /^\[right here\]\s+(.+)$/.exec(noHot)
+  if (location) {
+    const item = translateItem(m, location[1], opts)
+    if (item) return prefix + hotkey + '[就在这里] ' + item
+  }
   // Several items on one line: "a +0 club; a stone" / "…; a rat corpse".
   if (noHot.includes(';')) {
     const parts = noHot.split(/\s*;\s*/).filter(Boolean)
@@ -405,7 +424,8 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
     if (!suffixZh) {
       // "of A and B": try each side, else keep the proper name in parentheses
       const both = suffix.split(/\s+and\s+/)
-      if (both.every((s) => SUFFIXES[s])) suffixZh = both.map((s) => SUFFIXES[s]).join('与')
+      const keys = both.map((s) => s.startsWith('of ') ? s : `of ${s}`)
+      if (keys.every((s) => SUFFIXES[s])) suffixZh = keys.map((s) => SUFFIXES[s]).join('与')
       // An unknown brand/spell name ("parchment of Volatile Blastmotes") stays
       // in its original spelling, but the noun around it is translated.
       else suffixNote = suffixRaw.replace(/^of\s+/i, '')
@@ -430,7 +450,9 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
     // append "(gained 1)".
     const price = /^(\d+)\s+gold(?:\s+pieces)?$/i.exec(parts.paren)
     const gained = /^gained\s+(\d+)$/i.exec(parts.paren)
-    let inner = known
+    const brand = SUFFIXES[`of ${parts.paren.toLowerCase()}`]
+      ?? m.exact.get(parts.paren)
+    let inner = known ?? brand
       ?? (price ? `${price[1]} 金币`
         : gained ? `获得 ${gained[1]}`
           : /^\d+$/.test(parts.paren) ? parts.paren : '')

@@ -24,6 +24,14 @@ function zhDamageList(list: string): string {
 }
 
 export const TITLE_RULES: TitleRule[] = [
+  {
+    re: /^(\d+) matches?: only useless items found; press = to show\.$/,
+    to: (m) => `${m[1]} 个匹配：只找到无用物品；按 = 显示。`,
+  },
+  {
+    re: /^(\d+) (?:match|matches): view\s+\[toggle: !\], by type \[\/\], (show|hide) useless & duplicates \[=\]$/,
+    to: (m) => `${m[1]} 个匹配：查看［! 切换］，按类型［/］，${m[2] === 'show' ? '显示' : '隐藏'}无用与重复物品［=］`,
+  },
   // "Gear: 1/52 gear slots    (Left/Right/Tab to switch category)"
   {
     re: /^Gear:\s*(\d+)\/(\d+) gear slots(.*)$/,

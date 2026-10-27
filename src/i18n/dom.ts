@@ -11,7 +11,7 @@
 import { getLang, hasUiLabel, LANG_CHANGED_EVENT, t, tItem, tLabel } from './index'
 import { translateLabeledText } from './body'
 
-const SKIP_SELECTOR = '#map-grid, #crt-display, .no-i18n, .chat_sender, .chat_msg, script, style'
+const SKIP_SELECTOR = '#map-grid, #crt-display, .no-i18n, [data-no-i18n], .chat_sender, .chat_msg, script, style'
 const SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CODE', 'PRE'])
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'] as const
 
@@ -95,7 +95,7 @@ function translateText(node: Text): void {
   if (out === value) return
   // Preserve the node's own surrounding whitespace (inline layouts rely on it);
   // hotkey rows already carry their prefix from the item grammar.
-  if (!hotkeyRow && (lead || trail) && !out.startsWith(lead)) out = lead + out.trim() + trail
+  if (!hotkeyRow) out = lead + out.trim() + trail
   remember(node, value)
   node.nodeValue = out
 }

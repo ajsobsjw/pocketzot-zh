@@ -51,6 +51,18 @@ describe('auto translate', () => {
     expect(grid.textContent).toBe('Spells')
   })
 
+  it('honours explicit no-translation markers and surrounding whitespace', async () => {
+    const privateText = document.createElement('div')
+    privateText.dataset.noI18n = ''
+    privateText.textContent = 'Spells'
+    const label = document.createElement('span')
+    label.textContent = '  Spells  '
+    root.append(privateText, label)
+    await tick()
+    expect(privateText.textContent).toBe('Spells')
+    expect(label.textContent).toBe('  法术  ')
+  })
+
   it('restores English on switch back', async () => {
     const p = document.createElement('p')
     p.textContent = 'Skills'

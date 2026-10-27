@@ -10,7 +10,7 @@ const MAX = 4000
 export function noteMiss(text: string): void {
   if (!text) return
   const t = text.trim()
-  if (t.length < 3 || t.length > 160) return
+  if (t.length < 3 || t.length > 8000) return
   if (!/[A-Za-z]{2}/.test(t)) return
   misses.set(t, (misses.get(t) ?? 0) + 1)
   if (misses.size > MAX) {

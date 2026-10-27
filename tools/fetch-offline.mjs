@@ -33,7 +33,7 @@ async function get(path) {
 async function save(path, required = true) {
   try {
     const body = await get(path)
-    const out = join(DIST, path.replace(/^\//, '').replace(/\//g, '\\'))
+    const out = join(DIST, ...path.replace(/^\//, '').split('/'))
     await mkdir(dirname(out), { recursive: true })
     await writeFile(out, body)
     console.log(`${path}  ${(body.length / 1048576).toFixed(2)} MB`)

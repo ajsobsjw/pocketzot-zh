@@ -352,6 +352,10 @@ function translateOne(text: string): string | null {
     const aim = translateAimLine(plainText)
     if (aim) return aim
   }
+  const searchPrompt = /^Search for what \[Enter for "([^"]*)", or \? for help\]\?\s*(.*)$/.exec(plainText)
+  if (searchPrompt) return `搜索什么［回车沿用“${searchPrompt[1]}”，按 ? 查看帮助］？${searchPrompt[2]}`
+  const goodbye = /^Goodbye, (.+)\.$/.exec(plainText)
+  if (goodbye) return `再见，${goodbye[1]}。`
   // Rules whose subject is a monster/item name: the name needs the capture
   // translator, so they live here rather than in the static table.
   const NAMED_RULES: Array<[RegExp, (n: string) => string]> = [
@@ -371,6 +375,32 @@ function translateOne(text: string): string | null {
     }
     const verb = castLine[1] === 'Casting' ? '施法' : '瞄准'
     return `${verb}：${translateCapture(castLine[2])}（${q[castLine[3].toLowerCase()] ?? castLine[3]}；失败率 ${castLine[4]}%）`
+  }
+  // Monster encounter details are emitted as a second log row, e.g.
+  // "She is wielding a +5 dagger of holy wrath and carrying a wand of flame."
+  // Translate each complete item name rather than relying on a static sentence
+  // template whose captures vary with monster gender and equipment.
+  const encounterGear = /^(He|She|It|They) (?:is|are) (wielding|wearing|carrying) (.+?)(?: and (wielding|wearing|carrying) (.+?))?\.$/.exec(plainText)
+  if (encounterGear) {
+    const pronoun = { He: '他', She: '她', It: '它', They: '它们' }[encounterGear[1]]
+    const verbs: Record<string, string> = { wielding: '手持', wearing: '身穿', carrying: '携带' }
+    const first = translateCapture(encounterGear[3])
+    const second = encounterGear[5] ? translateCapture(encounterGear[5]) : ''
+    if (first !== encounterGear[3] && (!encounterGear[5] || second !== encounterGear[5])) {
+      return `${pronoun}${verbs[encounterGear[2]]}${first}${encounterGear[5] ? `，${verbs[encounterGear[4]]}${second}` : ''}。`
+    }
+  }
+  // Wand activity names the monster but not the wand's item text.
+  const zap = /^(.+?) zaps a wand\.$/.exec(plainText)
+  if (zap) {
+    const actor = translateCapture(zap[1])
+    if (actor !== zap[1]) return `${actor}挥动了一根魔杖。`
+  }
+  // A few named monster taunts are quoted verbatim by the game engine.
+  const taunt = /^(.+?) screams, [\"“]Me am play god![\"”]$/.exec(plainText)
+  if (taunt) {
+    const actor = translateCapture(taunt[1])
+    if (actor !== taunt[1]) return `${actor}尖叫道：“我就是神！”`
   }
   const memorise = /^Memorise (.+?), consuming (\d+) spell levels? and leaving (\d+)\?$/.exec(plainText)
   if (memorise) {
@@ -599,7 +629,7 @@ export function tItem(text: string): string {
   let out: string | null = null
   const plainText = text.replace(/<[^>]*>/g, '').trim()
   // Inventory category rows: "Potions        (go to first with !)".
-  const cat = /^(.+?)\s{2,}\(go to first with (\S)\)$/.exec(plainText)
+  const cat = /^(.+?)\s{2,}\(go to first with (.+)\)$/.exec(plainText)
   if (cat) {
     const head = matcher.exact.get(cat[1])
     if (head) out = `${head}（${cat[2]} 跳到第一项）`
@@ -665,6 +695,7 @@ const MORE_WORDS: Array<[RegExp, string]> = [
 
 export function tMore(text: string): string {
   if (lang !== 'zh' || !text) return text
+  if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
   let out = text
   for (const [re, zh] of MORE_WORDS) out = out.replace(re, zh)
   return out
@@ -687,7 +718,8 @@ export function tTitle(text: string): string {
   if (out) return out
   // Menu-style title with the hotkey baked in: "a - a +0 robe (worn)."
   const noHot = plain.replace(/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/, '')
-  const asItem = matcher && noHot !== plain ? translateItem(matcher, noHot) : null
+  const asItem = matcher && (noHot !== plain || /^(?:a|an|the) [+-]\d+ /i.test(plain))
+    ? translateItem(matcher, noHot) : null
   if (asItem) return asItem
   const direct = t(plain)
   if (direct !== plain) return direct

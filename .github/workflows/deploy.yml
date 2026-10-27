@@ -1,0 +1,39 @@
+name: Deploy Chinese edition
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-chinese-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Type check and regression tests
+        run: npx tsc --noEmit && npx vitest run
+      - name: Build verified fork
+        run: npx vite build
+      - name: Include offline engine and tiles
+        run: node tools/fetch-offline.mjs --dist dist
+      - name: Package corresponding source
+        run: zip -qr dist/source.zip . -x 'node_modules/*' 'dist/*' '.git/*'
+      - name: Record release revision
+        run: node -e "require('fs').writeFileSync('dist/release.json', JSON.stringify({revision:process.env.GITHUB_SHA,builtAt:new Date().toISOString()}))"
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler pages deploy dist --project-name pocketzot-cn --branch main
