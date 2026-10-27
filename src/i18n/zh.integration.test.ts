@@ -254,6 +254,8 @@ describe('real dictionary', () => {
     expect(out).toContain('选择')
     expect(out).toContain('下翻页')
     expect(out).toContain('退出')
+    const spellFooter = tMore('5 spell levels left\n[Tab] Memorise | Describe | Hide | Show  [Ctrl-F] Search  [?] Help  [Esc] Exit')
+    expect(spellFooter).toBe('5 个法术等级可用\n[Tab] 记忆 | 描述 | 隐藏 | 显示  [Ctrl-F] 搜索  [?] 帮助  [Esc] 退出')
   })
 
   it('translates the spell prompt and miscast warning', async () => {

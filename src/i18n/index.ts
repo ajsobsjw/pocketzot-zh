@@ -679,6 +679,11 @@ export function hasUiLabel(text: string): boolean {
 
 /** Menu-footer nav keyhelp: a closed vocabulary, applied word-wise. */
 const MORE_WORDS: Array<[RegExp, string]> = [
+  [/\bMemorise\b/gi, '记忆'],
+  [/\bDescribe\b/gi, '描述'],
+  [/\bHide\b/gi, '隐藏'],
+  [/\bShow\b/gi, '显示'],
+  [/\bspell levels left\b/gi, '个法术等级可用'],
   [/\bpage down\b/gi, '下翻页'],
   [/\bpage up\b/gi, '上翻页'],
   [/\bselect all with\b/gi, '全选：'],
@@ -700,6 +705,9 @@ export function tMore(text: string): string {
   if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
   let out = text
   for (const [re, zh] of MORE_WORDS) out = out.replace(re, zh)
+  out = out.replace(/\b(\d+) 个法术等级可用\b/i, '$1 个法术等级可用')
+  // Page's spell-menu status line is a count, not a generic footer keyword.
+  out = out.replace(/\b(\d+)\s+spell levels? left\b/i, '$1 个法术等级可用')
   return out
 }
 
