@@ -7,6 +7,15 @@ export interface TitleRule {
   to: (m: RegExpExecArray) => string
 }
 
+const TITLE_CAPTURE_ZH: Record<string, string> = {
+  Dungeon: '地牢', 'the Dungeon': '地牢', 'Lair of Beasts': '兽巢', 'the Lair of Beasts': '兽巢',
+  goblin: '地精', 'a goblin': '一只地精',
+}
+
+function translateTitleCapture(raw: string): string {
+  return TITLE_CAPTURE_ZH[raw] ?? TITLE_CAPTURE_ZH[raw.toLowerCase()] ?? raw
+}
+
 const DAMAGE_WORDS: Record<string, string> = {
   acid: '酸', corrosion: '腐蚀', blinding: '致盲', miasma: '瘴气', drowning: '溺水',
   poison: '毒素', fire: '火', cold: '寒冷', electricity: '电', 'negative energy': '负能量',
@@ -344,13 +353,23 @@ export const TITLE_RULES: TitleRule[] = [
         Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术',
         Transmutation: '变形术', Fire: '火系', Ice: '冰系', Air: '气系',
         Earth: '土系', Poison: '毒系', Hexes: '诅咒系', Charms: '魅惑系',
+        Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系',
+        Translocations: '传送系', Conjurations: '咒法系', Summonings: '召唤系',
       }
       return `等级：${m[1]}  学派：${schools[m[2]] ?? m[2]}  失败率：${m[3]}%`
     },
   },
   { re: /^Power: (\d+)%$/, to: (m) => `威力：${m[1]}%` },
+  { re: /^Damage: (.+)$/, to: (m) => `伤害：${m[1].replace(/\bmax\b/g, '最高')}` },
   { re: /^Range: (.+)$/, to: (m) => `射程：${m[1] === 'N/A' ? '无' : m[1]}` },
   { re: /^Noise: (.+)$/, to: (m) => `噪音：${m[1]}` },
+  { re: /^School: (.+)$/, to: (m) => `学派：${({ Air: '气系', Fire: '火系', Ice: '冰系', Earth: '土系', Poison: '毒系', Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术', Transmutation: '变形术', Hexes: '诅咒系', Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系' } as Record<string, string>)[m[1]] ?? m[1]}` },
+  { re: /^Fail: (.+)$/, to: (m) => `失败率：${m[1]}` },
+  { re: /^Defences: (.+)$/, to: (m) => `防御：${m[1]}` },
+  { re: /^Resists: (.+)$/, to: (m) => `抗性：${m[1]}` },
+  { re: /^Misc: (.+)$/, to: (m) => `其他：${m[1]}` },
+  { re: /^You aren't experienced enough to cast this spell\.$/, to: () => '你的经验等级不足，无法施放此法术。' },
+  { re: /^You can't cast this spell yet\.$/, to: () => '你现在还不能施放此法术。' },
   {
     re: /^Miscasting this spell causes magic contamination and also summons a nameless horror\.$/,
     to: () => '施放此法术失误会造成魔法污染，并召唤出无名恐怖。',
@@ -362,6 +381,10 @@ export const TITLE_RULES: TitleRule[] = [
   {
     re: /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce your failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/,
     to: (m) => `以你当前的属性和装备，把${m[1]}训练到 ${m[2]} 可将失败率降到 ${m[3]}%。这大约需要 ${m[4]} 个等级。`,
+  },
+  {
+    re: /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce the failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/,
+    to: (m) => `以你当前的属性和装备，将${m[1]}训练到 ${m[2]} 可将失败率降至 ${m[3]}%。这大约需要 ${m[4]} 个等级。`,
   },
   {
     re: /^You can sustain at most (.+?) creatures? summoned by this spell\.$/,
@@ -402,7 +425,7 @@ export const TITLE_RULES: TitleRule[] = [
   { re: /^If you remove this item:$/, to: () => '如果你取下这件物品：' },
   {
     re: /^You found it on level (.+) of the (.+)\.$/,
-    to: (m) => `你在${m[2]}第 ${m[1]} 层找到了它。`,
+    to: (m) => `你在${translateTitleCapture(m[2])}第 ${m[1]} 层找到了它。`,
   },
   { re: /^It is a one-handed weapon\.$/, to: () => '它是一把单手武器。' },
   { re: /^It is a two-handed weapon\.$/, to: () => '它是一把双手武器。' },
@@ -424,7 +447,7 @@ export const TITLE_RULES: TitleRule[] = [
   },
   {
     re: /^You took it off (.+) on level (\d+) of the (.+)\.$/,
-    to: (m) => `你从${m[3]}第 ${m[2]} 层的${m[1]}身上取下了它。`,
+    to: (m) => `你在${translateTitleCapture(m[3])}第 ${m[2]} 层从${translateTitleCapture(m[1])}身上取下了它。`,
   },
   {
     re: /^Your attack delay would (increase|decrease) by ([\d.]+) \(([\d.]+) -> ([\d.]+)\)\.$/,

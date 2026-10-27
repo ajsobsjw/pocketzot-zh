@@ -509,7 +509,7 @@ export class MenuView {
     if (isZh()) {
       const plain = footerEl.textContent ?? ''
       const shown = tMore(plain)
-      if (shown !== plain) footerEl.textContent = shown
+      if (shown !== plain) footerEl.innerHTML = dcssToHtml(translateFooterMarkup(more, pos))
     }
   }
 
@@ -714,4 +714,31 @@ export class MenuView {
     }
     return header
   }
+}
+
+function translateFooterMarkup(raw: string, pos: string): string {
+  const source = raw.replace(/XXX/g, pos)
+  const plain = stripDcss(source)
+  const translated = tMore(plain)
+  let markup = ''
+  for (const line of source.split('\n')) {
+    const rawLine = stripDcss(line)
+    const zhLine = tMore(rawLine)
+    if (markup) markup += '\n'
+    if (zhLine === rawLine) markup += line
+    else markup += translateFooterLine(line, zhLine)
+  }
+  return translated === plain ? source : markup
+}
+
+function translateFooterLine(markup: string, translated: string): string {
+  if (!/<w>/i.test(markup)) return translated
+  const highlighted = Array.from(markup.matchAll(/<w>(.*?)<\/w>/gi), (match) => match[1])
+  let index = 0
+  return translated.replace(/\[([^\]]+)\]/g, (token, key: string) => {
+    const sourceKey = highlighted[index++]
+    return sourceKey && tMore(`[${sourceKey}]`) === token
+      ? `［<w>${key}</w>］`
+      : token
+  })
 }

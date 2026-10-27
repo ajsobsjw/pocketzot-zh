@@ -76,8 +76,9 @@ function findProse(name: string, kinds?: string[]): string | null {
   if (!dict) return null
   const candidates = [name, name.toLowerCase()]
   // The spell database keys carry a " spell" suffix ("Magic Dart spell").
-  if (dict.spells) candidates.push(`${name} spell`, `${name.toLowerCase()} spell`)
-  const order = kinds ? [...kinds, ...ORDER.filter((k) => !kinds.includes(k))] : ORDER
+  if (dict.spells && (!kinds || kinds.includes('spells'))) candidates.push(`${name} spell`, `${name.toLowerCase()} spell`)
+  // Typed pages must not resolve a shared name from another catalogue.
+  const order = kinds ?? [...ORDER]
   for (const kind of order) {
     const table = dict[kind]
     if (!table) continue
@@ -113,11 +114,11 @@ export function zhDescribe(title: string, body: string, type?: string): string |
   if (idx < 0) return null
   const out = paras.slice()
   let changed = false
-  const kinds = TYPE_KINDS[type ?? ''] ?? undefined
+  const kinds = TYPE_KINDS[type ?? '']
   let prose = title ? findProse(describeName(title), kinds) : null
   // Pages without a usable title (describe-god carries the name only in the
   // body) still match by their opening paragraph, which is the database text.
-  if (!prose && proseMap) {
+  if (!prose && (!type || type === 'describe-god') && proseMap) {
     prose = proseMap.get(plainOf(paras[idx])) ?? null
   }
   if (prose) {
@@ -128,7 +129,7 @@ export function zhDescribe(title: string, body: string, type?: string): string |
   }
   // Every other paragraph that is a database quote (the Quote: section of a
   // monster/item page) also gets its localized twin.
-  if (proseMap) {
+  if (proseMap && (!type || type === 'describe-god')) {
     for (let i = 0; i < out.length; i++) {
       if (i === idx && prose) continue
       const plain = plainOf(out[i])

@@ -43,6 +43,17 @@ describe('describe replacement', () => {
     expect(out).toContain('蛇')
   })
 
+  it('uses the spell catalogue exclusively for spell pages and preserves the current Airstrike prose', () => {
+    const spell = zhDescribe('Airstrike', 'A monster description shared with another catalogue.', 'describe-spell')
+    expect(spell).toContain('使目标生物周围的空气扭曲成一团狂暴的气旋')
+    expect(spell).not.toContain('怪物描述')
+  })
+
+  it('does not substitute another kind of entry when a typed title is unknown', () => {
+    expect(zhDescribe('a - Unknown Spell', 'Unknown spell prose.', 'describe-spell')).toBeNull()
+    expect(zhDescribe('a - Unlisted Monster', 'Unknown monster prose.', 'describe-monster')).toBeNull()
+  })
+
   it('returns null when the name is unknown', () => {
     expect(zhDescribe('a - a wobbling gizmo', BODY)).toBeNull()
   })

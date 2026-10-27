@@ -1969,6 +1969,23 @@ const UPPERCASE_ERR = '<lightred>Uppercase [Y]es or [N]o only, please.</lightred
 const errUpdate = () => ({ msg: 'update_menu', more: UPPERCASE_ERR, alt_more: UPPERCASE_ERR })
 
 describe('floating prompt (yesno/travel popups)', () => {
+  it('keeps highlighted shortcut colors in the translated spell menu footer', async () => {
+    const { setLang } = await import('../i18n')
+    await setLang('zh')
+    const h = setup()
+    h.dispatch({ msg: 'menu', tag: 'spell', flags: 0xc0342,
+      title: { text: 'Memorise' },
+      more: '<lightgrey>[<w>Tab</w>] Memorise | Describe | Hide | Show  [<w>Ctrl-F</w>] Search  [<w>?</w>] Help  [<w>Esc</w>] Exit</lightgrey>',
+      alt_more: '<lightgrey>[<w>Tab</w>] Memorise | Describe | Hide | Show  [<w>Ctrl-F</w>] Search  [<w>?</w>] Help  [<w>Esc</w>] Exit</lightgrey>',
+      items: [{ level: 2, text: ' a - Magic Dart', hotkeys: [97] }] })
+    const footer = overlay(h).querySelector<HTMLElement>('.menu-footer')!
+    expect(footer.textContent).toContain('记忆 | 描述 | 隐藏 | 显示')
+    const highlighted = Array.from(footer.querySelectorAll<HTMLElement>('span[style]')).map((el) => el.textContent)
+    expect(highlighted).toContain('Tab')
+    expect(highlighted.length).toBeGreaterThanOrEqual(4)
+    await setLang('en')
+  })
+
   it('floats over the visible game in a card, with the default answer highlighted', () => {
     const h = setup()
     h.dispatch({ msg: 'player', hp: 10, hp_max: 10 })  // latch hudRevealed

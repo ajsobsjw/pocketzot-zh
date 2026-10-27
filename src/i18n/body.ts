@@ -7,6 +7,7 @@
 import { isZh, t } from './index'
 import { propLabel } from './items'
 import { EGO_LABELS, translateEgoProse } from './egos'
+import { matchTitle } from './titles'
 
 function displayWidth(s: string): number {
   let n = 0
@@ -22,6 +23,7 @@ function displayWidth(s: string): number {
 
 /** Translate a row label: property tokens first, then the dictionary. */
 function labelOf(raw: string): string {
+  if (DESCRIBE_LABELS[raw]) return DESCRIBE_LABELS[raw]
   if (EGO_LABELS[raw.toLowerCase()]) return EGO_LABELS[raw.toLowerCase()]
   const prop = propLabel(raw)
   if (prop !== raw) return prop
@@ -241,6 +243,19 @@ function reflowCells(pieces: string[]): string | null {
 // "Base armour rating", "Attack"), optionally behind colour tags. Keep it
 // tight: a prose sentence rarely starts with 1–40 word characters and a colon.
 const LABEL_ROW = /^\s*(?:<[^>]+>)*[A-Za-z][\w .'+-]{0,38}?:\s+\S/
+const DESCRIBE_LABELS: Record<string, string> = {
+  School: '学派', Fail: '失败率', Failure: '失败率', Level: '等级', Power: '威力',
+  Damage: '伤害', Range: '射程', Noise: '噪音', Defences: '防御', Defence: '防御',
+  Resists: '抗性', Resistances: '抗性', Misc: '其他', Status: '状态', Quote: '引言',
+  Attack: '攻击', Speed: '速度', AC: '护甲', EV: '闪避', Will: '意志',
+}
+
+const DESCRIBE_SCHOOLS: Record<string, string> = {
+  Air: '气系', Fire: '火系', Ice: '冰系', Earth: '土系', Poison: '毒系',
+  Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术',
+  Transmutation: '变形术', Hexes: '诅咒系', Forgecraft: '锻造术',
+  Alchemy: '炼金术', Translocation: '传送系',
+}
 
 // These lines are complete sentences with their own optional indented
 // continuation ("At current training…"), so the property-row merger must leave
@@ -284,6 +299,33 @@ export function translateBody(body: string): string {
     // Match the explanation before padding splits labels from values, and
     // before internal colour tags can cause the generic reflow to skip it.
     const plain = stripTags(line).trim()
+    const fullSpellMeta = /^Level:\s*(\d+)\s+School:\s*(.+?)\s+Fail:\s*(\d+)%$/.exec(plain)
+    if (fullSpellMeta) return `等级：${fullSpellMeta[1]}  学派：${DESCRIBE_SCHOOLS[fullSpellMeta[2]] ?? fullSpellMeta[2]}  失败率：${fullSpellMeta[3]}%`
+    const directLabel = /^([^:]{1,40}):\s*(.*)$/.exec(plain)
+    if (directLabel && DESCRIBE_LABELS[directLabel[1]]) {
+      const values: Record<string, Record<string, string>> = {
+        Noise: { whisper: '耳语', silent: '无声', loud: '响亮', 'very loud': '非常响亮', deafening: '震耳欲聋', 'N/A': '无' },
+        School: DESCRIBE_SCHOOLS,
+      }
+      const val = directLabel[2]
+      const shown = values[directLabel[1]]?.[val] ?? val.replace(/\bmax\b/g, '最高')
+      return `${DESCRIBE_LABELS[directLabel[1]]}：${shown}`
+    }
+    const structured = matchTitle(plain)
+    if (structured) return structured
+    const labelValue = /^([^:]{1,40}):\s*(.*)$/.exec(plain)
+    if (labelValue && DESCRIBE_LABELS[labelValue[1]]) {
+      const label = DESCRIBE_LABELS[labelValue[1]]
+      const value = labelValue[2]
+      if (labelValue[1] === 'Noise') {
+        const noises: Record<string, string> = { whisper: '耳语', silent: '无声', loud: '响亮', 'very loud': '非常响亮', deafening: '震耳欲聋', 'N/A': '无' }
+        return `${label}：${noises[value] ?? value}`
+      }
+      if (labelValue[1] === 'School') return `${label}：${DESCRIBE_SCHOOLS[value] ?? value}`
+      return `${label}：${value}`
+    }
+    const spellMeta = /^Level:\s*(\d+)\s+School:\s*(.+?)\s+Fail:\s*(\d+)%$/.exec(plain)
+    if (spellMeta) return `等级：${spellMeta[1]}  学派：${DESCRIBE_SCHOOLS[spellMeta[2]] ?? spellMeta[2]}  失败率：${spellMeta[3]}%`
     const egoRow = /^([^:]{1,40}):\s+(.+)$/.exec(plain)
     if (egoRow) {
       const explanation = translateEgoProse(egoRow[2])
@@ -293,6 +335,8 @@ export function translateBody(body: string): string {
     if (ego) return ego
     const weapon = translateWeaponCategory(plain)
     if (weapon) return weapon
+    const detail = translateSpellDetail(line)
+    if (detail) return detail
     if (/\((?:Ench|Slay|Hvy)(?: \+ Slay)?\)/.test(line)) {
       line = line.replace(/\bEnch\b/g, '附魔').replace(/\bSlay\b/g, '杀戮').replace(/\bHvy\b/g, '沉重')
     }
@@ -336,6 +380,21 @@ function translateWeaponCategory(text: string): string | null {
   const translated = sentences.map((s) => fragments[s] ?? (t(s) !== s ? t(s) : null))
   if (translated.some((s) => s === null)) return null
   return `这把武器属于“${skill}”类别。${translated.join('')}`
+}
+
+function translateSpellDetail(line: string): string | null {
+  const plain = stripTags(line).trim()
+  if (/^You (?:aren't|are not) experienced enough to cast this spell\.$/.test(plain)) {
+    return '你的经验等级不足，无法施放此法术。'
+  }
+  const miscast = /^Miscasting this spell causes magic contamination and also deals up to (\d+) (.+?) damage\.$/.exec(plain)
+  if (miscast) {
+    const damage: Record<string, string> = { electric: '电击', electricity: '电击', fire: '火焰', cold: '寒冷', poison: '毒素', acid: '酸' }
+    return `施法失误会造成魔法污染，并额外造成最多 ${miscast[1]} 点${damage[miscast[2]] ?? miscast[2]}伤害。`
+  }
+  const training = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce your failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.$/.exec(plain)
+  if (training) return `以你当前的属性和装备，把${training[1]}训练到 ${training[2]} 可将失败率降到 ${training[3]}%。这大约需要 ${training[4]} 个等级。`
+  return null
 }
 
 /** One "label: value" text node, for the DOM translator (menus included). */

@@ -150,6 +150,32 @@ describe('real dictionary', () => {
     expect(out).toContain('你在兽巢第 3 层找到了它。')
   })
 
+  it('translates full spell describe metadata and warnings as structured fields', async () => {
+    await setLang('zh')
+    const out = translateBody([
+      'Level: 4     School: Air     Fail: 28%',
+      'Power: 9%',
+      'Damage: 2d (2-18) (max 2d (15-31))',
+      'Range: 7',
+      'Noise: whisper',
+      'Defences: Defence: 3',
+      'Resists: None',
+      'Miscasting this spell causes magic contamination and also deals up to 20 electric damage.',
+      'With your current stats and equipment, training Air Magic to 6.5 would reduce your failure rate to 10%. This would take about 2.7 XLs.',
+      "You aren't experienced enough to cast this spell.",
+    ].join('\n'))
+    expect(out).toContain('等级：4  学派：气系  失败率：28%')
+    expect(out).toContain('威力：9%')
+    expect(out).toContain('伤害：2d (2-18) (最高 2d (15-31))')
+    expect(out).toContain('射程：7')
+    expect(out).toContain('噪音：耳语')
+    expect(out).toContain('防御：Defence: 3')
+    expect(out).toContain('抗性：None')
+    expect(out).toContain('施法失误会造成魔法污染，并额外造成最多 20 点电击伤害。')
+    expect(out).toContain('以你当前的属性和装备，把Air Magic训练到 6.5 可将失败率降到 10%。这大约需要 2.7 个等级。')
+    expect(out).toContain('你的经验等级不足，无法施放此法术。')
+  })
+
   it('translates god and monster speech lines', async () => {
     await setLang('zh')
     await loadDescript()
