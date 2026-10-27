@@ -6,6 +6,7 @@
 
 import { isZh, t } from './index'
 import { propLabel } from './items'
+import { EGO_LABELS, translateEgoProse } from './egos'
 
 function displayWidth(s: string): number {
   let n = 0
@@ -21,8 +22,13 @@ function displayWidth(s: string): number {
 
 /** Translate a row label: property tokens first, then the dictionary. */
 function labelOf(raw: string): string {
+  if (EGO_LABELS[raw.toLowerCase()]) return EGO_LABELS[raw.toLowerCase()]
   const prop = propLabel(raw)
   if (prop !== raw) return prop
+  const lower = propLabel(raw.toLowerCase())
+  if (lower !== raw.toLowerCase()) return lower
+  const brand = t(raw.toLowerCase())
+  if (brand !== raw.toLowerCase()) return brand
   return t(raw)
 }
 
@@ -244,6 +250,13 @@ const COMPUTED_START = /^\s*(?:<[^>]+>)*(?:Melds:|Mutations Suppressed:|Your (?:
 /** Translate the property/value rows and stray sentences of a describe body. */
 export function translateBody(body: string): string {
   if (!isZh() || !body) return body
+  body = body.split(/(\n[ \t]*\n)/).map((block, i) => {
+    if (i % 2) return block
+    const plain = stripTags(block).trim()
+    const row = /^([^:]{1,40}):\s+([\s\S]+)$/.exec(plain)
+    const explanation = translateEgoProse(row ? row[2] : plain)
+    return explanation ? (row ? `${labelOf(row[1])}：` : '') + explanation : block
+  }).join('')
   // The engine hard-wraps long property values ("Flame:  It burns victims,\n
   // dealing …"). Join indented continuation lines back onto their label so the
   // sentence can match; the overlay wraps the merged line again on screen.
@@ -268,6 +281,21 @@ export function translateBody(body: string): string {
     lines.push(line)
   }
   return lines.map((line) => {
+    // Match the explanation before padding splits labels from values, and
+    // before internal colour tags can cause the generic reflow to skip it.
+    const plain = stripTags(line).trim()
+    const egoRow = /^([^:]{1,40}):\s+(.+)$/.exec(plain)
+    if (egoRow) {
+      const explanation = translateEgoProse(egoRow[2])
+      if (explanation) return `${labelOf(egoRow[1])}：${explanation}`
+    }
+    const ego = translateEgoProse(plain)
+    if (ego) return ego
+    const weapon = translateWeaponCategory(plain)
+    if (weapon) return weapon
+    if (/\((?:Ench|Slay|Hvy)(?: \+ Slay)?\)/.test(line)) {
+      line = line.replace(/\bEnch\b/g, '附魔').replace(/\bSlay\b/g, '杀戮').replace(/\bHvy\b/g, '沉重')
+    }
     const computed = translateComputedLine(line)
     if (computed) return computed
     // Rows can carry several labelled cells separated by the engine's column
@@ -286,6 +314,28 @@ export function translateBody(body: string): string {
     if (zh !== trimmed) return line.slice(0, line.length - line.trimStart().length) + tidy(zh)
     return line
   }).join('\n')
+}
+
+function translateWeaponCategory(text: string): string | null {
+  const match = /^This weapon falls into the [‘’'"](.+?)[‘’'"] category\.\s*(.*)$/.exec(text)
+  if (!match) return null
+  const skill = t(match[1])
+  if (skill === match[1]) return null
+  const fragments: Record<string, string> = {
+    'It is extremely good for stabbing helpless or unaware enemies.': '它极其擅长刺杀无力反抗或毫无察觉的敌人。',
+    'It is good for stabbing helpless or unaware enemies.': '它擅长刺杀无力反抗或毫无察觉的敌人。',
+    'It is a one-handed weapon.': '这是一把单手武器。',
+    'It is a two-handed weapon.': '这是一把双手武器。',
+    'It can be used to attack enemies two spaces away.': '它能攻击两格外的敌人。',
+    'It has an extended reach (target with [v]).': '它的攻击距离更远（按 [v] 选择目标）。',
+    'It has an extended reach.': '它的攻击距离更远。',
+    'It hits all enemies adjacent to the wielder, dealing less damage to those not targeted.': '它攻击持用者相邻的所有敌人，对非主要目标造成较低伤害。',
+    'It hits all enemies adjacent to the wielder.': '它攻击持用者相邻的所有敌人。',
+  }
+  const sentences = match[2].trim() ? match[2].trim().split(/(?<=\.)\s+/) : []
+  const translated = sentences.map((s) => fragments[s] ?? (t(s) !== s ? t(s) : null))
+  if (translated.some((s) => s === null)) return null
+  return `这把武器属于“${skill}”类别。${translated.join('')}`
 }
 
 /** One "label: value" text node, for the DOM translator (menus included). */

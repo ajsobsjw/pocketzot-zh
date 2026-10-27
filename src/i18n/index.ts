@@ -429,6 +429,8 @@ function translateOne(text: string): string | null {
   }
   const found = /^You found it on level (.+) of the (.+)\.$/.exec(plainText)
   if (found) return `你在${translateCapture(found[2])}第 ${found[1]} 层找到了它。`
+  const taken = /^You took it off (.+) on level (\d+) of the (.+)\.$/.exec(plainText)
+  if (taken) return `你在${translateCapture(taken[3])}第 ${taken[2]} 层从${translateCapture(taken[1])}身上取下了它。`
   const pray = /^You pray to (.+)\.$/.exec(plainText)
   if (pray) return `你向${translateCapture(pray[1])}祈祷。`
   // "The kobold is quivering stones." — quivered ammo, not the stone item.

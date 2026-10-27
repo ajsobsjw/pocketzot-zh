@@ -598,7 +598,7 @@ diff --git a/LOCALIZATION.md b/LOCALIZATION.md
 new file mode 100644
 --- /dev/null
 +++ b/LOCALIZATION.md
-@@ -0,0 +1,105 @@
+@@ -0,0 +1,113 @@
 +# 中文化说明（display-only localization）
 +
 +这份改动只作用于**渲染层**：游戏消息、菜单、HUD、PocketZot 自己的界面在写到屏幕前被翻译成中文。
@@ -606,6 +606,14 @@ new file mode 100644
 +符文词表等）**一行都没有改**，所以触控、快捷键、排序、存档行为与英文版完全一致。
 +
 +## 结构
++
++### 2026-10-27 附魔说明修复
++
++- `egos.ts` 收录按上游 `dat/descript/egos.txt` 审核的武器、护甲、弹药效果说明；
++  英文快照保留在 `data/egos-en.txt`（来源 crawl/crawl，沿用项目的 DCSS 归属与许可）。
++- `egos.test.ts` 逐项检查 80 个上游条目，另验证颜色标签、换行、痛苦附魔条件提示、
++  武器分类、公式缩写、物品来源和检索词保留。此覆盖仅指该说明快照，不是全游戏覆盖率。
++- 属性说明在拆列前匹配，修复原先缺少附魔正文、首字母大小写及中间颜色标签导致的漏译。
 +
 +| 文件 | 作用 |
 +|---|---|
@@ -2182,7 +2190,7 @@ diff --git a/src/i18n/body.ts b/src/i18n/body.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/body.ts
-@@ -0,0 +1,308 @@
+@@ -0,0 +1,358 @@
 +// Describe overlays arrive as pre-arranged text, so the DOM translator never
 +// sees a sentence on its own: property rows come as "rPois:     It protects…"
 +// and the label/value share one text node. This runs on the assembled body
@@ -2191,6 +2199,7 @@ new file mode 100644
 +
 +import { isZh, t } from './index'
 +import { propLabel } from './items'
++import { EGO_LABELS, translateEgoProse } from './egos'
 +
 +function displayWidth(s: string): number {
 +  let n = 0
@@ -2206,8 +2215,13 @@ new file mode 100644
 +
 +/** Translate a row label: property tokens first, then the dictionary. */
 +function labelOf(raw: string): string {
++  if (EGO_LABELS[raw.toLowerCase()]) return EGO_LABELS[raw.toLowerCase()]
 +  const prop = propLabel(raw)
 +  if (prop !== raw) return prop
++  const lower = propLabel(raw.toLowerCase())
++  if (lower !== raw.toLowerCase()) return lower
++  const brand = t(raw.toLowerCase())
++  if (brand !== raw.toLowerCase()) return brand
 +  return t(raw)
 +}
 +
@@ -2429,6 +2443,13 @@ new file mode 100644
 +/** Translate the property/value rows and stray sentences of a describe body. */
 +export function translateBody(body: string): string {
 +  if (!isZh() || !body) return body
++  body = body.split(/(\n[ \t]*\n)/).map((block, i) => {
++    if (i % 2) return block
++    const plain = stripTags(block).trim()
++    const row = /^([^:]{1,40}):\s+([\s\S]+)$/.exec(plain)
++    const explanation = translateEgoProse(row ? row[2] : plain)
++    return explanation ? (row ? `${labelOf(row[1])}：` : '') + explanation : block
++  }).join('')
 +  // The engine hard-wraps long property values ("Flame:  It burns victims,\n
 +  // dealing …"). Join indented continuation lines back onto their label so the
 +  // sentence can match; the overlay wraps the merged line again on screen.
@@ -2453,6 +2474,21 @@ new file mode 100644
 +    lines.push(line)
 +  }
 +  return lines.map((line) => {
++    // Match the explanation before padding splits labels from values, and
++    // before internal colour tags can cause the generic reflow to skip it.
++    const plain = stripTags(line).trim()
++    const egoRow = /^([^:]{1,40}):\s+(.+)$/.exec(plain)
++    if (egoRow) {
++      const explanation = translateEgoProse(egoRow[2])
++      if (explanation) return `${labelOf(egoRow[1])}：${explanation}`
++    }
++    const ego = translateEgoProse(plain)
++    if (ego) return ego
++    const weapon = translateWeaponCategory(plain)
++    if (weapon) return weapon
++    if (/\((?:Ench|Slay|Hvy)(?: \+ Slay)?\)/.test(line)) {
++      line = line.replace(/\bEnch\b/g, '附魔').replace(/\bSlay\b/g, '杀戮').replace(/\bHvy\b/g, '沉重')
++    }
 +    const computed = translateComputedLine(line)
 +    if (computed) return computed
 +    // Rows can carry several labelled cells separated by the engine's column
@@ -2471,6 +2507,28 @@ new file mode 100644
 +    if (zh !== trimmed) return line.slice(0, line.length - line.trimStart().length) + tidy(zh)
 +    return line
 +  }).join('\n')
++}
++
++function translateWeaponCategory(text: string): string | null {
++  const match = /^This weapon falls into the [‘’'"](.+?)[‘’'"] category\.\s*(.*)$/.exec(text)
++  if (!match) return null
++  const skill = t(match[1])
++  if (skill === match[1]) return null
++  const fragments: Record<string, string> = {
++    'It is extremely good for stabbing helpless or unaware enemies.': '它极其擅长刺杀无力反抗或毫无察觉的敌人。',
++    'It is good for stabbing helpless or unaware enemies.': '它擅长刺杀无力反抗或毫无察觉的敌人。',
++    'It is a one-handed weapon.': '这是一把单手武器。',
++    'It is a two-handed weapon.': '这是一把双手武器。',
++    'It can be used to attack enemies two spaces away.': '它能攻击两格外的敌人。',
++    'It has an extended reach (target with [v]).': '它的攻击距离更远（按 [v] 选择目标）。',
++    'It has an extended reach.': '它的攻击距离更远。',
++    'It hits all enemies adjacent to the wielder, dealing less damage to those not targeted.': '它攻击持用者相邻的所有敌人，对非主要目标造成较低伤害。',
++    'It hits all enemies adjacent to the wielder.': '它攻击持用者相邻的所有敌人。',
++  }
++  const sentences = match[2].trim() ? match[2].trim().split(/(?<=\.)\s+/) : []
++  const translated = sentences.map((s) => fragments[s] ?? (t(s) !== s ? t(s) : null))
++  if (translated.some((s) => s === null)) return null
++  return `这把武器属于“${skill}”类别。${translated.join('')}`
 +}
 +
 +/** One "label: value" text node, for the DOM translator (menus included). */
@@ -2579,6 +2637,414 @@ new file mode 100644
 +    expect(hit).toBeGreaterThan(0)
 +  })
 +})
+diff --git a/src/i18n/data/egos-en.txt b/src/i18n/data/egos-en.txt
+new file mode 100644
+--- /dev/null
++++ b/src/i18n/data/egos-en.txt
+@@ -0,0 +1,403 @@
++%%%%
++acid (acid) weapon ego
++
++It splashes victims with acid (2d4 damage, Corrosion).
++%%%%
++antimagic (antimagic) weapon ego
++
++It reduces your magical energy, and disrupts the spells and magical abilities of
++those it strikes. Natural abilities and divine invocations are not affected.
++%%%%
++chaos (chaos) weapon ego
++
++Each hit from it has a different, random effect.
++%%%%
++concussion (concuss) weapon ego
++
++It pushes those it hits backwards, briefly stunning them in the process. If it
++pushes them into a solid feature, they will instead take an additional one-third
++of any damage that pierces their armour.
++%%%%
++distortion (distort) weapon ego
++
++It warps and distorts space around it, and may blink, banish, or inflict extra
++damage upon those it strikes. Unwielding it can teleport you to foes or banish
++you to the Abyss.
++%%%%
++devious (devious) weapon ego
++
++It has an increased chance to perform stab attacks against vulnerable targets,
++and temporarily increases the wielder's EV and slaying each time they do so.
++%%%%
++draining (drain) weapon ego
++
++It sometimes drains living victims (1/2 chance). This deals an additional
++one-quarter of any damage that pierces defenders' armour as well as a flat 2-4
++damage, and also weakens them slightly.
++%%%%
++electrocution (elec) weapon ego
++
++It sometimes electrocutes victims (1/4 chance, 8-20 damage).
++%%%%
++entangling (entangle) weapon ego
++
++It sometimes constricts those it attacks with vines. (1/2 chance, 2-4 damage).
++%%%%
++flaming (flame) weapon ego
++
++It burns victims, dealing an additional one-quarter of any damage that pierces
++defenders' armour.
++%%%%
++flaming (flame) weapon ego blade
++
++It burns victims, dealing an additional one-quarter of any damage that pierces
++defenders' armour. Big, fiery blades are also staple armaments of hydra-hunters.
++%%%%
++freezing (freeze) weapon ego
++
++It freezes victims, dealing an additional one-quarter of any damage that pierces
++defenders' armour. It may also slow down cold-blooded creatures.
++%%%%
++foul flame (foul flame) weapon ego
++
++It has been infused with foul flame, dealing an additional three-quarters damage
++to holy beings, an additional one-quarter damage to undead and demons, and an
++additional half damage to all others, so long as it pierces armour. Holy beings
++and good god worshippers cannot use this.
++%%%%
++heavy (heavy) weapon ego
++
++It deals dramatically more damage, but attacks with it are much slower.
++%%%%
++heavy (heavy) weapon ego ranged
++
++Any ammunition fired from it deals dramatically more damage, but attacks with
++it are much slower.
++%%%%
++holy wrath (holy) weapon ego
++
++It has been blessed by the Shining One, dealing an additional three-quarters of
++any damage that pierces undead and demons' armour. Undead and demons cannot use
++this.
++%%%%
++pain (pain) weapon ego
++
++It inflicts extra damage on living creatures proportional to your Necromancy
++skill.{{
++    if you.god() == "Trog" then
++        return " Trog prevents you from unleashing this effect.";
++    end
++}}{{
++    if you.is_useless_skill("necromancy") then
++        return " Your inability to study Necromancy prevents you from drawing on the full power of this weapon.";
++    end
++}}
++%%%%
++penetration (penet) weapon ego
++
++Any ammunition fired by it continues flying after striking targets, potentially
++hitting everything in its path until it leaves sight.
++%%%%
++protection (protect) weapon ego
++
++It grants you temporary protection after it strikes (+7 AC).
++%%%%
++reaping (reap) weapon ego
++
++Any living, holy, or demonic foe damaged by it may be temporarily reanimated
++upon death as a friendly spectral, with an increasing chance as more damage is
++dealt.
++%%%%
++rebuke (rebuke) weapon ego
++
++It shields the wearer if their last action was a melee attack (+10 SH) and
++redirects blocked melee attacks to other nearby enemies.
++%%%%
++spectralising (spect) weapon ego
++
++When you attack with it, this weapon's spirit leaps out and launches a second,
++slightly weaker strike. The spirit shares part of any damage it takes with you.
++%%%%
++speed (speed) weapon ego
++
++Attacks with it are significantly faster.
++%%%%
++sundering (sunder) weapon ego
++
++After you perform multiple consecutive attacks, its next attack will deal
++greatly increased damage and also cleave into targets an extra space away.
++%%%%
++valour (valour) weapon ego
++
++It fires a beam of energy whenever it strikes an enemy while its wielder has
++no less than 80% of their maximum hit points remaining. Unwielding it will
++briefly Weaken its wielder.
++%%%%
++vampirism (vamp) weapon ego
++
++It occasionally heals you for a portion of the damage dealt when it wounds a
++living creature.
++%%%%
++venom (venom) weapon ego
++
++It poisons victims.
++%%%%
++air (Air) armour ego
++
++It enhances your Air magic.
++%%%%
++archery (Archery) armour ego
++
++It has one-third the normal encumbrance for the purpose of ranged combat, and
++slightly increases ranged damage depending on the wearer's armour skill.
++%%%%
++attunement (Attunement) armour ego
++
++When worn alongside a magical staff, it doubles the effectiveness of that
++staff's primary enhancer and causes melee attacks made with it to restore a
++small amount of MP.
++%%%%
++cold resistance (rC+) armour ego
++
++It protects you from cold.
++%%%%
++command (Command) armour ego
++
++It improves the power and success of your Summoning spells in proportion to your
++Armour skill.
++%%%%
++corrosion resistance (rCorr) armour ego
++
++It protects you from the effects of acid and corrosion.
++%%%%
++death (Death) armour ego
++
++It empowers your Necromancy spells and improves their success rate. When you
++cast a Necromancy spell, it may drain the life force of susceptible adjacent
++enemies to heal you; the chance and power of this effect depend on the spell's
++level.
++%%%%
++dexterity (Dex+3) armour ego
++
++It increases your dexterity (Dex +3).
++%%%%
++earth (Earth) armour ego
++
++It enhances your Earth magic.
++%%%%
++energy (Energy) armour ego
++
++It may return the magic spent to cast spells, but lowers their success rate. It
++always returns the magic spent on miscasts. The spell refund chance is increased
++by your Evocations skill.
++%%%%
++fire (Fire) armour ego
++
++It enhances your Fire magic.
++%%%%
++fire resistance (rF+) armour ego
++
++It protects you from fire.
++%%%%
++flying (Fly) armour ego
++
++It grants you flight.
++%%%%
++glass (Glass) armour ego
++
++It may vitrify enemies when you injure them, making them more vulnerable to
++further damage. Your Evocations skill increases the likelihood and duration of
++vitrification.
++%%%%
++guile (Guile) armour ego
++
++It weakens both your willpower and the willpower of everyone you hex, the latter
++of which is increased by your Evocations skill.
++%%%%
++harm (Harm) armour ego
++
++It increases damage dealt and taken.
++%%%%
++hurling (Hurl) armour ego
++
++It improves your accuracy and damage with thrown weapons, such as rocks and
++javelins (Slay +4).
++%%%%
++ice (Ice) armour ego
++
++It enhances your Ice magic.
++%%%%
++infusion (Infuse) armour ego
++
++It empowers each of your melee hits with a small part of your magic.
++%%%%
++intelligence (Int+3) armour ego
++
++It increases your intelligence (Int +3).
++%%%%
++invisibility (+Inv) armour ego
++
++When activated, it grants you temporary invisibility, but also drains your
++maximum health.
++%%%%
++light (Light) armour ego
++
++It surrounds you with a glowing halo, revealing invisible creatures, increasing
++accuracy against all within it other than you, and reducing your stealth.
++%%%%
++mayhem (Mayhem) armour ego
++
++It causes witnesses of your kills to go into a frenzy, attacking everything
++nearby with great strength and speed.
++%%%%
++mesmerism (Mesmerism) armour ego
++
++When you are struck in melee, it briefly dazes all nearby enemies, then must
++recharge by standing still for a while. Its duration, radius, and recharge
++speed are improved by your Evocations skill.
++
++It goes briefly dormant whenever you enter a different floor.
++%%%%
++parrying (Parrying) armour ego
++
++It shields you if your last action was a melee attack. The shielding is half as
++effective if your offhand is occupied by an item other than a weapon.
++%%%%
++poison resistance (rPois) armour ego
++
++It protects you from poison.
++%%%%
++ponderousness (Ponderous) armour ego
++
++It is very cumbersome, slowing your movement.
++%%%%
++positive energy (rN+) armour ego
++
++It protects you from the effects of negative energy.
++%%%%
++protection (AC+3) armour ego
++
++It protects you from most sources of damage (AC +3).
++%%%%
++pyromania (Pyromania) armour ego
++
++It enhances your Fire magic and may unleash a blast of flames around you
++whenever you kill an enemy by any means other than an attack. The explosion
++chance and damage both scale with Evocations and it may trigger no more than
++once each turn.
++%%%%
++rampaging (Rampage) armour ego
++
++It causes one to take an extra step when moving towards enemies, briefly
++stunning them if this results in an attack.
++%%%%
++reflection (Reflect) armour ego
++
++It reflects blocked missile attacks.
++%%%%
++repulsion (Repulsion) armour ego
++
++It helps you evade both magical and non-magical projectiles (EV +15).
++%%%%
++resistance (rC+ rF+) armour ego
++
++It protects you from the effects of both fire and cold.
++%%%%
++resonance (Resonance) armour ego
++
++It improves the success rate of your Forgecraft spells, and enhances your melee
++attacks proportionally to your Forgecraft skill when you melee an enemy that is
++adjacent to one of your constructs.
++%%%%
++see invisible (SInv) armour ego
++
++It allows you to see invisible things.
++%%%%
++shadows (Shadows) armour ego
++
++It reduces the distance you can be seen at and can see.
++%%%%
++sniping (Snipe) armour ego
++
++It increases your damage by an additional 50% with ranged and thrown weapons
++against incapacitated targets. Incapacitated targets are those that are asleep,
++paralysed, petrified, confused or caught in a net.
++%%%%
++spirit shield (Spirit) armour ego
++
++It causes incoming damage to be divided between your reserves of health and
++magic.
++%%%%
++stardust (Stardust) armour ego
++
++It conjures a barrage of shooting stars the first time you spend MP to use a
++spell or ability each battle, recharging only when your MP is restored and no
++more enemies remain. Your Evocations skill increases the number and damage of
++the stars and MP spent further increases damage.
++%%%%
++stealth (Stlth+) armour ego
++
++It enhances your stealth.
++%%%%
++strength (Str+3) armour ego
++
++It increases your strength (Str +3).
++%%%%
++the Archmagi (Archmagi) armour ego
++
++It increases the power of your magical spells.
++%%%%
++willpower (Will+) armour ego
++
++It increases your willpower, protecting against certain magical effects.
++%%%%
++wrath (*Rage) armour ego
++
++It berserks you when you make melee attacks (20% chance).
++%%%%
++atropa-tipped (atropa) missile ego
++
++It is tipped with a substance that causes blindness and brief confusion.
++
++The chance of successfully applying its effect increases with your Throwing and
++Stealth skill.
++%%%%
++chaos (chaos) missile ego
++
++When thrown, it has a random effect.
++%%%%
++curare-tipped (curare) missile ego
++
++It is tipped with a substance that causes asphyxiation, dealing direct damage as
++well as poisoning and slowing those it strikes.
++
++It is twice as likely to be destroyed on impact as other darts.
++%%%%
++datura-tipped (datura) missile ego
++
++It is tipped with a substance that sends those it hits into a mindless frenzy,
++attacking friend and foe alike.
++
++The chance of successfully applying its effect increases with your Throwing and
++Stealth skill.
++%%%%
++disjunction (disjunct) missile ego
++
++It causes any target it hits to become temporarily untethered in space, blinking
++away from you for several turns and taking minor damage each time it does so.
++%%%%
++dispersal (disperse) missile ego
++
++It causes any target it hits to blink, with a tendency towards blinking further
++away from you.
++%%%%
++poisoned (poison) missile ego
++
++It is coated with poison.
++%%%%
++silver (silver) missile ego
++
++It deals increased damage compared to normal missiles and substantially
++increased damage to chaotic and magically transformed beings. It also inflicts
++extra damage against mutated beings, depending on how mutated they are.
++%%%%
 diff --git a/src/i18n/data/zh-descript.json b/src/i18n/data/zh-descript.json
 new file mode 100644
 --- /dev/null
@@ -2649,7 +3115,7 @@ diff --git a/src/i18n/describe.ts b/src/i18n/describe.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/describe.ts
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,145 @@
 +// Phase D (light): replace the English prose block of a describe overlay with
 +// the Chinese description from dat/descript/zh, keyed by the English name that
 +// the overlay title carries. Computed lines (base armour, enchantability…) are
@@ -2657,6 +3123,7 @@ new file mode 100644
 +
 +import { getLang, setProseLookup } from './index'
 +import { MANUAL_PROSE } from './manual-zh'
++import { EGO_PROSE, translateEgoProse } from './egos'
 +
 +type DescDict = Record<string, Record<string, string>> & {
 +  pairs?: Record<string, string>
@@ -2688,8 +3155,9 @@ new file mode 100644
 +      }
 +      // Hand-written prose for content newer than the 0.34.1 Chinese database.
 +      for (const [en, zh] of Object.entries(MANUAL_PROSE)) map.set(norm(en), zh)
++      for (const [en, zh] of Object.entries(EGO_PROSE)) map.set(norm(en), zh)
 +      proseMap = map
-+      setProseLookup((text) => map.get(norm(text)) ?? null)
++      setProseLookup((text) => map.get(norm(text)) ?? translateEgoProse(text))
 +    })
 +  }
 +  return loading
@@ -3080,6 +3548,192 @@ new file mode 100644
 +    window.removeEventListener(LANG_CHANGED_EVENT, onLang)
 +  }
 +}
+diff --git a/src/i18n/egos.test.ts b/src/i18n/egos.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/i18n/egos.test.ts
+@@ -0,0 +1,46 @@
++// @vitest-environment happy-dom
++import { readFileSync } from 'node:fs'
++import { afterAll, beforeAll, expect, it } from 'vitest'
++import { setLang } from './index'
++import { translateBody } from './body'
++import { translateEgoProse } from './egos'
++
++beforeAll(() => setLang('zh'))
++afterAll(() => setLang('en'))
++
++const entries = readFileSync('src/i18n/data/egos-en.txt', 'utf8')
++  .split('%%%%').map((s) => s.trim()).filter(Boolean)
++
++for (const entry of entries) {
++  const [name, ...lines] = entry.split('\n')
++  const prose = lines.join('\n').replace(/\{\{[\s\S]*?\}\}/g, '').trim()
++  it(`translates the upstream explanation: ${name}`, () => {
++    expect(translateEgoProse(prose)).toMatch(/[\u4e00-\u9fff]/)
++    const label = name.split(' (')[0]
++    const wrapped = prose.replace(/\n/g, '\n             ')
++    const shown = translateBody(`<white>${label}:    <lightgrey>${wrapped}`)
++    expect(shown).not.toContain('It ')
++    expect(shown).not.toContain('The chance')
++  })
++}
++
++it('handles the screenshot row, internal markup and conditional pain explanations', () => {
++  expect(translateBody('Venom:     It poisons victims.')).toBe('淬毒：它使目标中毒。')
++  expect(translateBody('<white>Venom:<lightgrey>     It <green>poisons</green> victims.'))
++    .toBe('淬毒：它使目标中毒。')
++  const base = 'It inflicts extra damage on living creatures proportional to your Necromancy skill.'
++  const trog = ' Trog prevents you from unleashing this effect.'
++  const unable = ' Your inability to study Necromancy prevents you from drawing on the full power of this weapon.'
++  for (const suffix of ['', trog, unable, trog + unable]) {
++    expect(translateBody('Pain:  ' + base + suffix)).not.toMatch(/inflicts|Trog|inability/)
++  }
++})
++
++it('translates weapon category prose and formula abbreviations without altering search terms', () => {
++  expect(translateBody('This weapon falls into the ’Short Blades’ category. It is extremely good for stabbing helpless or unaware enemies. It is a one-handed weapon.'))
++    .not.toMatch(/weapon|stabbing|handed/)
++  expect(translateBody('+ 3 (Ench)')).toBe('+ 3 (附魔)')
++  expect(translateBody('You took it off a goblin on level 2 of the Dungeon.')).not.toMatch(/goblin|Dungeon/)
++  expect(translateBody('Stash search prefixes: weapon ego venom')).toContain('weapon ego venom')
++  expect(translateBody('Unknown:  It does something new.')).toContain('It does something new.')
++})
+diff --git a/src/i18n/egos.ts b/src/i18n/egos.ts
+new file mode 100644
+--- /dev/null
++++ b/src/i18n/egos.ts
+@@ -0,0 +1,130 @@
++// Curated against crawl/dat/descript/egos.txt (2026-10-27).
++// Match complete explanations, never engine-facing brand/search identifiers.
++export const EGO_PROSE: Record<string, string> = {
++  'It splashes victims with acid (2d4 damage, Corrosion).': '它向目标泼溅酸液（2d4 伤害，并造成腐蚀）。',
++  'It reduces your magical energy, and disrupts the spells and magical abilities of those it strikes. Natural abilities and divine invocations are not affected.': '它降低你的魔法能量，并干扰被击中者的法术与魔法能力。天生能力和神圣祈祷不受影响。',
++  'Each hit from it has a different, random effect.': '它每次命中都会产生不同的随机效果。',
++  'It pushes those it hits backwards, briefly stunning them in the process. If it pushes them into a solid feature, they will instead take an additional one-third of any damage that pierces their armour.': '它将被击中者向后推，并使其短暂眩晕。若将目标推向实体障碍，则改为额外造成穿透其护甲的伤害的三分之一。',
++  'It warps and distorts space around it, and may blink, banish, or inflict extra damage upon those it strikes. Unwielding it can teleport you to foes or banish you to the Abyss.': '它扭曲周围的空间，可能使被击中者闪现、将其放逐，或造成额外伤害。卸下它可能将你传送到敌人身边，或将你放逐到深渊。',
++  "It has an increased chance to perform stab attacks against vulnerable targets, and temporarily increases the wielder's EV and slaying each time they do so.": '它提高对脆弱目标发动刺杀的概率，每次成功刺杀还会暂时提高持用者的闪避与杀戮加值。',
++  "It sometimes drains living victims (1/2 chance). This deals an additional one-quarter of any damage that pierces defenders' armour as well as a flat 2-4 damage, and also weakens them slightly.": '它有时会汲取活体目标（概率 1/2），额外造成穿透目标护甲的伤害的四分之一，再加上固定的 2–4 点伤害，并使其略微虚弱。',
++  'It sometimes electrocutes victims (1/4 chance, 8-20 damage).': '它有时会电击目标（概率 1/4，造成 8–20 点伤害）。',
++  'It sometimes constricts those it attacks with vines. (1/2 chance, 2-4 damage).': '它有时会以藤蔓绞缠攻击的目标（概率 1/2，造成 2–4 点伤害）。',
++  "It burns victims, dealing an additional one-quarter of any damage that pierces defenders' armour.": '它灼烧目标，额外造成穿透目标护甲的伤害的四分之一。',
++  "It burns victims, dealing an additional one-quarter of any damage that pierces defenders' armour. Big, fiery blades are also staple armaments of hydra-hunters.": '它灼烧目标，额外造成穿透目标护甲的伤害的四分之一。大型火焰利刃也是猎杀多头蛇的常备武器。',
++  "It freezes victims, dealing an additional one-quarter of any damage that pierces defenders' armour. It may also slow down cold-blooded creatures.": '它冰冻目标，额外造成穿透目标护甲的伤害的四分之一，还可能使冷血生物减速。',
++  'It has been infused with foul flame, dealing an additional three-quarters damage to holy beings, an additional one-quarter damage to undead and demons, and an additional half damage to all others, so long as it pierces armour. Holy beings and good god worshippers cannot use this.': '它被注入了污秽之焰。只要穿透护甲，对神圣生物额外造成四分之三的伤害，对亡灵与恶魔额外造成四分之一的伤害，对其他目标额外造成一半的伤害。神圣生物与善神信徒无法使用它。',
++  'It deals dramatically more damage, but attacks with it are much slower.': '它的伤害大幅提高，但攻击速度也大幅降低。',
++  'Any ammunition fired from it deals dramatically more damage, but attacks with it are much slower.': '它发射的弹药伤害大幅提高，但攻击速度也大幅降低。',
++  "It has been blessed by the Shining One, dealing an additional three-quarters of any damage that pierces undead and demons' armour. Undead and demons cannot use this.": '它受到闪耀者的祝福，对亡灵与恶魔额外造成穿透其护甲的伤害的四分之三。亡灵与恶魔无法使用它。',
++  'It inflicts extra damage on living creatures proportional to your Necromancy skill.': '它对活体生物造成额外伤害，伤害随你的死灵术技能提高。',
++  'Trog prevents you from unleashing this effect.': '特罗格阻止你释放这一效果。',
++  'Your inability to study Necromancy prevents you from drawing on the full power of this weapon.': '你无法学习死灵术，因此不能发挥这把武器的全部力量。',
++  'Any ammunition fired by it continues flying after striking targets, potentially hitting everything in its path until it leaves sight.': '它发射的弹药命中目标后仍会继续飞行，可能击中沿途所有目标，直到飞出视野。',
++  'It grants you temporary protection after it strikes (+7 AC).': '它命中后会暂时保护你（护甲 +7）。',
++  'Any living, holy, or demonic foe damaged by it may be temporarily reanimated upon death as a friendly spectral, with an increasing chance as more damage is dealt.': '受到它伤害的活体、神圣或恶魔敌人死亡时，可能暂时复生为友方幽魂；它造成的伤害越多，概率越高。',
++  'It shields the wearer if their last action was a melee attack (+10 SH) and redirects blocked melee attacks to other nearby enemies.': '若佩戴者的上一个动作是近战攻击，它会提供防护（盾挡 +10），并将挡下的近战攻击转向附近其他敌人。',
++  "When you attack with it, this weapon's spirit leaps out and launches a second, slightly weaker strike. The spirit shares part of any damage it takes with you.": '你用它攻击时，武器之灵会跃出，追加一次稍弱的攻击。武器之灵受到的部分伤害会由你承担。',
++  'Attacks with it are significantly faster.': '它的攻击速度显著提高。',
++  'After you perform multiple consecutive attacks, its next attack will deal greatly increased damage and also cleave into targets an extra space away.': '连续攻击多次后，它的下一次攻击会造成大幅提高的伤害，并顺劈到额外一格距离内的目标。',
++  'It fires a beam of energy whenever it strikes an enemy while its wielder has no less than 80% of their maximum hit points remaining. Unwielding it will briefly Weaken its wielder.': '当持用者的生命值不低于上限的 80% 时，它每次击中敌人都会发射能量束。卸下它会使持用者短暂虚弱。',
++  'It occasionally heals you for a portion of the damage dealt when it wounds a living creature.': '它伤害活体生物时，偶尔会按所造成伤害的一部分治疗你。',
++  'It poisons victims.': '它使目标中毒。',
++  'It enhances your Air magic.': '它增强你的气系魔法。',
++  "It has one-third the normal encumbrance for the purpose of ranged combat, and slightly increases ranged damage depending on the wearer's armour skill.": '在远程战斗中，它的累赘仅按正常值的三分之一计算，并根据穿戴者的护甲技能略微提高远程伤害。',
++  "When worn alongside a magical staff, it doubles the effectiveness of that staff's primary enhancer and causes melee attacks made with it to restore a small amount of MP.": '与魔法杖同时装备时，它使法杖的主要魔法增强效果翻倍，并使法杖的近战攻击恢复少量魔力。',
++  'It protects you from cold.': '它保护你免受寒冷侵袭。',
++  'It improves the power and success of your Summoning spells in proportion to your Armour skill.': '它根据你的护甲技能，提高召唤法术的威力与成功率。',
++  'It protects you from the effects of acid and corrosion.': '它保护你免受酸液与腐蚀的影响。',
++  "It empowers your Necromancy spells and improves their success rate. When you cast a Necromancy spell, it may drain the life force of susceptible adjacent enemies to heal you; the chance and power of this effect depend on the spell's level.": '它增强你的死灵法术并提高其成功率。施放死灵法术时，它可能汲取相邻且不免疫此效果的敌人的生命力来治疗你；概率与强度取决于法术等级。',
++  'It increases your dexterity (Dex +3).': '它提高你的敏捷（敏捷 +3）。',
++  'It enhances your Earth magic.': '它增强你的土系魔法。',
++  'It may return the magic spent to cast spells, but lowers their success rate. It always returns the magic spent on miscasts. The spell refund chance is increased by your Evocations skill.': '它可能返还施法消耗的魔力，但会降低施法成功率。施法失败消耗的魔力总会返还。你的唤起技能越高，返还魔力的概率越大。',
++  'It enhances your Fire magic.': '它增强你的火系魔法。',
++  'It protects you from fire.': '它保护你免受火焰侵袭。',
++  'It grants you flight.': '它使你能够飞行。',
++  'It may vitrify enemies when you injure them, making them more vulnerable to further damage. Your Evocations skill increases the likelihood and duration of vitrification.': '你伤害敌人时，它可能使敌人玻璃化，从而更易受到后续伤害。你的唤起技能越高，玻璃化的概率与持续时间越高。',
++  'It weakens both your willpower and the willpower of everyone you hex, the latter of which is increased by your Evocations skill.': '它降低你的意志，也降低所有被你施加诅咒的目标的意志；对目标的削弱随你的唤起技能提高。',
++  'It increases damage dealt and taken.': '它提高你造成和受到的伤害。',
++  'It improves your accuracy and damage with thrown weapons, such as rocks and javelins (Slay +4).': '它提高你使用石块、标枪等投掷武器时的命中与伤害（杀戮 +4）。',
++  'It enhances your Ice magic.': '它增强你的冰系魔法。',
++  'It empowers each of your melee hits with a small part of your magic.': '它消耗少量魔力来增强你的每次近战命中。',
++  'It increases your intelligence (Int +3).': '它提高你的智力（智力 +3）。',
++  'When activated, it grants you temporary invisibility, but also drains your maximum health.': '激活后，它使你暂时隐形，但也会汲取你的生命值上限。',
++  'It surrounds you with a glowing halo, revealing invisible creatures, increasing accuracy against all within it other than you, and reducing your stealth.': '它以发光的光环环绕你，显露隐形生物，使你以外的光环内目标更容易被击中，并降低你的潜行能力。',
++  'It causes witnesses of your kills to go into a frenzy, attacking everything nearby with great strength and speed.': '它使目睹你杀敌的生物陷入狂乱，以强大的力量和速度攻击附近的一切。',
++  'When you are struck in melee, it briefly dazes all nearby enemies, then must recharge by standing still for a while. Its duration, radius, and recharge speed are improved by your Evocations skill.': '你受到近战攻击时，它会使附近所有敌人短暂恍惚，随后需要站立不动一段时间才能充能。你的唤起技能会提高效果持续时间、范围和充能速度。',
++  'It goes briefly dormant whenever you enter a different floor.': '每当你进入另一层，它都会短暂休眠。',
++  'It shields you if your last action was a melee attack. The shielding is half as effective if your offhand is occupied by an item other than a weapon.': '若你的上一个动作是近战攻击，它会提供防护。若副手装备的是武器以外的物品，防护效果减半。',
++  'It protects you from poison.': '它保护你免受毒素侵袭。',
++  'It is very cumbersome, slowing your movement.': '它十分笨重，会降低你的移动速度。',
++  'It protects you from the effects of negative energy.': '它保护你免受负能量的影响。',
++  'It protects you from most sources of damage (AC +3).': '它保护你免受大多数伤害（护甲 +3）。',
++  'It enhances your Fire magic and may unleash a blast of flames around you whenever you kill an enemy by any means other than an attack. The explosion chance and damage both scale with Evocations and it may trigger no more than once each turn.': '它增强你的火系魔法。当你以攻击以外的方式杀敌时，可能在周围引发火焰爆炸。爆炸概率与伤害随唤起技能提高，每回合最多触发一次。',
++  'It causes one to take an extra step when moving towards enemies, briefly stunning them if this results in an attack.': '它使你朝敌人移动时额外前进一步；若因此发动攻击，还会使目标短暂眩晕。',
++  'It reflects blocked missile attacks.': '它反射被挡下的远程攻击。',
++  'It helps you evade both magical and non-magical projectiles (EV +15).': '它帮助你闪避魔法和非魔法投射物（闪避 +15）。',
++  'It protects you from the effects of both fire and cold.': '它保护你免受火焰与寒冷的影响。',
++  'It improves the success rate of your Forgecraft spells, and enhances your melee attacks proportionally to your Forgecraft skill when you melee an enemy that is adjacent to one of your constructs.': '它提高锻造法术的成功率。当你近战攻击与你的构造体相邻的敌人时，它还会根据你的锻造术技能增强这次攻击。',
++  'It allows you to see invisible things.': '它使你能够看见隐形事物。',
++  'It reduces the distance you can be seen at and can see.': '它缩短你的视野，也缩短他人能看见你的距离。',
++  'It increases your damage by an additional 50% with ranged and thrown weapons against incapacitated targets. Incapacitated targets are those that are asleep, paralysed, petrified, confused or caught in a net.': '使用远程或投掷武器攻击失去正常行动能力的目标时，它使伤害额外提高 50%。此类目标包括睡眠、麻痹、石化、混乱或被网困住的生物。',
++  'It causes incoming damage to be divided between your reserves of health and magic.': '它使你受到的伤害由生命值与魔力共同承担。',
++  'It conjures a barrage of shooting stars the first time you spend MP to use a spell or ability each battle, recharging only when your MP is restored and no more enemies remain. Your Evocations skill increases the number and damage of the stars and MP spent further increases damage.': '每场战斗中，你首次消耗魔力使用法术或能力时，它会召来一阵流星。只有当魔力恢复且周围不再有敌人时才会充能。唤起技能提高流星的数量与伤害，消耗的魔力还会进一步提高伤害。',
++  'It enhances your stealth.': '它增强你的潜行能力。',
++  'It increases your strength (Str +3).': '它提高你的力量（力量 +3）。',
++  'It increases the power of your magical spells.': '它提高你的法术威力。',
++  'It increases your willpower, protecting against certain magical effects.': '它提高你的意志，帮助你抵抗某些魔法效果。',
++  'It berserks you when you make melee attacks (20% chance).': '你发动近战攻击时，它可能使你狂暴（概率 20%）。',
++  'It is tipped with a substance that causes blindness and brief confusion.': '它的尖端涂有能造成失明和短暂混乱的物质。',
++  'The chance of successfully applying its effect increases with your Throwing and Stealth skill.': '成功施加效果的概率随你的投掷与潜行技能提高。',
++  'When thrown, it has a random effect.': '投出时，它会产生随机效果。',
++  'It is tipped with a substance that causes asphyxiation, dealing direct damage as well as poisoning and slowing those it strikes.': '它的尖端涂有令人窒息的物质，命中后造成直接伤害，并使目标中毒、减速。',
++  'It is twice as likely to be destroyed on impact as other darts.': '它命中后被毁坏的概率是其他飞镖的两倍。',
++  'It is tipped with a substance that sends those it hits into a mindless frenzy, attacking friend and foe alike.': '它的尖端涂有使目标陷入无意识狂乱的物质，令其不分敌我地攻击。',
++  'It causes any target it hits to become temporarily untethered in space, blinking away from you for several turns and taking minor damage each time it does so.': '它使被击中的目标暂时脱离空间束缚，在数回合内不断向远离你的方向闪现，并在每次闪现时受到少量伤害。',
++  'It causes any target it hits to blink, with a tendency towards blinking further away from you.': '它使被击中的目标闪现，通常会移向远离你的位置。',
++  'It is coated with poison.': '它涂有毒药。',
++  'It deals increased damage compared to normal missiles and substantially increased damage to chaotic and magically transformed beings. It also inflicts extra damage against mutated beings, depending on how mutated they are.': '它比普通弹药造成更多伤害，对混沌生物和魔法变形的生物伤害尤其高。它还会根据目标的突变程度，对突变生物造成额外伤害。',
++}
++
++const norm = (s: string): string => s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
++
++export const EGO_LABELS: Record<string, string> = {
++  acid: '强酸', antimagic: '反魔法', chaos: '混沌', concussion: '震退', concuss: '震退',
++  distortion: '扭曲', distort: '扭曲', devious: '诡诈', draining: '汲取', drain: '汲取',
++  electrocution: '电击', elec: '电击', entangling: '藤缠', entangle: '藤缠',
++  flaming: '烈焰', flame: '烈焰', freezing: '冰冻', freeze: '冰冻', 'foul flame': '污焰',
++  heavy: '沉重', 'holy wrath': '神圣之怒', holy: '神圣之怒', pain: '痛苦',
++  penetration: '穿透', penet: '穿透', protection: '防护', protect: '防护', reaping: '收割',
++  reap: '收割', rebuke: '反击', spectralising: '幽灵', spect: '幽灵', speed: '急速',
++  sundering: '劈裂', sunder: '劈裂', valour: '勇武', vampirism: '吸血', vamp: '吸血', venom: '淬毒',
++  air: '气系', archery: '箭术', attunement: '调谐', command: '统御', death: '死亡',
++  earth: '土系', energy: '能量', fire: '火系', glass: '玻璃化', guile: '诡计', harm: '伤害',
++  hurling: '投掷', hurl: '投掷', ice: '冰系', infusion: '灌魔', infuse: '灌魔',
++  light: '光明', mayhem: '狂乱', mesmerism: '迷魂', parrying: '招架', ponderous: '笨重',
++  pyromania: '纵火', rampaging: '横冲直撞', rampage: '横冲直撞', reflection: '反射', reflect: '反射',
++  repulsion: '偏斥', resonance: '共鸣', shadows: '暗影', sniping: '狙击', snipe: '狙击',
++  spirit: '精灵护盾', stardust: '星尘', 'the archmagi': '大法师', archmagi: '大法师',
++  wrath: '狂怒', 'atropa-tipped': '涂颠茄', atropa: '涂颠茄', 'curare-tipped': '涂筒箭毒',
++  curare: '涂筒箭毒', 'datura-tipped': '涂曼陀罗', datura: '涂曼陀罗',
++  disjunction: '空间解离', disjunct: '空间解离', dispersal: '驱散', disperse: '驱散',
++  poisoned: '涂毒', poison: '涂毒', silver: '白银',
++}
++
++export function translateEgoProse(text: string): string | null {
++  const plain = norm(text)
++  if (EGO_PROSE[plain]) return EGO_PROSE[plain]
++  // Pain's Lua conditions are resolved by the engine before transmission.
++  // Missile and mesmerism entries also contain independently wrapped paragraphs.
++  let rest = plain
++  let out = ''
++  const keys = Object.keys(EGO_PROSE).sort((a, b) => b.length - a.length)
++  while (rest) {
++    const key = keys.find((k) => rest === k || rest.startsWith(k + ' '))
++    if (!key) return null
++    out += EGO_PROSE[key]
++    rest = rest.slice(key.length).trimStart()
++  }
++  return out || null
++}
 diff --git a/src/i18n/game.smoke.test.ts b/src/i18n/game.smoke.test.ts
 new file mode 100644
 --- /dev/null
@@ -3155,7 +3809,7 @@ diff --git a/src/i18n/index.ts b/src/i18n/index.ts
 new file mode 100644
 --- /dev/null
 +++ b/src/i18n/index.ts
-@@ -0,0 +1,741 @@
+@@ -0,0 +1,743 @@
 +// Display-only localization layer.
 +//
 +// Contract (do not break it):
@@ -3587,6 +4241,8 @@ new file mode 100644
 +  }
 +  const found = /^You found it on level (.+) of the (.+)\.$/.exec(plainText)
 +  if (found) return `你在${translateCapture(found[2])}第 ${found[1]} 层找到了它。`
++  const taken = /^You took it off (.+) on level (\d+) of the (.+)\.$/.exec(plainText)
++  if (taken) return `你在${translateCapture(taken[3])}第 ${taken[2]} 层从${translateCapture(taken[1])}身上取下了它。`
 +  const pray = /^You pray to (.+)\.$/.exec(plainText)
 +  if (pray) return `你向${translateCapture(pray[1])}祈祷。`
 +  // "The kobold is quivering stones." — quivered ammo, not the stone item.
@@ -9407,8 +10063,8 @@ new file mode 100644
 +    ].join('\n')
 +    const out = translateBody(body)
 +    expect(out).toContain('鼠群:')
-+    expect(out).toContain('毒抗:')
-+    expect(out).toContain('它保护你免受毒素伤害。')
++    expect(out).toContain('毒抗：')
++    expect(out).toContain('它保护你免受毒素侵袭。')
 +    expect(out).toContain('它影响你的力量（-1）。')
 +    expect(out).toContain('如果你脱下这件护甲：')
 +    expect(out).toContain('它属于“法杖”类别。')

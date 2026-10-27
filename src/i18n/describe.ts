@@ -5,6 +5,7 @@
 
 import { getLang, setProseLookup } from './index'
 import { MANUAL_PROSE } from './manual-zh'
+import { EGO_PROSE, translateEgoProse } from './egos'
 
 type DescDict = Record<string, Record<string, string>> & {
   pairs?: Record<string, string>
@@ -36,8 +37,9 @@ export function loadDescript(): Promise<void> {
       }
       // Hand-written prose for content newer than the 0.34.1 Chinese database.
       for (const [en, zh] of Object.entries(MANUAL_PROSE)) map.set(norm(en), zh)
+      for (const [en, zh] of Object.entries(EGO_PROSE)) map.set(norm(en), zh)
       proseMap = map
-      setProseLookup((text) => map.get(norm(text)) ?? null)
+      setProseLookup((text) => map.get(norm(text)) ?? translateEgoProse(text))
     })
   }
   return loading
