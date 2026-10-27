@@ -665,7 +665,9 @@ export class MenuView {
         const laid = this.columns?.rows.get(String(item.text ?? ''))
         const prefix = !laid && String(item.text ?? '')
           .match(/^\s*(?:<[a-zA-Z]+>.<\/[a-zA-Z]+>|(?:<[^>]+>)*.)\s([-+# $])\s/)
-        const el = this.itemButton(laid ?? dcssToHtml(displayItemText(String(item.text ?? ''))), () => {
+        const rowText = String(item.text ?? '')
+        const shownText = active?.tag === 'shop' ? displayShopItemText(rowText) : displayItemText(rowText)
+        const el = this.itemButton(laid ?? dcssToHtml(shownText), () => {
           const shift = this.d.shift
           const active = this.model.active
           // Shop shift-tap: shopping list uses the uppercase letter as a direct
@@ -741,4 +743,10 @@ function translateFooterLine(markup: string, translated: string): string {
       ? `［<w>${key}</w>］`
       : token
   })
+}
+
+function displayShopItemText(text: string): string {
+  const plain = text.replace(/<[^>]*>/g, '').trim()
+  const translated = tItem(plain)
+  return translated === plain ? displayItemText(text) : translated
 }

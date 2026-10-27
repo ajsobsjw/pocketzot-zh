@@ -313,6 +313,29 @@ export function splitItem(raw: string): ItemParts {
  */
 export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean }): string | null {
   if (!raw || !/[A-Za-z]/.test(raw)) return null
+  const row = /^\s*((?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+)(.*)$/.exec(raw)
+  const originalHotkey = row?.[1] ?? ''
+  const source = row?.[2] ?? raw
+  const priceBeforeHotkey = /^(\d+)\s+gold(?:\s+pieces)?\s+((?:a|an|the)\s+)?(.+)$/i.exec(source.trim())
+  if (priceBeforeHotkey) {
+    const unknown = /\s+\(unknown\)$/i.test(priceBeforeHotkey[3])
+    const name = `${priceBeforeHotkey[2] ?? ''}${priceBeforeHotkey[3]}`.replace(/\s+\(unknown\)$/i, '').replace(/[.。]$/, '')
+    const item = translateItem(m, name, opts)
+    if (item) return `${originalHotkey}${item}${unknown ? '（未知）' : ''}（${priceBeforeHotkey[1]} 金币）`
+  }
+  const priceFirstShop = /^(\d+)\s+gold(?:\s+pieces)?\s+((?:a|an|the)\s+)?(.+)$/i.exec(raw.trim())
+  if (priceFirstShop) {
+    const unknown = /\s+\(unknown\)$/i.test(priceFirstShop[3])
+    const name = `${priceFirstShop[2] ?? ''}${priceFirstShop[3]}`.replace(/\s+\(unknown\)$/i, '').replace(/[.。]$/, '')
+    const item = translateItem(m, name, opts)
+    if (item) return `${item}${unknown ? '（未知）' : ''}（${priceFirstShop[1]} 金币）`
+  }
+  const priceQuantityBeforeHotkey = /^(\d+)\s+gold(?:\s+pieces)?\s+(\d+)\s+(.+)$/i.exec(source.trim())
+  if (priceQuantityBeforeHotkey) {
+    const unknown = /\s+\(unknown\)$/i.test(priceQuantityBeforeHotkey[3])
+    const item = translateItem(m, `${priceQuantityBeforeHotkey[2]} ${priceQuantityBeforeHotkey[3].replace(/\s+\(unknown\)$/i, '')}`, opts)
+    if (item) return `${originalHotkey}${item}${unknown ? '（未知）' : ''}（${priceQuantityBeforeHotkey[1]} 金币）`
+  }
   // Reassignment rows: "s -> M - a potion of mutation".
   let prefix = ''
   const reassign = /^(\s*\S\s*->\s*\S\s+[-+#$]\s+)/.exec(raw)
@@ -351,14 +374,27 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
 
   // Shop rows put the price first: "202 gold a runed buckler". Handled before
   // splitItem, whose quantity rule would otherwise eat the number.
-  const priceFirst = /^(\d+)\s+gold(?:\s+pieces)?[\s,;:]*(.+)$/i.exec(noHot)
+  const priceFirst = /^(\d+)\s+gold(?:\s+pieces)?[\s,;:]*((?:a|an|the)\s+)?(.+)$/i.exec(noHot)
   if (priceFirst) {
-    const inner = translateItem(m, priceFirst[2].replace(/\.\s*$/, ''))
+    const inner = translateItem(m, `${priceFirst[2] ?? ''}${priceFirst[3]}`.replace(/\s+\(unknown\)$/i, '').replace(/\.\s*$/, ''))
     if (inner) return hotkey + inner + `（${priceFirst[1]} 金币）`
+  }
+
+  const quantityFirst = /^(\d+)\s+gold(?:\s+pieces)?\s+(\d+)\s+(.+)$/i.exec(noHot)
+  if (quantityFirst) {
+    const rawItem = `${quantityFirst[2]} ${quantityFirst[3]}`
+    const unknown = /\s+\(unknown\)$/i.test(rawItem)
+    const inner = translateItem(m, rawItem.replace(/\s+\(unknown\)$/i, ''))
+    if (inner) return `${hotkey}${inner}${unknown ? '（未知）' : ''}（${quantityFirst[1]} 金币）`
   }
 
   const parts = splitItem(text)
   if (!parts.body) return null
+
+  // Unidentified shop stock carries `(unknown)` as a qualifier, not as part
+  // of the item name. Preserve it while leaving the rest of the grammar strict.
+  const unknown = /^(.*?)\s+\(unknown\)$/i.exec(parts.body)
+  if (unknown) parts.body = unknown[1]
 
   // "scroll labelled PAMOANNURGHA": the noun is known, the label is a random
   // string the game prints as-is.
@@ -463,5 +499,6 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
     if (inner) out += `（${inner}）`
     else if (!known) return null
   }
+  if (unknown) out += '（未知）'
   return prefix + parts.hotkey + out + propNote
 }

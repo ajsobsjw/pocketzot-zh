@@ -234,6 +234,7 @@ export const SUPP_ZH: Record<string, string> = {
   'potion of flight': '飞行药水',
   'potion of stabbing': '背刺药水',
   'scroll of identify': '鉴定卷轴',
+  'scroll of freezing cloud': '冰冻云卷轴',
   'scroll of teleportation': '传送卷轴',
   'scroll of blinking': '闪烁卷轴',
   'scroll of magic mapping': '魔法地图卷轴',

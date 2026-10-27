@@ -73,6 +73,11 @@ describe('real dictionary', () => {
     expect(t('Cast:')).toBe('施法：')
   })
 
+  it('translates a store row passed through the game-message translator', async () => {
+    await setLang('zh')
+    expect(t('400 gold a scroll of freezing cloud')).toContain('金币')
+  })
+
   it('does not let the item grammar translate unrelated UI words', async () => {
     await setLang('zh')
     // The engine dictionary has "collapsed" = fell over; a settings button must
@@ -327,6 +332,17 @@ describe('real dictionary', () => {
     expect(tItem('a - dagger')).toBe('a - 匕首')
     expect(tItem('+1 dagger of venom')).toBe('淬毒的+1匕首')
     expect(tItem('a flibbertigibbet gizmo')).toBe('（flibbertigibbet）小装置')
+  })
+
+  it('translates shop row variants, shop title, footer commands, and shortage messages', async () => {
+    await setLang('zh')
+    expect(tItem('d - 400 gold a scroll of freezing cloud')).toContain('400 金币')
+    expect(tItem('d - 12 gold 2 curare darts')).toContain('金币')
+    expect(tItem('d - 50 gold a potion of berserk rage (unknown)')).toContain('未知')
+    expect(tItem('d - 730 gold a +2 cloak of resistance {rF++ rC++ Will++}')).toContain('金币')
+    expect(tTitle("Welcome to Leluj's General Store! What would you like?")).toBe('欢迎光临Leluj的杂货店！想买点什么？')
+    expect(tMore('[Esc] exit  [!] buy/examine items  [a-i] mark item for purchase  [/] sort (type)')).toContain('标记购买')
+    expect(t('You are short 130 gold pieces for the purchase.')).toBe('你还差 130 金币才能购买。')
   })
 
   it('translates dynamic titles', () => {

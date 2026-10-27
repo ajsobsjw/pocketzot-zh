@@ -488,6 +488,12 @@ function translateOne(text: string): string | null {
   }
   // A handful of narrow, high-value rules (weapon panel, monster stats, spell
   // prompts) win over the dictionary: they read the numbers and keep the order.
+  const shopPrice = /^(\d+)\s+gold(?:\s+pieces)?\s+(.+)$/i.exec(plainText)
+  if (shopPrice) {
+    const unknown = /\s+\(unknown\)$/i.test(shopPrice[2])
+    const item = translateItem(matcher!, shopPrice[2].replace(/\s+\(unknown\)$/i, ''), { loose: true })
+    if (item) return `${item}${unknown ? '（未知）' : ''}（${shopPrice[1]} 金币）`
+  }
   const ruled = matchTitle(plainText)
   if (ruled) return ruled
   // "A stone wall" / "A stone staircase leading down" — dungeon features.
@@ -531,11 +537,17 @@ function translateOne(text: string): string | null {
     // Dynamic titles ("Gear: 1/52", "Casting: …") and item lists the engine
     // prints into the log ("g - a potion of magic").
     const plain = text.replace(/<[^>]*>/g, '').trim()
+    const shopPrice = /^(\d+)\s+gold(?:\s+pieces)?\s+(.+)$/i.exec(plain)
+    if (shopPrice) {
+      const unknown = /\s+\(unknown\)$/i.test(shopPrice[2])
+      const item = translateItem(matcher!, shopPrice[2].replace(/\s+\(unknown\)$/i, ''), { loose: true })
+      if (item) r = { out: `${item}${unknown ? '（未知）' : ''}（${shopPrice[1]} 金币）`, key: 'shop' }
+    }
     const aim = translateAimLine(plain)
     if (aim) r = { out: aim, key: 'aim' }
     const title = aim ? null : matchTitle(plain)
     if (title) r = { out: title, key: 'title' }
-    else if (/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(plain)) {
+    else if (!r && /^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(plain)) {
       const item = translateItem(matcher!, plain, { loose: true })
       if (item) r = { out: item, key: 'item' }
     }
@@ -630,6 +642,18 @@ export function tItem(text: string): string {
   if (hit !== undefined) return hit ?? text
   let out: string | null = null
   const plainText = text.replace(/<[^>]*>/g, '').trim()
+  const priceRow = /^(\S\s*[-+#$]\s+)?(\d+)\s+gold(?:\s+pieces)?\s+(.+)$/i.exec(plainText)
+  if (priceRow) {
+    const unknown = /\s+\(unknown\)$/i.test(priceRow[3])
+    const item = translateItem(matcher, priceRow[3].replace(/\s+\(unknown\)$/i, ''), { loose: true })
+    if (item) out = `${priceRow[1] ?? ''}${item}${unknown ? '（未知）' : ''}（${priceRow[2]} 金币）`
+  }
+  const rawShopPrice = /^(\d+)\s+gold(?:\s+pieces)?\s+(.+)$/i.exec(plainText)
+  if (rawShopPrice) {
+    const unknown = /\s+\(unknown\)$/i.test(rawShopPrice[2])
+    const item = translateItem(matcher, rawShopPrice[2].replace(/\s+\(unknown\)$/i, ''), { loose: true })
+    if (item) out = `${item}${unknown ? '（未知）' : ''}（${rawShopPrice[1]} 金币）`
+  }
   // Inventory category rows: "Potions        (go to first with !)".
   const cat = /^(.+?)\s{2,}\(go to first with (.+)\)$/.exec(plainText)
   if (cat) {
@@ -638,7 +662,7 @@ export function tItem(text: string): string {
   }
   // A row with a hotkey prefix ("g - a potion") must go through the grammar,
   // which re-attaches the prefix; the plain lookup would drop it.
-  if (/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(plainText)) {
+  if (!out && /^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/.test(plainText)) {
     out = translateItem(matcher, plainText, { loose: true })
   }
   if (!out) {
@@ -698,11 +722,23 @@ const MORE_WORDS: Array<[RegExp, string]> = [
   [/\bsell\b/gi, '出售'],
   [/\btoggle\b/gi, '切换'],
   [/\bletters toggle\b/gi, '字母切换'],
+  [/\bmark item for purchase\b/gi, '标记购买'],
+  [/\bput item on shopping list\b/gi, '加入购物清单'],
+  [/\bbuy marked items\b/gi, '购买已标记物品'],
+  [/\bbuy shopping list\b/gi, '购买购物清单'],
+  [/\bexamine items\b/gi, '查看物品'],
+  [/\bsort \(type\)\b/gi, '排序（类型）'],
+  [/\bsort\b/gi, '排序'],
+  [/\bgold\b/gi, '金币'],
+  [/\bitems\b/gi, '物品'],
+  [/\bitem\b/gi, '物品'],
 ]
 
 export function tMore(text: string): string {
   if (lang !== 'zh' || !text) return text
   if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
+  const short = /^You are short (\d+) gold pieces for the purchase\.$/i.exec(text.trim())
+  if (short) return `你还差 ${short[1]} 金币才能购买。`
   let out = text
   for (const [re, zh] of MORE_WORDS) out = out.replace(re, zh)
   out = out.replace(/\b(\d+) 个法术等级可用\b/i, '$1 个法术等级可用')
@@ -724,6 +760,11 @@ export function tTitle(text: string): string {
   if (hydra) return `${NUM[hydra[1].toLowerCase()]}头九头蛇`
   const feat = featureName(plain)
   if (feat) return feat
+  const shop = /^Welcome to (.+?)'s (.+?)! What would you like\?$/i.exec(plain)
+  if (shop) {
+    const kinds: Record<string, string> = { 'General Store': '杂货店', 'Weapon Shop': '武器店', 'Armour Shop': '护甲店', 'Jewellery Shop': '首饰店', 'Wand Shop': '魔杖店', 'Book Shop': '书店', 'Food Shop': '食品店', 'Potion Shop': '药水店', 'Scroll Shop': '卷轴店' }
+    return `欢迎光临${shop[1]}的${kinds[shop[2]] ?? t(shop[2])}！想买点什么？`
+  }
   const out = matchTitle(plain)
   if (out) return out
   // Menu-style title with the hotkey baked in: "a - a +0 robe (worn)."

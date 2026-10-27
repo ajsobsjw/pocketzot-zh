@@ -344,6 +344,9 @@ export const TITLE_RULES: TitleRule[] = [
     to: (m) => `要去${m[1]}第几层？（默认 ${m[2]}）`,
   },
   { re: /^Unbind and destroy which item\?$/, to: () => '解除并摧毁哪件物品？' },
+  { re: /^You are short (\d+) gold pieces for the purchase\.$/, to: (m) => `你还差 ${m[1]} 金币才能购买。` },
+  { re: /^You have (\d+) gold pieces?\.$/, to: (m) => `你有 ${m[1]} 金币。` },
+  { re: /^You spend (\d+) gold pieces?\.$/, to: (m) => `你花费了 ${m[1]} 金币。` },
 
   // --- spell description page ---
   {

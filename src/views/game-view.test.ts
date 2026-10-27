@@ -1664,6 +1664,27 @@ describe('language switch with a describe page open', () => {
     // Rebuilt from the wire text: switching back restores English in place.
     expect(bodyText()).toContain(body)
   })
+
+  it('renders a translated shop row, full shop title and complete purchase keyhelp', async () => {
+    const h = setup()
+    try {
+      await setLang('zh')
+      h.dispatch({ msg: 'menu', tag: 'shop', flags: 0x40000,
+        title: { text: "Welcome to Leluj's General Store! What would you like?" },
+        more: '<lightgrey>[<w>Esc</w>] exit  [<w>!</w>] buy/examine items  [<w>a-i</w>] mark item for purchase  [<w>/</w>] sort (type)  [<w>Enter</w>] buy marked items  [<w>A-I</w>] put item on shopping list</lightgrey>',
+        alt_more: '<lightgrey>[<w>Esc</w>] exit  [<w>!</w>] buy/examine items  [<w>a-i</w>] mark item for purchase  [<w>/</w>] sort (type)  [<w>Enter</w>] buy marked items  [<w>A-I</w>] put item on shopping list</lightgrey>',
+        items: [{ level: 2, text: 'a - 400 gold a potion of berserk rage (unknown)', hotkeys: [97] }] })
+      const text = overlay(h).textContent ?? ''
+      expect(text).toContain('欢迎光临Leluj的杂货店！想买点什么？')
+      expect(text).toContain('狂怒药水')
+      expect(text).toContain('400 金币')
+      expect(text).toContain('未知')
+      expect(text).toContain('标记购买')
+      expect(text).toContain('购物清单')
+    } finally {
+      await setLang('en')
+    }
+  })
 })
 
 // The save is deleted before the end screens (end.cc end_game), so a resume's
