@@ -24,6 +24,45 @@ const DAMAGE_WORDS: Record<string, string> = {
 
 const PRONOUN_ZH: Record<string, string> = { He: '他', She: '她', It: '它', They: '他们' }
 
+const SPELL_SCHOOLS: Record<string, string> = {
+  Conjuration: '咒法系', Conjurations: '咒法系', Summoning: '召唤系', Summonings: '召唤系',
+  Necromancy: '死灵法术', Transmutation: '变形术', Fire: '火系', Ice: '冰系',
+  Air: '气系', Earth: '土系', Poison: '毒系', Hexes: '诅咒系', Charms: '魅惑系',
+  Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系', Translocations: '传送系',
+}
+
+export function spellSchools(raw: string): string {
+  const parts = raw.split('/')
+  const translated = parts.map((part) => SPELL_SCHOOLS[part.trim()])
+  return translated.every(Boolean) ? translated.join('／') : raw
+}
+
+export function spellTrainingSkill(raw: string): string | null {
+  const parts = raw.split(/\s+and\s+/)
+  const translated = parts.map((part) => {
+    const key = part.trim()
+    return key === 'Air Magic' ? '空气魔法'
+      : SPELL_SCHOOLS[key] ?? SPELL_SCHOOLS[key.replace(/ Magic$/, '')]
+  })
+  return translated.every((part): part is string => part !== null) ? translated.join('与') : null
+}
+
+const SPELL_NOISE: Record<string, string> = {
+  whisper: '耳语', silent: '无声', loud: '响亮', 'very loud': '非常响亮',
+  extremely: '极响', deafening: '震耳欲聋', 'n/a': '无',
+}
+
+export function spellField(label: string, raw: string): string {
+  if (label === 'School' || label === 'Schools') return spellSchools(raw)
+  if (label === 'Noise') return SPELL_NOISE[raw.toLowerCase()] ?? raw
+  if (raw === 'None' && /^(?:Defences|Resists|Resistances)$/.test(label)) return '无'
+  if (label === 'Defences') {
+    return raw.replace(/\b(Defence|Defences|AC|EV|Will):\s*/g, (_match, inner: string) =>
+      `${({ Defence: '防御', Defences: '防御', AC: '护甲', EV: '闪避', Will: '意志' } as Record<string, string>)[inner]}：`)
+  }
+  return raw
+}
+
 /** "acid and corrosion and blinding" → 酸、腐蚀与致盲 */
 function zhDamageList(list: string): string {
   const parts = list.split(/\s*,\s*|\s+and\s+/).map((p) => p.trim()).filter(Boolean)
@@ -203,6 +242,7 @@ export const TITLE_RULES: TitleRule[] = [
     re: /^If you switch to wearing this armour:$/,
     to: () => '如果你改穿这件护甲：',
   },
+  { re: /^If you switch to wielding this weapon:$/, to: () => '如果你改用这把武器：' },
   {
     re: /^Your AC would (increase by|decrease by|remain unchanged)(.*)$/,
     to: (m) => `你的护甲将${m[1] === 'increase by' ? '提高' : m[1] === 'decrease by' ? '降低' : '保持不变'}${m[2]}`,
@@ -351,25 +391,16 @@ export const TITLE_RULES: TitleRule[] = [
   // --- spell description page ---
   {
     re: /^Level: (\d+)\s+School: (.+?)\s+Fail: (\d+)%$/,
-    to: (m) => {
-      const schools: Record<string, string> = {
-        Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术',
-        Transmutation: '变形术', Fire: '火系', Ice: '冰系', Air: '气系',
-        Earth: '土系', Poison: '毒系', Hexes: '诅咒系', Charms: '魅惑系',
-        Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系',
-        Translocations: '传送系', Conjurations: '咒法系', Summonings: '召唤系',
-      }
-      return `等级：${m[1]}  学派：${schools[m[2]] ?? m[2]}  失败率：${m[3]}%`
-    },
+    to: (m) => `等级：${m[1]}  学派：${spellSchools(m[2])}  失败率：${m[3]}%`,
   },
   { re: /^Power: (\d+)%$/, to: (m) => `威力：${m[1]}%` },
   { re: /^Damage: (.+)$/, to: (m) => `伤害：${m[1].replace(/\bmax\b/g, '最高')}` },
   { re: /^Range: (.+)$/, to: (m) => `射程：${m[1] === 'N/A' ? '无' : m[1]}` },
-  { re: /^Noise: (.+)$/, to: (m) => `噪音：${m[1]}` },
-  { re: /^School: (.+)$/, to: (m) => `学派：${({ Air: '气系', Fire: '火系', Ice: '冰系', Earth: '土系', Poison: '毒系', Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术', Transmutation: '变形术', Hexes: '诅咒系', Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系' } as Record<string, string>)[m[1]] ?? m[1]}` },
+  { re: /^Noise: (.+)$/, to: (m) => `噪音：${spellField('Noise', m[1])}` },
+  { re: /^School: (.+)$/, to: (m) => `学派：${spellSchools(m[1])}` },
   { re: /^Fail: (.+)$/, to: (m) => `失败率：${m[1]}` },
-  { re: /^Defences: (.+)$/, to: (m) => `防御：${m[1]}` },
-  { re: /^Resists: (.+)$/, to: (m) => `抗性：${m[1]}` },
+  { re: /^Defences: (.+)$/, to: (m) => `防御：${spellField('Defences', m[1])}` },
+  { re: /^Resists: (.+)$/, to: (m) => `抗性：${spellField('Resists', m[1])}` },
   { re: /^Misc: (.+)$/, to: (m) => `其他：${m[1]}` },
   { re: /^You aren't experienced enough to cast this spell\.$/, to: () => '你的经验等级不足，无法施放此法术。' },
   { re: /^You can't cast this spell yet\.$/, to: () => '你现在还不能施放此法术。' },

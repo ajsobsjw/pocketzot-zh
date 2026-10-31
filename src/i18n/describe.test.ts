@@ -3,7 +3,7 @@
 // Phase D (light): describe bodies get their prose block replaced by the
 // localized database entry, keyed by the name in the overlay title.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { loadDescript, zhDescribe, describeName } from './describe'
+import { loadDescript, zhDescribe, describeName, translateGodSection } from './describe'
 import { setLang } from './index'
 
 const BODY = '<lightgrey>\n\nA large, loose-fitting, wide-sleeved outer garment made of light cloth.\n\nBase armour rating: 2       Encumbrance rating: 0\n\nIt can be maximally enchanted to +2.'
@@ -16,6 +16,13 @@ beforeAll(async () => {
 afterAll(() => setLang('en'))
 
 describe('describe replacement', () => {
+  it('translates complete god sections independently and preserves unknown sections', () => {
+    expect(translateGodSection('Trog', 'description', 'First paragraph.\n\nSecond paragraph.')).toContain('特洛格')
+    expect(translateGodSection('Trog', 'powers', 'English powers.')).toContain('狂暴')
+    expect(translateGodSection('the Shining One', 'wrath', 'English wrath.')).toContain('光辉者')
+    expect(translateGodSection('Unknown God', 'powers', 'Unknown powers.')).toBe('Unknown powers.')
+    expect(translateGodSection('Trog', 'powers', '')).toBe('')
+  })
   it('derives the database name from an overlay title', () => {
     expect(describeName('a - a +0 robe (worn).')).toBe('robe')
     expect(describeName('z - a ball python')).toBe('ball python')

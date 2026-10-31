@@ -7,7 +7,7 @@
 import { isZh, t } from './index'
 import { propLabel } from './items'
 import { EGO_LABELS, translateEgoProse } from './egos'
-import { matchTitle } from './titles'
+import { matchTitle, spellField, spellSchools, spellTrainingSkill } from './titles'
 
 function displayWidth(s: string): number {
   let n = 0
@@ -76,6 +76,10 @@ const MENU_PREFIX_ZH: Record<string, string> = {
   'worn': '已穿戴',
   'cursed': '被诅咒',
   'bound': '已束缚',
+  'emergency_item': '应急物品', 'good_item': '优质物品', 'bad_item': '劣质物品',
+  'useless_item': '无用物品', 'equipped': '已装备', 'potion': '药水',
+  'armour': '护甲', 'weapon': '武器', 'jewellery': '首饰', 'missile': '投掷物',
+  'book': '书籍', 'wand': '魔杖', 'staff': '法杖', 'scroll': '卷轴',
 }
 
 /** "Body Armour, Gloves, Boots" → "身体护甲、手套、靴子" (null if any unknown). */
@@ -116,14 +120,27 @@ function translateComputedLine(line: string): string | null {
 
   const menuPrefix = /^Menu\/colouring prefixes: (.+)$/.exec(plain)
   if (menuPrefix) {
-    const tags = menuPrefix[1].split(/\s+/).filter(Boolean)
-    const zh = tags.map((tag) => {
-      const key = tag.replace(/^\(|\)$/g, '')
+    const joined = /^(.*?)(potion|armour|weapon|jewellery|missile|book|wand|staff|scroll|food|misc)(SPELLSET_PLACEHOLDER)?$/.exec(menuPrefix[1])
+    if (joined) {
+      const prefixTokens = joined[1].match(/\([^)]*\)|\S+/g) ?? []
+      const prefix = prefixTokens.map((token) => MENU_PREFIX_ZH[token] ?? token)
+      return `${lead}菜单/着色前缀：${[...prefix, MENU_PREFIX_ZH[joined[2]]].join(' ')}${joined[3] ?? ''}`
+    }
+    const combined = /^(.+?)\s+(.+)$/.exec(menuPrefix[1])
+    if (combined) {
+      const category = MENU_PREFIX_ZH[combined[2]]
+      const flags = combined[1].match(/\([^)]*\)|\S+/g) ?? []
+      const localizedFlags = flags.map((flag) => MENU_PREFIX_ZH[flag] ?? MENU_PREFIX_ZH[`(${flag})`] ?? flag)
+      if (category) return `${lead}菜单/着色前缀：${localizedFlags.join(' ')} ${category}`
+    }
+    const tokens = menuPrefix[1].match(/\([^)]*\)|\S+/g) ?? []
+    const zh = tokens.map((tag) => {
+      const parenthesized = tag.startsWith('(') && tag.endsWith(')')
+      const key = parenthesized ? tag.slice(1, -1) : tag
       const hit = MENU_PREFIX_ZH[key]
-      return hit ? `（${hit}）` : null
+      return hit ? `${parenthesized ? '（' : ''}${hit}${parenthesized ? '）' : ''}` : tag
     })
-    if (zh.every((z): z is string => z != null)) return `${lead}菜单/着色前缀：${zh.join('')}`
-    return null
+    return `${lead}菜单/着色前缀：${zh.join(' ')}`
   }
 
   // "Your skill: 0.0; use (s) to set 7.0 as a target for Shapeshifting."
@@ -242,19 +259,12 @@ function reflowCells(pieces: string[]): string | null {
 // A row label is a short Latin phrase at the start of the line ("Max HP",
 // "Base armour rating", "Attack"), optionally behind colour tags. Keep it
 // tight: a prose sentence rarely starts with 1–40 word characters and a colon.
-const LABEL_ROW = /^\s*(?:<[^>]+>)*[A-Za-z][\w .'+-]{0,38}?:\s+\S/
+const LABEL_ROW = /^\s*(?:<[^>]+>)*[A-Za-z][\w .'+-]{0,38}?(?:<[^>]+>)*:\s+\S/
 const DESCRIBE_LABELS: Record<string, string> = {
-  School: '学派', Fail: '失败率', Failure: '失败率', Level: '等级', Power: '威力',
+  School: '学派', Schools: '学派', Fail: '失败率', Failure: '失败率', Level: '等级', Power: '威力',
   Damage: '伤害', Range: '射程', Noise: '噪音', Defences: '防御', Defence: '防御',
   Resists: '抗性', Resistances: '抗性', Misc: '其他', Status: '状态', Quote: '引言',
   Attack: '攻击', Speed: '速度', AC: '护甲', EV: '闪避', Will: '意志',
-}
-
-const DESCRIBE_SCHOOLS: Record<string, string> = {
-  Air: '气系', Fire: '火系', Ice: '冰系', Earth: '土系', Poison: '毒系',
-  Conjuration: '咒法系', Summoning: '召唤系', Necromancy: '死灵法术',
-  Transmutation: '变形术', Hexes: '诅咒系', Forgecraft: '锻造术',
-  Alchemy: '炼金术', Translocation: '传送系',
 }
 
 // These lines are complete sentences with their own optional indented
@@ -298,50 +308,73 @@ export function translateBody(body: string): string {
   return lines.map((line) => {
     // Match the explanation before padding splits labels from values, and
     // before internal colour tags can cause the generic reflow to skip it.
-    const plain = stripTags(line).trim()
-    const fullSpellMeta = /^Level:\s*(\d+)\s+School:\s*(.+?)\s+Fail:\s*(\d+)%$/.exec(plain)
-    if (fullSpellMeta) return `等级：${fullSpellMeta[1]}  学派：${DESCRIBE_SCHOOLS[fullSpellMeta[2]] ?? fullSpellMeta[2]}  失败率：${fullSpellMeta[3]}%`
-    const directLabel = /^([^:]{1,40}):\s*(.*)$/.exec(plain)
-    if (directLabel && DESCRIBE_LABELS[directLabel[1]]) {
-      const values: Record<string, Record<string, string>> = {
-        Noise: { whisper: '耳语', silent: '无声', loud: '响亮', 'very loud': '非常响亮', deafening: '震耳欲聋', 'N/A': '无' },
-        School: DESCRIBE_SCHOOLS,
-      }
-      const val = directLabel[2]
-      const shown = values[directLabel[1]]?.[val] ?? val.replace(/\bmax\b/g, '最高')
-      return `${DESCRIBE_LABELS[directLabel[1]]}：${shown}`
+    const plain = stripTags(line).replace(/\u0001/g, '').trim()
+    const outerColor = /^(\s*<([a-z]+)>).*<\/\2>\s*$/i.exec(line)
+    const keepColor = (text: string): string => outerColor ? `${outerColor[1]}${text}</${outerColor[2]}>` : text
+    const standaloneNoise = /^\(Noise:\s*([^)]+)\)\s*(.+)$/.exec(plain)
+    if (standaloneNoise) {
+      const level = spellField('Noise', standaloneNoise[1])
+      return keepColor(`噪音：${level === standaloneNoise[1] ? standaloneNoise[1] : level}，${spellField('Noise', standaloneNoise[2])}`)
     }
-    const structured = matchTitle(plain)
-    if (structured) return structured
+    const experience = /^(\s*)\((\d+) xp, (\d+) skp\)$/.exec(line)
+    if (experience) return `${experience[1]}（${experience[2]} 经验，${experience[3]} 技能点）`
+    if (plain === 'This armour is completely useless to you: that is too small for you to equip!')
+      return keepColor('这件护甲对你毫无用处：你体型太大，穿不上它！')
+    const fullSpellMeta = /^Level:\s*(\d+)\s+Schools?:\s*(.+?)\s+Fail:\s*(\d+)%$/.exec(plain)
+    if (fullSpellMeta) return keepColor(`等级：${fullSpellMeta[1]}  学派：${spellSchools(fullSpellMeta[2])}  失败率：${fullSpellMeta[3]}%`)
     const labelValue = /^([^:]{1,40}):\s*(.*)$/.exec(plain)
     if (labelValue && DESCRIBE_LABELS[labelValue[1]]) {
       const label = DESCRIBE_LABELS[labelValue[1]]
       const value = labelValue[2]
-      if (labelValue[1] === 'Noise') {
-        const noises: Record<string, string> = { whisper: '耳语', silent: '无声', loud: '响亮', 'very loud': '非常响亮', deafening: '震耳欲聋', 'N/A': '无' }
-        return `${label}：${noises[value] ?? value}`
+      if (/^(?:Noise|School|Schools|Defences|Resists|Resistances)$/.test(labelValue[1])) {
+        const noise = /^(?:\((?:Noise:\s*)?([^)]+)\)\s*)?(.+)$/.exec(value)
+        if (labelValue[1] === 'Noise' && noise) {
+          const level = noise[1] ? spellField('Noise', noise[1].trim()) : ''
+          const quality = spellField('Noise', noise[2].trim())
+          return keepColor(`噪音：${level ? `${level}，` : ''}${quality}`)
+        }
+        return keepColor(`${label}：${spellField(labelValue[1], value)}`)
       }
-      if (labelValue[1] === 'School') return `${label}：${DESCRIBE_SCHOOLS[value] ?? value}`
-      return `${label}：${value}`
+      return keepColor(`${label}：${value.replace(/\bmax\b/g, '最高').replace(/\bcollision\b/g, '撞击')}`)
     }
-    const spellMeta = /^Level:\s*(\d+)\s+School:\s*(.+?)\s+Fail:\s*(\d+)%$/.exec(plain)
-    if (spellMeta) return `等级：${spellMeta[1]}  学派：${DESCRIBE_SCHOOLS[spellMeta[2]] ?? spellMeta[2]}  失败率：${spellMeta[3]}%`
+    const detail = translateSpellDetail(line)
+    if (detail) return detail
+    const itemDetail = translateItemDetail(line)
+    if (itemDetail) return itemDetail
+    const structured = matchTitle(plain)
+    if (structured) return structured
     const egoRow = /^([^:]{1,40}):\s+(.+)$/.exec(plain)
     if (egoRow) {
       const explanation = translateEgoProse(egoRow[2])
-      if (explanation) return `${labelOf(egoRow[1])}：${explanation}`
+      if (explanation) {
+        const original = egoRow[1]
+        const label = labelOf(original)
+        const valueStart = line.indexOf(egoRow[2])
+        if (valueStart >= 0 && /<[^>]+>/.test(line)) {
+          const before = line.slice(0, valueStart)
+          const labelStart = before.indexOf(original)
+          if (labelStart >= 0) {
+            const prefix = before.slice(0, labelStart) + label + before.slice(labelStart + original.length)
+            return prefix.replace(':', '：') + explanation + line.slice(valueStart + egoRow[2].length)
+          }
+        }
+        return `${label}：${explanation}`
+      }
     }
     const ego = translateEgoProse(plain)
     if (ego) return ego
     const weapon = translateWeaponCategory(plain)
     if (weapon) return weapon
-    const detail = translateSpellDetail(line)
-    if (detail) return detail
     if (/\((?:Ench|Slay|Hvy)(?: \+ Slay)?\)/.test(line)) {
       line = line.replace(/\bEnch\b/g, '附魔').replace(/\bSlay\b/g, '杀戮').replace(/\bHvy\b/g, '沉重')
     }
     const computed = translateComputedLine(line)
     if (computed) return computed
+    if (line.includes('\u0001')) {
+      const unmarked = line.replace('\u0001', '')
+      const translated = translateCell(unmarked)
+      if (translated !== unmarked) return line.slice(0, line.indexOf('\u0001')) + '\u0001' + translated.slice(line.indexOf('\u0001'))
+    }
     // Rows can carry several labelled cells separated by the engine's column
     // gaps ("Base armour rating: 2       Encumbrance rating: 0"): translate
     // each cell on its own and keep the following cells in their columns.
@@ -392,8 +425,42 @@ function translateSpellDetail(line: string): string | null {
     const damage: Record<string, string> = { electric: '电击', electricity: '电击', fire: '火焰', cold: '寒冷', poison: '毒素', acid: '酸' }
     return `施法失误会造成魔法污染，并额外造成最多 ${miscast[1]} 点${damage[miscast[2]] ?? miscast[2]}伤害。`
   }
-  const training = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce your failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.$/.exec(plain)
-  if (training) return `以你当前的属性和装备，把${training[1]}训练到 ${training[2]} 可将失败率降到 ${training[3]}%。这大约需要 ${training[4]} 个等级。`
+  const anchored = /^Miscasting this spell causes magic contamination and also either anchors you in place or deals up to (\d+) irresistible damage\.$/.exec(plain)
+  if (anchored) return `施放此法术失误会造成魔法污染，并可能将你定在原地，或造成最多 ${anchored[1]} 点无法抵抗的伤害。`
+  const horrorAndDamage = /^Miscasting this spell causes magic contamination and also either summons a nameless horror or deals up to (\d+) (\w+) damage\.$/.exec(plain)
+  if (horrorAndDamage) {
+    const element: Record<string, string> = { cold: '寒冷', fire: '火焰', electric: '电击', electricity: '电击', acid: '酸', poison: '毒素' }
+    const damage = element[horrorAndDamage[2]]
+    if (damage) return `施放此法术失误会造成魔法污染，并可能召唤无名恐怖，或造成最多 ${horrorAndDamage[1]} 点${damage}伤害。`
+  }
+  const poisonOrDamage = /^Miscasting this spell causes magic contamination and also either poisons you or deals up to (\d+) irresistible damage\.$/.exec(plain)
+  if (poisonOrDamage) return `施放此法术失误会造成魔法污染，并可能使你中毒，或造成最多 ${poisonOrDamage[1]} 点无法抵抗的伤害。`
+  const training = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce (?:your|the) failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plain)
+  if (training) {
+    const skill = spellTrainingSkill(training[1]) ?? t(training[1])
+    if (skill !== training[1]) return `以你当前的属性和装备，把${skill}训练到 ${training[2]} 可将失败率降到 ${training[3]}%。这大约需要 ${training[4]} 个等级。`
+  }
+  const sustain = /^You can sustain at most (one|two|three|four|five|six|seven|eight|nine|ten|\d+) creatures? summoned by this spell\.$/i.exec(plain)
+  if (sustain) {
+    const counts: Record<string, string> = { one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10' }
+    return `你最多只能维持 ${counts[sustain[1].toLowerCase()] ?? sustain[1]} 个由此法术召唤的生物。`
+  }
+  return null
+}
+
+function translateItemDetail(line: string): string | null {
+  const plain = stripTags(line).trim()
+  const noEffect = /^Drinking this right now will have no effect: (.+)\.$/.exec(plain)
+  if (noEffect) {
+    const reasons: Record<string, string> = {
+      'your magic is already full': '你的魔力已经全满',
+      'you are already healthy enough': '你的伤势已经基本痊愈',
+      'you are already hasted': '你已经处于加速状态',
+    }
+    const reason = reasons[noEffect[1].toLowerCase()]
+    if (reason) return `现在饮用不会产生效果：${reason}。`
+  }
+  if (plain === 'It is a rare potion.') return '那是一瓶稀有药水。'
   return null
 }
 

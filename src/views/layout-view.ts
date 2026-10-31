@@ -24,10 +24,11 @@ import {
 } from './overlay-body'
 import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
 import { LANG_CHANGED_EVENT, t, isZh } from '../i18n'
-import { zhDescribe } from '../i18n/describe'
+import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 import { translatePage } from '../i18n/pages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
+import { translateGodLine } from '../i18n/god'
 
 interface ExportSource { runs: () => DcssRun[][]; slug: string }
 
@@ -79,13 +80,11 @@ export class LayoutView {
     this.scheduleScrollerSync()
   }
 
-  // Describe prose is substituted from zh-descript before the DOM pass, so
-  // switching language cannot rely on the DOM layer's originals: rebuild the
-  // page from the raw ui-push instead (menu/log keep their wire text for the
-  // same reason).
+  // Rebuild from the raw ui-push: describe prose and formatted-scroller pages
+  // are translated before entering the DOM.
   private readonly onLangChange = (): void => {
     const top = this.d.topLayout()
-    if (!top || !String(top.type ?? '').startsWith('describe')) return
+    if (!top || (!String(top.type ?? '').startsWith('describe') && top.type !== 'formatted-scroller')) return
     // A cutoff-hidden frame stays on the stack but is not on screen: showing it
     // again would resurrect the overlay over the map the engine is targeting.
     if (!this.d.visible()) return
@@ -187,18 +186,18 @@ export class LayoutView {
       // powers / wrath / extra). Flatten them into one scrollable body.
       titleSrc = msg.name ? `<lightblue>${msg.name}</lightblue>` : ''
       const sections: string[] = []
-      if (msg.description) sections.push(msg.description)
-      if (msg.favour) sections.push(`<lightblue>Favour:</lightblue> ${msg.favour}`)
+      if (msg.description) sections.push(translateGodSection(msg.name ?? '', 'description', msg.description))
+      if (msg.favour) sections.push(isZh() ? `<lightblue>神眷：</lightblue> ${translateGodLine(msg.favour)}` : `<lightblue>Favour:</lightblue> ${msg.favour}`)
       if (msg.powers_list) {
         const lines = splitGodPowerCosts(msg.powers_list.split('\n').slice(3, -1).filter(s => s.trim()))
-        if (lines.length) sections.push(`<lightblue>Powers:</lightblue>\n${lines.join('\n')}`)
+        if (lines.length) sections.push(`${isZh() ? '<lightblue>神力：</lightblue>' : '<lightblue>Powers:</lightblue>'}\n${lines.map(translateGodLine).join('\n')}`)
       }
-      if (msg.powers) sections.push(msg.powers)
-      if (msg.wrath) sections.push(`<lightblue>Wrath:</lightblue>\n${msg.wrath}`)
-      if (msg.extra) sections.push(msg.extra)
+      if (msg.powers) sections.push(translateGodSection(msg.name ?? '', 'powers', msg.powers))
+      if (msg.wrath) sections.push(`${isZh() ? '<lightblue>神罚：</lightblue>' : '<lightblue>Wrath:</lightblue>'}\n${translateGodSection(msg.name ?? '', 'wrath', msg.wrath)}`)
+      if (msg.extra) sections.push(translateGodSection(msg.name ?? '', 'extra', msg.extra))
       // Altar-only join prompt (ui-layouts.js:350-353). service_fee is non-empty
       // only for Gozag — already pre-formatted with leading space and parens.
-      if (msg.is_altar) sections.push(`<cyan>J</cyan>/<cyan>Enter</cyan>: join religion${msg.service_fee ?? ''}`)
+      if (msg.is_altar) sections.push(isZh() && !msg.service_fee ? '<cyan>J</cyan>/<cyan>Enter</cyan>：加入信仰' : `<cyan>J</cyan>/<cyan>Enter</cyan>: join religion${msg.service_fee ?? ''}`)
       rawBody = sections.join('\n\n')
     }
     if (msg.type === 'describe-monster') {
@@ -235,7 +234,7 @@ export class LayoutView {
     // Phase D light: swap the English prose for the localized description when
     // the title names something in dat/descript/zh. Computed lines stay.
     if (String(msg.type ?? '').startsWith('describe')) {
-      rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
+      if (msg.type !== 'describe-god') rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
       // Property rows ("rPois:  It protects…") and lone sentences. The monster
       // panel also has an attack table, a to-hit line and a notice chance, so
       // it gets the structural rules first.

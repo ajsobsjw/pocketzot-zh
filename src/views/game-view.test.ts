@@ -359,6 +359,50 @@ describe('message log (msgs)', () => {
     expect(isHidden(moreBtn(h))).toBe(true)
     expect(msgLog(h).firstElementChild).toBe(moreLine(h))
   })
+
+  it('repaints marked messages, prompt keys and the more row when language changes', async () => {
+    const h = setup()
+    h.dispatch({ msg: 'msgs', messages: [
+      { text: '<lightgrey>Okay, then.' },
+      { text: '<cyan>Press: <w>?</w> - help, <w>v</w> - describe, <w>.</w> - travel</cyan>', channel: 2 },
+    ], more: true, more_text: 'Describe' })
+    const plain = msgLog(h).querySelector<HTMLElement>('.game-msg:not(.game-prompt)')!
+    const mark = plain.querySelector<HTMLElement>('.msg-turn-mark')!
+    mark.textContent = '_'
+    mark.classList.add('turn')
+    await setLang('zh')
+    expect(mark.textContent).toBe('_')
+    expect(plain.querySelector('.msg-body')?.textContent).toBe('好的。')
+    expect(moreLine(h)?.textContent).toBe('描述')
+    const buttons = () => [...msgLog(h).querySelectorAll<HTMLButtonElement>('.game-prompt button')]
+    expect(buttons().map(b => b.textContent)).toEqual(['? - 帮助', 'v - 描述', '. - 前往'])
+    expect(msgLog(h).querySelector('.game-prompt')?.textContent).toContain('按：')
+    buttons()[1].click()
+    expect(sent(h)).toContainEqual({ msg: 'input', text: 'v' })
+    await setLang('en')
+    expect(mark.textContent).toBe('_')
+    expect(plain.querySelector('.msg-body')?.textContent).toBe('Okay, then.')
+    expect(buttons().map(b => b.textContent)).toEqual(['? - help', 'v - describe', '. - travel'])
+    expect(moreLine(h)?.textContent).toBe('Describe')
+  })
+
+  it('does not reactivate a retired prompt when changing language', async () => {
+    const h = setup()
+    h.dispatch({ msg: 'msgs', messages: [{ text: '<cyan>Press: ? - help, v - describe, . - travel', channel: 2 }] })
+    h.dispatch({ msg: 'msgs', messages: [{ text: 'Adjust to which letter?', channel: 2 }] })
+    await setLang('zh')
+    expect([...msgLog(h).querySelectorAll<HTMLButtonElement>('.game-prompt button')].every(b => b.disabled)).toBe(true)
+    await setLang('en')
+  })
+
+  it('translates the default more prompt and restores it in English', async () => {
+    const h = setup()
+    h.dispatch({ msg: 'msgs', messages: [], more: true })
+    await setLang('zh')
+    expect(moreLine(h)?.textContent).toBe('--继续--')
+    await setLang('en')
+    expect(moreLine(h)?.textContent).toBe('--more--')
+  })
 })
 
 describe('player message → HUD reveal gating', () => {
@@ -427,6 +471,29 @@ describe('X-mode describe strip', () => {
       { text: `<cyan>Here:</cyan> ${here}`, channel: 23 },
       { text: feat, channel: 24 },
     ],
+  })
+
+  it('repaints existing feedback and key hints on language switches', async () => {
+    const h = setup()
+    enterX(h)
+    h.dispatch({ msg: 'msgs', messages: [
+      { text: '<cyan>Press: <w>?</w> - help, <w>v</w> - describe, <w>.</w> - travel</cyan>', channel: 2 },
+      { text: '<lightgrey>Okay, then.', channel: 23 },
+    ] })
+    await setLang('zh')
+    expect(strip(h).querySelector('.xdesc-line')?.textContent).toBe('好的。')
+    expect([...strip(h).querySelectorAll('button')].map(b => b.textContent))
+      .toEqual(['? - 帮助', 'v - 描述', '. - 前往'])
+    expect(strip(h).textContent).toContain('按：')
+    expect(strip(h).querySelector('button')?.querySelector('span')?.textContent).toBe('?')
+    await setLang('en')
+    expect(strip(h).querySelector('.xdesc-line')?.textContent).toBe('Okay, then.')
+    expect([...strip(h).querySelectorAll('button')].map(b => b.textContent))
+      .toEqual(['? - help', 'v - describe', '. - travel'])
+    h.dispatch({ msg: 'cursor', id: 2 })
+    await setLang('zh')
+    expect(strip(h).querySelectorAll('button')).toHaveLength(0)
+    await setLang('en')
   })
 
   it('stays hidden on entry and outside X mode, even when messages flow', () => {
@@ -1121,6 +1188,33 @@ describe('ui-push / ui-pop overlay stack', () => {
     expect(overlay(h).textContent).toContain('Something went badly wrong.')
   })
 
+  it('rebuilds a formatted history page from wire text when switching languages', async () => {
+    const h = setup()
+    h.dispatch({ msg: 'ui-push', type: 'formatted-scroller', tag: 'messages', text: 'Okay, then.\nUnknown command.' })
+    const body = () => overlay(h).querySelector<HTMLElement>('.overlay-body')!
+    expect(body().textContent).toContain('Unknown command.')
+    await setLang('zh')
+    expect(body().textContent).toContain('未知命令。')
+    await setLang('en')
+    expect(body().textContent).toContain('Unknown command.')
+  })
+
+  it('translates combat history detail rows with multiple messages and spell metadata', async () => {
+    const h = setup()
+    await setLang('en')
+    h.dispatch({
+      msg: 'ui-push', type: 'formatted-scroller', tag: 'messages',
+      text: '(Noise: Extremely) Loud\nNothing appears to happen. The rat is staggered.\nYou stop stampeding. You kill the goblin.',
+    })
+    await setLang('zh')
+    const body = overlay(h).querySelector<HTMLElement>('.overlay-body')!
+    expect(body.textContent).toContain('噪音：极响，响亮')
+    expect(body.textContent).toContain('似乎什么都没发生。')
+    expect(body.textContent).toContain('地精')
+    await setLang('en')
+    expect(overlay(h).querySelector('.overlay-body')?.textContent).toContain('(Noise: Extremely) Loud')
+  })
+
   it('omits the scroller more footer when the wire field is empty or markup-only', () => {
     const h = setup()
     h.dispatch({ msg: 'ui-push', type: 'formatted-scroller', tag: 'help', text: 'body', more: '' })
@@ -1646,6 +1740,74 @@ describe('ui-push / ui-pop overlay stack', () => {
 })
 
 describe('language switch with a describe page open', () => {
+  it('renders a captured potion describe page with localized title and footer', async () => {
+    const h = setup()
+    const fixture = await import('../golden/09-inventory-describe-stack.golden.json')
+    const page = fixture.default.messages.find((message: { msg: string; title?: string }) =>
+      message.msg === 'ui-push' && message.title?.includes('potion of magic'))!
+    h.dispatch(page)
+    const title = () => overlay(h).querySelector('.overlay-title')?.textContent ?? ''
+    const body = () => overlay(h).querySelector('.overlay-body')?.textContent ?? ''
+    try {
+      await setLang('zh')
+      expect(title()).toContain('魔法药水')
+      expect(body()).toContain('稀有药水')
+      expect(body()).toContain('菜单/着色前缀：已鉴定 应急物品 优质物品 药水')
+      expect(body()).not.toMatch(/emergency_item|good_item|potionSPELLSET/)
+    } finally {
+      await setLang('en')
+    }
+    expect(title()).toContain('potion of magic')
+    expect(body()).toContain('A valuable potion')
+  })
+
+  it('renders a captured artefact page in Chinese and restores English from the wire', async () => {
+    const h = setup()
+    const fixture = await import('../golden/22-stash-search-describe-highlight.golden.json')
+    const page = fixture.default.messages.find((message: { msg: string; type?: string }) =>
+      message.msg === 'ui-push' && message.type === 'describe-item')!
+    h.dispatch(page)
+    const body = () => overlay(h).querySelector<HTMLElement>('.overlay-body')!
+    try {
+      await setLang('zh')
+      expect(body().textContent).toMatch(/死亡：\s*它增强你的死灵法术/)
+      expect(body().textContent).toContain('你体型太大，穿不上它')
+      expect(body().textContent).toContain('威廉·布莱克')
+      expect(body().textContent).toContain('储藏搜索前缀：{artefact} {artifact} {Death}')
+      expect(body().querySelector('[style*="color"]')).not.toBeNull()
+    } finally {
+      await setLang('en')
+    }
+    expect(body().textContent).toContain('It empowers your Necromancy spells')
+    expect(body().textContent).toContain('Nought can Deform')
+  })
+
+  it('rebuilds the spell fields from wire text and keeps the channel colour', async () => {
+    const h = setup()
+    const raw = [
+      '<lightblue>Level: 4     School: Air/Summoning     Fail: 28%</lightblue>',
+      'Noise: whisper',
+      'Defences: Defence: 3',
+      'Resists: None',
+      'With your current stats and equipment, training Air Magic to 6.5 would reduce your failure rate to 10%. This would take about 2.7 XLs.',
+    ].join('\n')
+    h.dispatch({ msg: 'ui-push', type: 'describe-spell', title: 'Uncatalogued Spell', body: raw })
+    const body = () => overlay(h).querySelector<HTMLElement>('.overlay-body')!
+    try {
+      await setLang('zh')
+      expect(body().textContent).toContain('学派：气系／召唤系')
+      expect(body().textContent).toContain('噪音：耳语')
+      expect(body().textContent).toContain('防御：防御：3')
+      expect(body().textContent).toContain('抗性：无')
+      expect(body().textContent).toContain('把空气魔法训练到 6.5')
+      expect(body().querySelector('[style*="color"]')).not.toBeNull()
+    } finally {
+      await setLang('en')
+    }
+    expect(body().textContent).toContain('School: Air/Summoning')
+    expect(body().textContent).toContain('training Air Magic to 6.5')
+  })
+
   it('rebuilds the prose from the raw ui-push, both ways, without closing the page', async () => {
     const h = setup()
     const body = 'This ring protects its wearer from poison.'

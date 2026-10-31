@@ -240,7 +240,8 @@ function translateCombat(plain: string): string | null {
           : youM[1] === 'completely' ? `你完全没有击中${target}`
             : `你没有击中${target}`
     } else {
-      body = `你${VERB_ZH[verb] ?? verb}${target}`
+      const manner = youM[1] === 'barely' ? '勉强' : youM[1] === 'completely' ? '完全' : ''
+      body = `你${manner}${VERB_ZH[verb] ?? verb}${target}`
     }
     if (youM[4]) body += '，但没有造成伤害'
     return body + (youM[5].includes('!') ? '！' : '。')
@@ -274,7 +275,8 @@ function combatBody(actor: string, target: string, verb: string, adverb: string 
         : adverb === 'completely' ? `${actor}完全没有击中${target}`
           : `${actor}没有击中${target}`
   } else {
-    body = `${actor}${VERB_ZH[verb] ?? verb}${target}`
+    const manner = adverb === 'barely' ? '勉强' : adverb === 'completely' ? '完全' : ''
+    body = `${actor}${manner}${VERB_ZH[verb] ?? verb}${target}`
   }
   if (noDamage) body += '，但没有造成伤害'
   return body + (punct.includes('!') ? '！' : '。')
@@ -356,6 +358,16 @@ function translateOne(text: string): string | null {
   if (searchPrompt) return `搜索什么［回车沿用“${searchPrompt[1]}”，按 ? 查看帮助］？${searchPrompt[2]}`
   const goodbye = /^Goodbye, (.+)\.$/.exec(plainText)
   if (goodbye) return `再见，${goodbye[1]}。`
+  const drinkNoEffect = /^Drinking this right now will have no effect: (.+)\.$/.exec(plainText)
+  if (drinkNoEffect) {
+    const reason: Record<string, string> = {
+      'your magic is already full': '你的魔力已经全满',
+      'you are already healthy enough': '你的伤势已经基本痊愈',
+      'you are already hasted': '你已经处于加速状态',
+    }
+    const zh = reason[drinkNoEffect[1].toLowerCase()]
+    if (zh) return `现在饮用不会产生效果：${zh}。`
+  }
   // Rules whose subject is a monster/item name: the name needs the capture
   // translator, so they live here rather than in the static table.
   const NAMED_RULES: Array<[RegExp, (n: string) => string]> = [
@@ -423,7 +435,7 @@ function translateOne(text: string): string | null {
   const hitRow = /^Hit: (.+?)\s{2,}(.+)$/.exec(plainText)
   if (hitRow) return `命中：${translateCapture(hitRow[1])}  ${hitRow[2]}`
   // Spell-panel lines whose skill name needs the capture translator.
-  const spellTrain = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce your failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plainText)
+  const spellTrain = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce (?:your|the) failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plainText)
   if (spellTrain) {
     return `以你当前的属性和装备，把${translateCapture(spellTrain[1])}训练到 ${spellTrain[2]} 可将失败率降到 ${spellTrain[3]}%。这大约需要 ${spellTrain[4]} 个等级。`
   }
@@ -703,6 +715,8 @@ export function hasUiLabel(text: string): boolean {
 
 /** Menu-footer nav keyhelp: a closed vocabulary, applied word-wise. */
 const MORE_WORDS: Array<[RegExp, string]> = [
+  [/\btoggle spell headers\b/gi, '切换法术栏标题'],
+  [/\bSelect a spell to describe\b/gi, '选择法术查看描述'],
   [/\bMemorise\b/gi, '记忆'],
   [/\bDescribe\b/gi, '描述'],
   [/\bHide\b/gi, '隐藏'],
@@ -718,6 +732,9 @@ const MORE_WORDS: Array<[RegExp, string]> = [
   [/\bexit\b/gi, '退出'],
   [/\bclose\b/gi, '关闭'],
   [/\bhelp\b/gi, '帮助'],
+  [/\btravel\b/gi, '前往'],
+  [/\bmove target\b/gi, '移动目标'],
+  [/\bget item\b/gi, '拾取物品'],
   [/\bbuy\b/gi, '购买'],
   [/\bsell\b/gi, '出售'],
   [/\btoggle\b/gi, '切换'],
@@ -736,6 +753,7 @@ const MORE_WORDS: Array<[RegExp, string]> = [
 
 export function tMore(text: string): string {
   if (lang !== 'zh' || !text) return text
+  if (text.trim() === '--more--') return '--继续--'
   if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
   const short = /^You are short (\d+) gold pieces for the purchase\.$/i.exec(text.trim())
   if (short) return `你还差 ${short[1]} 金币才能购买。`
@@ -751,6 +769,11 @@ export function tMore(text: string): string {
 export function tTitle(text: string): string {
   if (lang !== 'zh') return text
   const plain = text.replace(/<[^>]*>/g, '').trim()
+  const spellTrain = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce (?:your|the) failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plain)
+  if (spellTrain) {
+    const skill = t(spellTrain[1])
+    if (skill !== spellTrain[1]) return `以你当前的属性和装备，把${skill}训练到 ${spellTrain[2]} 可将失败率降到 ${spellTrain[3]}%。这大约需要 ${spellTrain[4]} 个等级。`
+  }
   // "A six-headed hydra." — a count-word prefix + monster noun.
   const NUM: Record<string, string> = {
     one: '一', two: '二', three: '三', four: '四', five: '五',

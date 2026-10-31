@@ -1,6 +1,7 @@
 // Display copies only. Never feed translated help, search tokens or terminal
 // rows back to the engine. Keep the number of rows stable for scroll messages.
 import { isZh, t, tItem } from './index'
+import { spellField } from './titles'
 import { lookupProse } from './describe'
 
 const HELP: Record<string, string> = {
@@ -61,6 +62,23 @@ function width(s: string): number {
   return [...s].reduce((n, c) => n + (c.charCodeAt(0) > 255 ? 2 : 1), 0)
 }
 
+function translateCell(text: string): string {
+  const whole = cell(text)
+  if (whole !== text) return whole
+  // History pages often join several independently translated combat messages
+  // into one terminal row. Translate only when every sentence has a match.
+  const flat = text.replace(/\n/g, ' ')
+  const parts = flat.split(/(?<=[.!?])\s+(?=[<A-Z0-9"“'])/)
+  if (parts.length < 2) return whole
+  const translated = parts.map((part) => {
+    const result = cell(part)
+    return result === part ? null : result
+  })
+  return translated.every((part): part is string => part !== null)
+    ? translated.join('')
+    : whole
+}
+
 /** Plain text only: callers strip DCSS/HTML before passing a display copy. */
 export function translatePage(text: string): string {
   if (!isZh()) return text
@@ -73,17 +91,23 @@ export function translatePage(text: string): string {
     return blocks.map((block, i) => i % 2 ? block : translatePage(block)).join('')
   }
   return text.split('\n').map((line) => {
+    const standaloneNoise = /^\(Noise:\s*([^)]+)\)\s*(.+)$/.exec(line.trim())
+    if (standaloneNoise) {
+      const level = spellField('Noise', standaloneNoise[1])
+      const quality = spellField('Noise', standaloneNoise[2])
+      return `噪音：${level === standaloneNoise[1] ? standaloneNoise[1] : level}，${quality}`
+    }
     const keyed = /^(\s*\S*\s*:\s*)(.+)$/.exec(line)
     if (keyed && HELP[keyed[2]]) return keyed[1] + HELP[keyed[2]]
     const parts = line.split(/(\s{2,})/)
-    if (parts.length === 1) return cell(line)
+    if (parts.length === 1) return translateCell(line)
     let out = ''
     let sourceColumn = 0
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
       sourceColumn += width(part)
       if (i % 2) out += ' '.repeat(Math.max(1, sourceColumn - width(out)))
-      else out += cell(part)
+      else out += translateCell(part)
     }
     return out
   }).join('\n')

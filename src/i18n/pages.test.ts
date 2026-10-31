@@ -28,6 +28,20 @@ it('retains parser-facing search keywords and player input', async () => {
   expect(translateTerminalLine('a - Minotaur')).toContain('牛头人')
 })
 
+it('translates standalone spell noise metadata and concatenated combat history rows', async () => {
+  await setLang('zh')
+  const history = [
+    '(Noise: Extremely) Loud',
+    'Nothing appears to happen. The rat is staggered.',
+    'You stop stampeding. You kill the goblin.',
+  ].join('\n')
+  const out = translatePage(history)
+  expect(out).toContain('噪音：极响，响亮')
+  expect(out).toContain('似乎什么都没发生。')
+  expect(out).toContain('地精')
+  expect(out.split('\n')).toHaveLength(history.split('\n').length)
+})
+
 it('is reversible by rerendering original English', async () => {
   await setLang('en')
   expect(translatePage('Dungeon Crawl Help')).toBe('Dungeon Crawl Help')

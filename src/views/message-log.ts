@@ -8,7 +8,7 @@
 import type { ClientMsg } from '../ws/types'
 import type { Handlers, MsgOf } from '../ws/dispatcher'
 import { dcssToHtml } from '../game/dcss-colors'
-import { LANG_CHANGED_EVENT, t } from '../i18n'
+import { LANG_CHANGED_EVENT, isZh, t, tMore } from '../i18n'
 import { isKeyHintsLine, parsePromptText, PROMPT_TRIGGER_RE, type PromptSegment } from './prompt-parse'
 import { systemKeyboardField } from './text-field'
 import { downloadPackFile } from '../offline/save-transfer'
@@ -69,6 +69,7 @@ export class MessageLog {
   // mode, where the log is display:none. All presentation flows through
   // syncMore; state lives in `more`, never the DOM.
   private more = false
+  private moreRaw = '--more--'
   private readonly moreLine = document.createElement('p')
   // The live prompt: the prompt rows of one msgs batch (see onMsgs).
   private livePrompt: HTMLElement[] = []
@@ -251,7 +252,8 @@ export class MessageLog {
 
   showMore(text?: string): void {
     this.more = true
-    const label = text || '--more--'
+    this.moreRaw = text || '--more--'
+    const label = tMore(this.moreRaw)
     this.moreLine.textContent = label
     this.moreButton.textContent = label
     this.syncMore()
@@ -357,6 +359,8 @@ export class MessageLog {
 
   private xdescReset(): void {
     this.xdescLines.textContent = ''
+    delete this.xdescActions.dataset.i18nRaw
+    this.xdescActions.textContent = ''
     this.xdescActions.style.display = 'none'
     this.xdescStrip.style.display = 'none'
   }
@@ -365,7 +369,7 @@ export class MessageLog {
   private keyButton(label: string, key: string): HTMLButtonElement {
     const btn = document.createElement('button')
     btn.className = 'action-btn'
-    btn.innerHTML = dcssToHtml(label)
+    btn.innerHTML = dcssToHtml(tMore(label))
     btn.addEventListener('click', () => {
       this.d.send({ msg: 'input', text: key })
       this.d.focusView()
@@ -385,6 +389,7 @@ export class MessageLog {
     const parsed = parsePromptText(text)
     const actions = this.xdescActions
     actions.textContent = ''
+    actions.dataset.i18nRaw = text
     actions.style.color = parsed.color ?? ''
     this.appendSegments(actions, parsed.segments.filter(
       (s) => s.kind === 'button' || !/^[,\s]*$/.test(s.value)))
@@ -397,7 +402,8 @@ export class MessageLog {
     } else {
       const line = document.createElement('div')
       line.className = 'xdesc-line'
-      line.innerHTML = dcssToHtml(text)
+      line.dataset.i18nRaw = text
+      line.innerHTML = dcssToHtml(displayLine(text))
       this.xdescLines.appendChild(line)
       while (this.xdescLines.childElementCount > XDESC_MAX_LINES) this.xdescLines.firstElementChild!.remove()
     }
@@ -409,8 +415,15 @@ export class MessageLog {
     // turn/cmd markers here too (matches reference, where every
     // .game_message has a .prefix_glyph).
     const row = this.markedRow('game-msg game-prompt')
+    row.dataset.i18nRaw = text
+    this.renderPrompt(row, text)
+    return row
+  }
+
+  private renderPrompt(row: HTMLElement, text: string): void {
+    row.querySelectorAll(':scope > :not(.msg-turn-mark)').forEach((node) => node.remove())
     const parsed = parsePromptText(text)
-    if (parsed.color) row.style.color = parsed.color
+    row.style.color = parsed.color ?? ''
     // Trigger gate is wider than the per-token matcher, so a message can
     // pass the gate without producing any buttons (e.g. the inventory
     // "<w>?</w> for menu" hint sits mid-token). Fall back to rendering
@@ -420,17 +433,17 @@ export class MessageLog {
       const body = document.createElement('span')
       body.innerHTML = dcssToHtml(displayLine(parsed.body))
       row.appendChild(body)
-      return row
+      return
     }
     this.appendSegments(row, parsed.segments)
-    return row
   }
 
   private appendSegments(host: HTMLElement, segments: PromptSegment[]): void {
     for (const seg of segments) {
       if (seg.kind === 'text') {
         const span = document.createElement('span')
-        span.innerHTML = dcssToHtml(seg.value)
+        const shown = isZh() ? seg.value.replace(/^Press:/, '按：') : seg.value
+        span.innerHTML = dcssToHtml(t(shown))
         host.appendChild(span)
       } else {
         host.appendChild(this.keyButton(seg.label, seg.key))
@@ -499,19 +512,37 @@ export class MessageLog {
     // translated before they enter the document.
     p.dataset.i18nRaw = text
     const content = document.createElement('span')
+    content.className = 'msg-body'
     content.innerHTML = dcssToHtml(displayLine(text))
     p.appendChild(content)
     return p
   }
 
-  /** Re-render every plain log row after a language switch. */
+  /** Re-render all display copies from their wire text after a language switch. */
   private onLangChange = (): void => {
+    if (this.more) {
+      const label = tMore(this.moreRaw)
+      this.moreLine.textContent = label
+      this.moreButton.textContent = label
+    }
     for (const p of this.element.querySelectorAll<HTMLElement>('p.game-msg[data-i18n-raw]')) {
       const raw = p.dataset.i18nRaw
-      const content = p.querySelector('span')
+      if (p.classList.contains('game-prompt')) {
+        if (raw) {
+          const disabled = p.querySelector('button')?.disabled ?? false
+          this.renderPrompt(p, raw)
+          if (disabled) p.querySelectorAll('button').forEach((button) => { button.disabled = true })
+        }
+        continue
+      }
+      const content = p.querySelector('.msg-body')
       if (!raw || !content) continue
       content.innerHTML = dcssToHtml(displayLine(raw))
     }
+    for (const line of this.xdescLines.querySelectorAll<HTMLElement>('.xdesc-line[data-i18n-raw]')) {
+      line.innerHTML = dcssToHtml(displayLine(line.dataset.i18nRaw!))
+    }
+    if (this.xdescActions.dataset.i18nRaw) this.xdescPromptRow(this.xdescActions.dataset.i18nRaw)
   }
 
   // A log row with its (blank) turn/cmd mark slot.

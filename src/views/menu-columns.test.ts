@@ -151,6 +151,19 @@ describe('columnTable: ability rows', () => {
     expect(text(t.rows.get(items[1].text!)!).replace(/\s+/g, ' ')).toBe('X - Renounce Religion 0% None')
     expect(text(t.rows.get(items[2].text!)!).replace(/\s+/g, ' ')).toBe('b - Enter the Abyss 51% 10 MP, 20 HP, Piety-------, Inju')
   })
+
+  it('translates known costs and keeps an unrecognised truncated cost whole', async () => {
+    await setLang('zh')
+    const known = abilityRow('a', 'Depart the Abyss', '3 MP, Piety--', '5%')
+    const none = abilityRow('X', 'Renounce Religion', 'None', '0%')
+    const unknown = abilityRow('b', 'Enter the Abyss', '10 MP, 20 HP, Piety-------, Inju', '51%')
+    const t = table('ability', ABIL_TITLE, [known, none, unknown])!
+    const knownText = text(t.rows.get(known.text!)!).replace(/\s+/g, ' ')
+    expect(knownText).toContain('3 法力，虔诚--')
+    expect(text(t.rows.get(none.text!)!).replace(/\s+/g, ' ')).toContain('无')
+    expect(text(t.rows.get(unknown.text!)!).replace(/\s+/g, ' ')).toContain('10 MP, 20 HP, Piety-------, Inju')
+    expect(text(t.rows.get(unknown.text!)!).replace(/\s+/g, ' ')).not.toContain('法力')
+  })
 })
 
 describe('columnTable: anything else stays verbatim', () => {
@@ -170,6 +183,15 @@ describe('columnTable: anything else stays verbatim', () => {
     expect(row).toContain('2%')
     // Name track: 4 (preface) + widest name 召唤冰兽 (8 ch) + 2 gap.
     expect(t.tracks.startsWith('14ch')).toBe(true)
+  })
+
+  it('translates known noise values in the stats view', async () => {
+    await setLang('zh')
+    const a = statsRow('a', 'Magic Dart', '100%', '3d3', '5', 'Almost silent')
+    const b = statsRow('b', 'Shatter', '38%', '(3-5)d12', '2-4/7', 'Extremely loud')
+    const t = table('spell', STATS_TITLE, [a, b])!
+    expect(text(t.rows.get(a.text!)!)).toContain('几乎无声')
+    expect(text(t.rows.get(b.text!)!)).toContain('极其响')
   })
 
   it('leaves out rows that are not ASCII or not on the columns', () => {

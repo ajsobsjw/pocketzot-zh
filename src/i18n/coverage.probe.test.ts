@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { setLang, t, tItem, tTitle, tMore } from './index'
 import { translateBody } from './body'
 import { loadDescript } from './describe'
+import { columnTable, menuColumns } from '../views/menu-columns'
 
 const DIR = 'src/golden'
 
@@ -40,6 +41,24 @@ function collect(): Map<string, string> {
   return texts
 }
 
+function columnRenderedMenus(): Map<string, string> {
+  const rendered = new Map<string, string>()
+  for (const f of readdirSync(DIR).filter((n) => n.endsWith('.golden.json'))) {
+    const j = JSON.parse(readFileSync(join(DIR, f), 'utf8')) as { messages?: any[] }
+    for (const m of j.messages ?? []) {
+      if (m.msg !== 'menu') continue
+      const cols = menuColumns(m.tag, m.title?.text)
+      const table = cols && columnTable(cols, m.items ?? [])
+      if (!table) continue
+      for (const [raw, html] of table.rows) {
+        const shown = html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&')
+        rendered.set(raw, shown)
+      }
+    }
+  }
+  return rendered
+}
+
 afterAll(async () => {
   await setLang('en')
 })
@@ -49,13 +68,14 @@ describe('coverage on captured traffic', () => {
     await setLang('zh')
     await loadDescript()
     const texts = collect()
+    const renderedMenus = columnRenderedMenus()
     const out: Buckets = {}
     for (const [text, kind] of texts) {
       const b = (out[kind] ??= { hit: 0, miss: 0, misses: [] })
       const plain = text.replace(/<[^>]*>/g, '').trim()
       const shown = kind === 'msgs' ? t(plain)
         : kind === 'menu-more' ? tMore(plain)
-          : kind === 'menu-item' ? tItem(plain)
+          : kind === 'menu-item' ? (renderedMenus.get(text) ?? tItem(plain))
             : kind === 'ui-push-body' ? translateBody(plain) : tTitle(plain)
       if (shown !== plain) b.hit++
       else {

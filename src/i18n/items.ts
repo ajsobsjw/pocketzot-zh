@@ -313,6 +313,16 @@ export function splitItem(raw: string): ItemParts {
  */
 export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean }): string | null {
   if (!raw || !/[A-Za-z]/.test(raw)) return null
+  const unknownPotion = raw.trim().replace(/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/, '').replace(/^(?:a|an|the)\s+/i, '').replace(/[.。]$/, '')
+  if (/^unlabelled flask containing a single dose of unknown liquid$/i.test(unknownPotion)) {
+    const prefix = HOTKEY_PREFIX.exec(raw)?.[1] ?? ''
+    return `${prefix}一瓶成分不明的药水`
+  }
+  const magicPotion = raw.trim().replace(/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/, '').replace(/^(?:a|an|the)\s+/i, '').replace(/[.。]$/, '')
+  if (/^potion of magic(?:\s*\(magic\))?$/i.test(magicPotion)) {
+    const prefix = /^\s*((?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+)/.exec(raw)?.[1] ?? ''
+    return `${prefix}魔法药水${/\(magic\)/i.test(magicPotion) ? '（魔法）' : ''}`
+  }
   const row = /^\s*((?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+)(.*)$/.exec(raw)
   const originalHotkey = row?.[1] ?? ''
   const source = row?.[2] ?? raw

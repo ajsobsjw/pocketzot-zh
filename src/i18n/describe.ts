@@ -90,6 +90,14 @@ function findProse(name: string, kinds?: string[]): string | null {
   return null
 }
 
+/** Translate a complete server-provided god section by its database key. */
+export function translateGodSection(name: string, section: 'description' | 'powers' | 'wrath' | 'extra', text: string): string {
+  if (getLang() !== 'zh' || !text) return text
+  const god = name.replace(/<[^>]*>/g, '').trim()
+  const key = god + (section === 'description' ? '' : ` ${section}`)
+  return findProse(key, ['gods']) ?? text
+}
+
 // Which describe page type reads which database table first. Without this,
 // "Foxfire" (a spell and a monster) resolves against monsters and the spell
 // page shows the monster's prose.
@@ -129,7 +137,7 @@ export function zhDescribe(title: string, body: string, type?: string): string |
   }
   // Every other paragraph that is a database quote (the Quote: section of a
   // monster/item page) also gets its localized twin.
-  if (proseMap && (!type || type === 'describe-god')) {
+  if (proseMap) {
     for (let i = 0; i < out.length; i++) {
       if (i === idx && prose) continue
       const plain = plainOf(out[i])

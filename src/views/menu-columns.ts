@@ -53,11 +53,51 @@ const SCHOOL_ZH: Record<string, string> = {
   Translocations: '传送系', Conjurations: '咒法系', Summonings: '召唤系',
 }
 
+const NOISE_ZH: Record<string, string> = {
+  'N/A': '无',
+  'Almost silent': '几乎无声',
+  Quiet: '低微',
+  Loud: '响亮',
+  'Very loud': '非常响亮',
+  'Extremely loud': '极其响',
+}
+
+const COST_PART_ZH: Record<string, string> = {
+  MP: '法力', HP: '生命', Piety: '虔诚', Exhaustion: '疲劳',
+  Injury: '受伤', Drain: '汲取',
+}
+
 /** Translate a "Ice/Conjuration" schools cell, or null when unknown. */
 function zhSchools(plain: string): string | null {
   const parts = plain.split('/')
   const zh = parts.map((p) => SCHOOL_ZH[p] ?? null)
   return zh.every(Boolean) ? zh.join('／') : null
+}
+
+/** Translate a complete ability cost; truncated or new engine fields stay raw. */
+export function zhCost(plain: string): string | null {
+  if (plain === 'None') return '无'
+  const parts = plain.split(', ')
+  if (parts.length === 0) return null
+  const out: string[] = []
+  for (const part of parts) {
+    const resource = /^(\d+) (MP|HP)$/.exec(part)
+    if (resource) {
+      out.push(`${resource[1]} ${COST_PART_ZH[resource[2]]}`)
+      continue
+    }
+    const piety = /^(Piety)(-+)$/.exec(part)
+    if (piety) {
+      out.push(`${COST_PART_ZH[piety[1]]}${piety[2]}`)
+      continue
+    }
+    if (COST_PART_ZH[part]) {
+      out.push(COST_PART_ZH[part])
+      continue
+    }
+    return null
+  }
+  return out.join('，')
 }
 
 /** Display width in `ch`: CJK/full-width glyphs count two. */
@@ -226,14 +266,24 @@ export function columnTable(cols: MenuColumns, items: MenuItem[]): ColumnTable |
   if (parsed.size === 0) return null
 
   const zh = isZh()
+  // A structured row is localized only when every free-text field in its
+  // shape is known. This keeps a new engine field or a truncated cost from
+  // producing a half-Chinese row.
+  const rowZh = (r: ParsedRow): boolean => {
+    if (!zh) return false
+    if (cols.rows === 'spells') return zhSchools(r.sub ?? '') !== null
+    if (cols.rows === 'abilities') return zhCost(r.sub ?? '') !== null
+    return NOISE_ZH[r.cells[3]?.plain] !== undefined
+  }
   const zhName = (r: ParsedRow): string => {
-    if (!zh) return r.name
+    if (!rowZh(r)) return r.name
     const out = tItem(r.namePlain)
     return out === r.namePlain ? r.name : escHtml(out)
   }
   const zhSub = (r: ParsedRow): string => {
-    if (!zh || !r.sub) return escHtml(r.sub ?? '')
-    return escHtml(zhSchools(r.sub) ?? r.sub)
+    if (!rowZh(r) || !r.sub) return escHtml(r.sub ?? '')
+    const translated = cols.rows === 'abilities' ? zhCost(r.sub) : zhSchools(r.sub)
+    return escHtml(translated ?? r.sub)
   }
   // Each column as wide as its widest value or heading, +1 as the gap to its
   // left (rail cells right-align, so the gap is on the near side). Chinese
@@ -243,7 +293,8 @@ export function columnTable(cols: MenuColumns, items: MenuItem[]): ColumnTable |
   const heads = zh ? headsEn.map(h => HEAD_ZH[h] ?? h) : headsEn
   const cellText = (r: ParsedRow, i: number): string => {
     const plain = r.cells[i].plain
-    if (!zh) return plain
+    if (!rowZh(r)) return plain
+    if (grid && i === 3) return NOISE_ZH[plain] ?? plain
     return plain === 'N/A' ? '无' : plain
   }
   const widths = heads.map((h, i) =>
@@ -257,10 +308,10 @@ export function columnTable(cols: MenuColumns, items: MenuItem[]): ColumnTable |
   // grid takes a 1ch gap between columns on top of each width's own 1ch
   // (style.css .mcol-wide).
   const rows = [...parsed.values()]
-  const nameW = 4 + Math.max(...rows.map(r => (zh ? width(tItem(r.namePlain)) : r.nameLen))) + 2
+  const nameW = 4 + Math.max(...rows.map(r => (rowZh(r) ? width(tItem(r.namePlain)) : r.nameLen))) + 2
   const restW = widths.reduce((a, b) => a + b, 0) + widths.length - 1
   const subW = grid ? 0 : Math.max(width(cols.heads[0]), ...rows.map(r => width(
-    isZh() ? (zhSchools(r.sub ?? '') ?? r.sub ?? '') : (r.sub ?? ''),
+     rowZh(r) ? (cols.rows === 'abilities' ? (zhCost(r.sub ?? '') ?? r.sub ?? '') : (zhSchools(r.sub ?? '') ?? r.sub ?? '')) : (r.sub ?? ''),
   ))) + 2
   const tracks = grid ? `${nameW}ch auto` : `${nameW}ch ${subW}ch auto`
   // +1ch: a row's label can be a scrollbar narrower than the heading row.

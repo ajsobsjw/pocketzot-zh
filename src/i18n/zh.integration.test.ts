@@ -7,10 +7,71 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { initI18n, setLang, t, tItem, tLabel, tMore, tTitle, getLang } from './index'
 import { translateBody } from './body'
-import { loadDescript } from './describe'
+import { loadDescript, zhDescribe } from './describe'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from './monster'
+import { readFileSync } from 'node:fs'
 
 afterAll(() => setLang('en'))
+
+it('translates both offline install sizes', async () => {
+  await setLang('zh')
+  for (const size of ['20 MB', '22 MB']) {
+    expect(t(`Installs ${size} the first time`)).toBe(`首次安装约需 ${size}`)
+    expect(t(`Not installed · ${size}`)).toBe(`未安装 · ${size}`)
+    expect(t(`${size} download`)).toBe(`下载 ${size}`)
+  }
+})
+
+it('translates character creation option descriptions', async () => {
+  await setLang('zh')
+  expect(t('Recommended species')).toBe('推荐种族')
+  expect(t('Picks a random recommended background based on your current species choice.'))
+    .toBe('根据当前选中的种族，随机选择一个推荐的职业。')
+  expect(t('Shuffles through random character combinations until you accept one.'))
+    .toBe('依次展示随机角色组合，直到你接受其中一个。')
+})
+
+it('translates captured artefact details and restores their original wire text', async () => {
+  const fixture = JSON.parse(readFileSync('src/golden/22-stash-search-describe-highlight.golden.json', 'utf8'))
+  const page = fixture.messages.find((message: { msg: string; type: string }) =>
+    message.msg === 'ui-push' && message.type === 'describe-item')
+  expect(page).toBeDefined()
+  await setLang('zh')
+  await loadDescript()
+  const localized = translateBody(zhDescribe(page.title, page.body, page.type) ?? page.body)
+  expect(localized.replace(/<[^>]*>/g, '')).toContain('死亡：')
+  expect(localized).toContain('<lightcyan>死亡<lightgrey>：')
+  expect(localized).toContain('它增强你的死灵法术')
+  expect(localized).toContain('你体型太大，穿不上它')
+  expect(localized).toContain('威廉·布莱克')
+  expect(localized).toContain('储藏搜索前缀：{artefact} {artifact} {Death}')
+  expect(localized).not.toMatch(/It empowers|This armour is completely useless|Nought can Deform/)
+  await setLang('en')
+  expect(translateBody(page.body)).toBe(page.body)
+  await setLang('zh')
+})
+
+it('translates captured potion title, no-effect message, and item category footer', async () => {
+  const fixture = JSON.parse(readFileSync('src/golden/09-inventory-describe-stack.golden.json', 'utf8'))
+  const page = fixture.messages.find((message: { msg: string; title?: string }) =>
+    message.msg === 'ui-push' && message.title?.includes('potion of magic'))
+  expect(page).toBeDefined()
+  await setLang('zh')
+  await loadDescript()
+  const title = tItem(page.title)
+  const localized = translateBody(zhDescribe(page.title, page.body, page.type) ?? page.body)
+  expect(title).toContain('魔法药水')
+  expect(tItem('a - a potion of magic (magic).')).toBe('a - 魔法药水（魔法）')
+  expect(localized).toContain('菜单/着色前缀：已鉴定 应急物品 优质物品 药水')
+  expect(t('Drinking this right now will have no effect: your magic is already full.'))
+    .toBe('现在饮用不会产生效果：你的魔力已经全满。')
+  expect(localized).not.toMatch(/emergency_item|good_item|potionSPELLSET/)
+  expect(tItem('a - an unlabelled flask containing a single dose of unknown liquid.'))
+    .toBe('a - 一瓶成分不明的药水')
+  await setLang('en')
+  expect(translateBody(page.body)).toBe(page.body)
+  await setLang('zh')
+})
 
 describe('real dictionary', () => {
   it('loads and translates known engine strings', async () => {
@@ -115,6 +176,8 @@ describe('real dictionary', () => {
     expect(t('The kobold slashes you.')).toBe('狗头人砍了你。')
     expect(t('You hit the kobold, but do no damage.')).toBe('你击中了狗头人，但没有造成伤害。')
     expect(t('You completely miss the kobold.')).toBe('你完全没有击中狗头人。')
+    expect(t('You barely hit the kobold.')).toBe('你勉强击中了狗头人。')
+    expect(t('The kobold barely hits you.')).toBe('狗头人勉强击中了你。')
     // 0.35 dropped the leading article on this one.
     expect(t('Acid dripping from the walls corrodes you.')).toBe('从墙上滴落的酸液腐蚀了你。')
   })
@@ -174,11 +237,59 @@ describe('real dictionary', () => {
     expect(out).toContain('伤害：2d (2-18) (最高 2d (15-31))')
     expect(out).toContain('射程：7')
     expect(out).toContain('噪音：耳语')
-    expect(out).toContain('防御：Defence: 3')
-    expect(out).toContain('抗性：None')
+    expect(out).toContain('防御：防御：3')
+    expect(out).toContain('抗性：无')
     expect(out).toContain('施法失误会造成魔法污染，并额外造成最多 20 点电击伤害。')
-    expect(out).toContain('以你当前的属性和装备，把Air Magic训练到 6.5 可将失败率降到 10%。这大约需要 2.7 个等级。')
+    expect(out).toContain('以你当前的属性和装备，把空气魔法训练到 6.5 可将失败率降到 10%。这大约需要 2.7 个等级。')
     expect(out).toContain('你的经验等级不足，无法施放此法术。')
+    expect(translateBody('Level: 5     School: Air/Summoning     Fail: 12%'))
+      .toBe('等级：5  学派：气系／召唤系  失败率：12%')
+    expect(translateBody('School: Conjurations/Fire')).toBe('学派：咒法系／火系')
+    expect(t('Level: 5     School: Air/Summoning     Fail: 12%'))
+      .toBe('等级：5  学派：气系／召唤系  失败率：12%')
+    expect(t('Noise: whisper')).toBe('噪音：耳语')
+    expect(t('Defences: Defence: 3')).toBe('防御：防御：3')
+    expect(t('Resists: None')).toBe('抗性：无')
+    expect(tMore('--more--')).toBe('--继续--')
+    const training = 'With your current stats and equipment, training Air Magic to 6.5 would reduce the failure rate to 10%. This would take about 2.7 XLs.'
+    expect(translateBody(training)).toContain('把空气魔法训练到 6.5')
+    expect(t(training)).toContain('把空气魔法训练到 6.5')
+    expect(tTitle(training)).toContain('把空气魔法训练到 6.5')
+  })
+
+  it('translates the observed Mystic Blast spell panel without partial English fields', async () => {
+    await setLang('zh')
+    const raw = [
+      'Level: 4        Schools: Conjuration/Translocation        Fail: 67%',
+      'Damage: 2d4 (+2d1 / collision) (max 2d19 (+2d11 / collision))',
+      'Noise: Loud',
+      'Miscasting this spell causes magic contamination and also either anchors you in place or deals up to 28 irresistible damage.',
+      'With your current stats and equipment, training Conjurations and Translocations to 7.3 would reduce your failure rate to 10%. This would take about 7.1 XLs.',
+    ].join('\n')
+    const shown = translateBody(raw)
+    expect(shown).toContain('等级：4  学派：咒法系／传送系  失败率：67%')
+    expect(shown).toContain('伤害：2d4 (+2d1 / 撞击) (最高 2d19 (+2d11 / 撞击))')
+    expect(shown).toContain('噪音：响亮')
+    expect(shown).toContain('可能将你定在原地，或造成最多 28 点无法抵抗的伤害')
+    expect(shown).toContain('把咒法系与传送系训练到 7.3')
+    const combo = translateBody([
+      'Miscasting this spell causes magic contamination and also either summons a nameless horror or deals up to 18 cold damage.',
+      'With your current stats and equipment, training Summonings and Ice Magic to 4.4 would reduce the failure rate to 10%. This would take about 5.6 XLs.',
+      'You can sustain at most one creature summoned by this spell.',
+    ].join('\n'))
+    expect(combo).toContain('可能召唤无名恐怖，或造成最多 18 点寒冷伤害')
+    expect(combo).toContain('把召唤系与冰系训练到 4.4')
+    expect(combo).toContain('最多只能维持 1 个由此法术召唤的生物')
+    const poison = translateBody([
+      '(Noise: Extremely) Loud',
+      'Miscasting this spell causes magic contamination and also either poisons you or deals up to 28 irresistible damage.',
+    ].join('\n'))
+    expect(poison).toContain('极响')
+    expect(poison).toContain('可能使你中毒，或造成最多 28 点无法抵抗的伤害')
+    expect(shown).not.toMatch(/Schools:|Fail:|Loud|collision|Miscasting|Conjurations and Translocations/)
+    await setLang('en')
+    expect(translateBody(raw)).toBe(raw)
+    await setLang('zh')
   })
 
   it('translates god and monster speech lines', async () => {
