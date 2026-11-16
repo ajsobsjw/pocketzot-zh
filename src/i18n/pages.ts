@@ -82,8 +82,8 @@ function translateCell(text: string): string {
 /** Plain text only: callers strip DCSS/HTML before passing a display copy. */
 export function translatePage(text: string): string {
   if (!isZh()) return text
-  const whole = lookupProse(text) ?? t(text)
-  if (whole !== text) return whole
+  const whole = lookupProse(text)
+  if (whole !== null) return whole
   // Prose dictionaries contain paragraphs, whereas manual/scroller messages
   // contain multiple paragraphs and may wrap every sentence at 80 columns.
   const blocks = text.split(/(\n[ \t]*\n)/)

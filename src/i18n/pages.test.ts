@@ -46,3 +46,11 @@ it('is reversible by rerendering original English', async () => {
   await setLang('en')
   expect(translatePage('Dungeon Crawl Help')).toBe('Dungeon Crawl Help')
 })
+
+it('translates combined encounter and pickup history without swallowing later events', async () => {
+  const raw = 'You encounter a hobgoblin. You kill the hobgoblin!\nYou see here a ball python corpse. Magic restored.'
+  await setLang('zh')
+  expect(translatePage(raw)).toBe('你遭遇了大地精。你杀死了大地精！\n你在这里看到球蟒尸体。魔力已恢复。')
+  await setLang('en')
+  expect(translatePage(raw)).toBe(raw)
+})

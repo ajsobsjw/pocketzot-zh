@@ -348,6 +348,40 @@ function translateOne(text: string): string | null {
     }
   }
   const plainText = text.replace(/<[^>]*>/g, '').trim()
+  const encounter = /^You encounter ([^.!?]+)\.$/.exec(plainText)
+  if (encounter && !/\bthe\b|\.\s/.test(encounter[1])) {
+    const name = translateCapture(encounter[1])
+    if (name !== encounter[1]) return `你遭遇了${name}。`
+  }
+  const kill = /^You kill ([^.!?]+)([!.])$/.exec(plainText)
+  if (kill) {
+    const name = translateCapture(kill[1])
+    if (name !== kill[1]) return `你杀死了${name}${kill[2] === '!' ? '！' : '。'}`
+  }
+  const monsterState = /^The (.+?) is (hurt|wounded|severely wounded|almost dead|near death|unhurt|dead)\.$/i.exec(plainText)
+  if (monsterState) {
+    const name = translateCapture(monsterState[1])
+    const states: Record<string, string> = {
+      hurt: '受了伤', wounded: '受了伤', 'severely wounded': '受了重伤',
+      'almost dead': '奄奄一息', 'near death': '濒临死亡', unhurt: '毫发无伤', dead: '死了',
+    }
+    if (name !== monsterState[1]) return `${name}${states[monsterState[2].toLowerCase()] ?? ''}。`
+  }
+  const itemHere = /^You see here ([^.!?]+)\.$/.exec(plainText)
+  if (itemHere) {
+    const item = translateItem(matcher!, itemHere[1], { loose: true })
+    if (item) return `你在这里看到${item}。`
+  }
+  const foundFeature = /^Found (a|an|the) ([^.!?]+)\.$/i.exec(plainText)
+  if (foundFeature) {
+    const feature = featureName(`${foundFeature[1]} ${foundFeature[2]}`)
+    if (feature) return `发现了${feature}。`
+  }
+  const gold = /^You now have (\d+) gold pieces? \(gained (\d+)\)\.$/.exec(plainText)
+  if (gold) return `你现在有 ${gold[1]} 枚金币（获得 ${gold[2]} 枚）。`
+  const noTarget = /^(No target in view|No reachable target in view)!$/.exec(plainText)
+  if (noTarget) return noTarget[1] === 'No target in view' ? '视线内没有目标！' : '视线内没有可到达的目标！'
+  if (/^Magic restored[.!]$/.test(plainText)) return '魔力已恢复。'
   // Aim rows are a structured line with equipment and status data; the generic
   // dictionary would match "Aim: %s" and leave the rest half-translated.
   if (plainText.startsWith('Aim: ')) {
@@ -517,6 +551,9 @@ function translateOne(text: string): string | null {
     const noun = translateCapture(count[2].replace(/s$/, ''))
     if (noun !== count[2].replace(/s$/, '')) return `${count[1]} 个${noun}`
   }
+  // Generic labels must not swallow subsequent events as an untranslated tail.
+  // Let t() translate each complete sentence instead.
+  if (splitSentences(plainText).length > 1) return null
   let r = lookup(matcher!, text, { allowLabels: true })
   if (r && r.args && r.tmpl) {
     // A capture that swallowed whole clauses means a generic template matched

@@ -90,6 +90,27 @@ describe('real dictionary', () => {
     expect(t('You hit the kobold.')).toBe('你击中了狗头人。')
   })
 
+  it('translates the combat and exploration rows reported from the live log', async () => {
+    await setLang('zh')
+    const rows = [
+      'You encounter a hobgoblin.',
+      'You kill the hobgoblin!',
+      'No target in view!',
+      'Magic restored.',
+      'You see here a ball python corpse.',
+      'Found a stone staircase leading down.',
+      'You now have 24 gold pieces (gained 7).',
+      'You can’t see any susceptible monsters within range! (Use Z to cast anyway.)',
+    ]
+    const out = rows.map(t)
+    expect(out).toEqual([
+      '你遭遇了大地精。', '你杀死了大地精！', '视线内没有目标！', '魔力已恢复。',
+      '你在这里看到球蟒尸体。', '发现了向下的石楼梯。',
+      '你现在有 24 枚金币（获得 7 枚）。', '范围内没有可见的可受影响怪物！（按 Z 仍可施法。）',
+    ])
+    expect(out.join('\n')).not.toMatch(/hobgoblin|target in view|Magic restored|gold pieces|susceptible monsters/i)
+  })
+
   it('keeps a numeric label row', async () => {
     await setLang('zh')
     expect(t('Base armour rating: 2')).toBe('基础护甲评级: 2')
