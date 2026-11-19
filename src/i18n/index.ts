@@ -342,6 +342,8 @@ function translateOne(text: string): string | null {
     }
   }
   const plainText = text.replace(/<[^>]*>/g, '').trim()
+  const shopEntrance = /^There is an entrance to (.+)['’]s (.+) here\.$/.exec(plainText)
+  if (shopEntrance) return `这里是 ${shopEntrance[1]} 的${shopKind(shopEntrance[2])}入口。`
   const encounter = /^You encounter ([^.!?]+)\.$/.exec(plainText)
   if (encounter && !/\bthe\b|\.\s/.test(encounter[1])) {
     const name = translateCapture(encounter[1])
@@ -796,6 +798,11 @@ export function tMore(text: string): string {
   return out
 }
 
+function shopKind(kind: string): string {
+  const kinds: Record<string, string> = { 'General Store': '杂货店', 'Weapon Shop': '武器店', 'Armour Shop': '护甲店', 'Jewellery Shop': '首饰店', 'Wand Shop': '魔杖店', 'Book Shop': '书店', 'Food Shop': '食品店', 'Potion Shop': '药水店', 'Scroll Shop': '卷轴店' }
+  return kinds[kind] ?? t(kind)
+}
+
 /** Dynamic titles (gear slots, casting, prompts) that have no dictionary key. */
 export function tTitle(text: string): string {
   if (lang !== 'zh') return text
@@ -818,8 +825,7 @@ export function tTitle(text: string): string {
   if (feat) return feat
   const shop = /^Welcome to (.+?)'s (.+?)! What would you like\?$/i.exec(plain)
   if (shop) {
-    const kinds: Record<string, string> = { 'General Store': '杂货店', 'Weapon Shop': '武器店', 'Armour Shop': '护甲店', 'Jewellery Shop': '首饰店', 'Wand Shop': '魔杖店', 'Book Shop': '书店', 'Food Shop': '食品店', 'Potion Shop': '药水店', 'Scroll Shop': '卷轴店' }
-    return `欢迎光临${shop[1]}的${kinds[shop[2]] ?? t(shop[2])}！想买点什么？`
+    return `欢迎光临${shop[1]}的${shopKind(shop[2])}！想买点什么？`
   }
   const out = matchTitle(plain)
   if (out) return out

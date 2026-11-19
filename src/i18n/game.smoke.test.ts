@@ -38,6 +38,41 @@ afterAll(async () => {
 })
 
 describe('game view in Chinese', () => {
+  it('shows floor item names before pickup in both logs', async () => {
+    await setLang('en')
+    const floorRows = [
+      ['Things that are here:', '此处有：'],
+      ['<green>a +0 dagger of freezing</green>; <darkgrey>a kobold corpse</darkgrey>', '冰冻的匕首；狗头人尸体'],
+      ['a +0 dagger; <darkgrey>a kobold skeleton</darkgrey>', '匕首；狗头人骷髅'],
+      ['2 scrolls labelled GODAM VEULI; a smoky potion; a blorptastic', '卷轴（标签 GODAM VEULI）×2；烟熏的药水；a blorptastic'],
+      ['You see here a +0 dagger of freezing.', '你在这里看到冰冻的匕首。'],
+      ['There is an entrance to Leluj’s General Store here.', '这里是 Leluj 的杂货店入口。'],
+    ]
+    const raw = floorRows.map(([wire]) => wire)
+    const display = floorRows.map(([, zh]) => zh)
+    const historyWire = raw.map(wire => `<lightgrey>_${wire.replace(/<\/[a-z]+>/g, '<lightgrey>')}`).join('\n')
+    const view = mount([
+      { msg: 'msgs', messages: raw.map(text => ({ text })) },
+      { msg: 'ui-push', type: 'formatted-scroller', tag: 'messages', text: historyWire },
+    ] as ServerMsg[])
+    const live = () => Array.from(view.querySelectorAll('.msg-body'), row => row.textContent!).reverse()
+    const history = () => Array.from(view.querySelectorAll('.overlay-body .overlay-line'), row => row.textContent!)
+    try {
+      await setLang('zh')
+      await tick()
+      expect(live()).toEqual(display)
+      expect(history()).toEqual(display.map(row => '_' + row))
+      const dagger = Array.from(view.querySelectorAll('.msg-body span')).find(span => span.textContent === '冰冻的匕首')
+      expect(dagger?.getAttribute('style')).toBe('color:#4e9a06')
+      await setLang('en')
+      expect(live()).toEqual(raw.map(row => row.replace(/<[^>]+>/g, '')))
+      expect(history()).toEqual(live().map(row => '_' + row))
+    } finally {
+      disposeView(view)
+      await setLang('en')
+    }
+  })
+
   it('uses the same translations in live messages and the untagged Ctrl-P history', async () => {
     await setLang('en')
     const messages = [
