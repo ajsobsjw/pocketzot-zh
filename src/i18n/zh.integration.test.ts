@@ -615,6 +615,23 @@ describe('monster panel with the live dictionary', () => {
 })
 
 describe('talisman form panel', () => {
+  it('widens the form scaling table for full Chinese column labels', async () => {
+    await setLang('zh')
+    const raw = [
+      '      Skill   HP    AC    EV',
+      '--------------------------------',
+      'Min   0       +0%   +1.0  -2.0',
+      'Max   7       +12%  +7.0  +0.0',
+      '<white>Cur   <red>0.0</red>     +0%   +1.0  -2.0<lightgrey>',
+    ].join('\n')
+    const out = translateBody(raw)
+    const width = (s: string) => [...s].reduce((n, ch) => n + (/[^\x00-\xff]/.test(ch) ? 2 : 1), 0)
+    const columns = (line: string) => [...line.matchAll(/\S+/g)].map(m => width(line.slice(0, m.index)))
+    const [head, , ...rows] = out.replace(/<[^>]+>/g, '').split('\n')
+    expect(head.trim().split(/\s+/)).toEqual(['技能', '生命值', '防御力', '闪避'])
+    for (const row of rows) expect(columns(row).slice(1)).toEqual(columns(head))
+    expect(out).toMatch(/<red>0\.0/)
+  })
   // The form table is composed in C++ from four-cell fragments and sent as a
   // transposed table. Each header cell is a standalone dictionary key, so a
   // missing entry leaves English columns in the middle of a Chinese table.

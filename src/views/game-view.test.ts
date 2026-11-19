@@ -1905,6 +1905,33 @@ describe('language switch with a describe page open', () => {
       await setLang('en')
     }
   })
+
+  it('localizes shop balances and unlettered item detail titles from wire text', async () => {
+    const h = setup()
+    const more = '<yellow>You have 2000 gold pieces. After the purchase, you will have 1 gold piece.</yellow>\n[<w>Tab</w>] buy|examine items'
+    const footer = () => overlay(h).querySelector('.menu-footer')?.textContent
+    const title = () => overlay(h).querySelector('.overlay-title')?.textContent
+    try {
+      await setLang('zh')
+      h.dispatch({ msg: 'menu', tag: 'shop', title: { text: 'Shop' }, items: [], more, alt_more: more })
+      expect(footer()).toContain('你现有 2000 枚金币。 购买后还剩 1 枚金币。')
+      const voucher = '<yellow>You have 7 gold pieces and a voucher.<lightred> Purchasing will use your shop voucher and 1 gold piece.</lightred></yellow>'
+      h.dispatch({ msg: 'update_menu', more: voucher, alt_more: voucher })
+      expect(footer()).toContain('你现有 7 枚金币和一张购物券。 购买将使用你的购物券和 1 枚金币。')
+      const shortage = '<yellow>You have 1 gold piece.<lightred> You are short 2 gold pieces for the purchase.</lightred></yellow>'
+      h.dispatch({ msg: 'update_menu', more: shortage, alt_more: shortage })
+      expect(footer()).toContain('你现有 1 枚金币。 你还差 2 枚金币才能购买。')
+      expect(overlay(h).querySelector('.menu-footer [style="color:#ef2929"]')?.textContent).toContain('还差')
+      h.dispatch({ msg: 'ui-push', type: 'describe-item', title: '<white>A wand of roots.</white>', body: 'A wand.' })
+      expect(title()).toBe('根须魔杖')
+      await setLang('en')
+      expect(title()).toBe('A wand of roots.')
+      h.dispatch({ msg: 'ui-pop' })
+      expect(footer()).toContain('You have 1 gold piece.')
+    } finally {
+      await setLang('en')
+    }
+  })
 })
 
 // The save is deleted before the end screens (end.cc end_game), so a resume's

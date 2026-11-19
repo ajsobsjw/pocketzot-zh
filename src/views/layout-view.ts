@@ -23,7 +23,7 @@ import {
   splitGodPowerCosts, unpadMutationCategory, renderSpellbook, stripDcss,
 } from './overlay-body'
 import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
-import { LANG_CHANGED_EVENT, t, isZh } from '../i18n'
+import { LANG_CHANGED_EVENT, t, tItem, isZh } from '../i18n'
 import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 import { translatePage } from '../i18n/pages'
@@ -266,7 +266,9 @@ export class LayoutView {
       .replace(/\s+((?:<[^>]+>)*)$/, '$1')
       .trim()
 
-    this.d.renderOverlay(title, () => {
+    const itemName = msg.type === 'describe-item' ? title.trim().replace(/\.$/, '') : title
+    const localizedName = msg.type === 'describe-item' ? tItem(itemName) : title
+    this.d.renderOverlay(localizedName === itemName ? title : localizedName, () => {
       const overlay = this.d.content()
       const tileSpec = deriveTileSpec(msg)
       if (tileSpec && tileSpec.length > 0) {

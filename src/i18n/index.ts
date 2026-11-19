@@ -790,9 +790,12 @@ export function tMore(text: string): string {
   if (lang !== 'zh' || !text) return text
   if (text.trim() === '--more--') return '--继续--'
   if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
-  const short = /^You are short (\d+) gold pieces for the purchase\.$/i.exec(text.trim())
-  if (short) return `你还差 ${short[1]} 金币才能购买。`
   let out = text
+    .replace(/\bYou have (\d+) gold pieces?( and a voucher)?(\.|(?=\s*$))/gi,
+      (_all, gold, voucher) => `你现有 ${gold} 枚金币${voucher ? '和一张购物券' : ''}。`)
+    .replace(/\bAfter the purchase, you will have (\d+) gold pieces?\./gi, '购买后还剩 $1 枚金币。')
+    .replace(/\bYou are short (\d+) gold pieces? for the purchase\./gi, '你还差 $1 枚金币才能购买。')
+    .replace(/\bPurchasing will use your shop voucher and (\d+) gold pieces?\./gi, '购买将使用你的购物券和 $1 枚金币。')
   for (const [re, zh] of MORE_WORDS) out = out.replace(re, zh)
   out = out.replace(/\b(\d+) 个法术等级可用\b/i, '$1 个法术等级可用')
   // Page's spell-menu status line is a count, not a generic footer keyword.

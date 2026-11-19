@@ -8,6 +8,7 @@ import { isZh, t } from './index'
 import { propLabel } from './items'
 import { EGO_LABELS, translateEgoProse } from './egos'
 import { matchTitle, spellField, spellSchools, spellTrainingSkill, translateNoiseRow } from './titles'
+import { sliceDcss } from '../game/dcss-colors'
 
 function displayWidth(s: string): number {
   let n = 0
@@ -256,6 +257,43 @@ function reflowCells(pieces: string[]): string | null {
   return changed ? out.trimEnd() : null
 }
 
+const FORM_COLUMNS: Record<string, string> = {
+  AC: '防御力', EV: '闪避', HP: '生命值', MP: '法力值',
+}
+
+/** Widen a scaling table as a unit rather than shifting just its header. */
+function reflowFormTable(lines: string[]): string[] | null {
+  const plain = lines.map(stripTags)
+  if (!/^ +Skill\b/.test(plain[0]) || !/^-{6,}\s*$/.test(plain[1]) ||
+      !['Min', 'Max', 'Cur'].every((key, i) => plain[i + 2].startsWith(`${key}  `))) return null
+  const cells = (line: string) => [...line.matchAll(/\S+(?: \S+)*/g)]
+  const headers = cells(plain[0])
+  const rows = plain.slice(2).map(cells)
+  if (!headers.length || !rows.every(row => row.length === headers.length + 1)) return null
+  const names = headers.map(([name]) => FORM_COLUMNS[name] ?? translateCellText(name))
+  const labels = rows.map(([label]) => translateCellText(label[0]))
+  const starts = [0]
+  for (let i = 0; i < headers.length; i++) {
+    const width = i === 0 ? Math.max(...labels.map(displayWidth)) :
+      Math.max(displayWidth(names[i - 1]), ...rows.map(row => displayWidth(row[i][0])))
+    // Keep at least three spaces so renderBodyLines keeps the row together.
+    starts.push(Math.max(headers[i].index!, starts[i] + width + 3))
+  }
+  const render = (cols: string[]) => cols.reduce((out, cell, i) =>
+    out + ' '.repeat(Math.max(0, starts[i] - displayWidth(stripTags(out)))) + cell, '')
+  const last = headers.length
+  const ruleWidth = Math.max(plain[1].trimEnd().length,
+    starts[last] + Math.max(displayWidth(names[last - 1]), ...rows.map(row => displayWidth(row[last][0]))))
+  return [render(['', ...names]), '-'.repeat(ruleWidth), ...rows.map((row, i) =>
+    render(row.map((cell, j) => {
+      const raw = sliceDcss(lines[i + 2], cell.index!, cell.index! + cell[0].length)
+      const lead = /^(?:<[a-z]+>)*/i.exec(raw)![0]
+      const colour = /<([a-z]+)>$/i.exec(lead)?.[1]
+      const value = j === 0 ? labels[i] : cell[0]
+      return colour ? `<${colour}>${value}</${colour}>` : value
+    })))]
+}
+
 // A row label is a short Latin phrase at the start of the line ("Max HP",
 // "Base armour rating", "Attack"), optionally behind colour tags. Keep it
 // tight: a prose sentence rarely starts with 1–40 word characters and a colon.
@@ -312,7 +350,14 @@ export function translateBody(body: string): string {
     }
     lines.push(line)
   }
-  return lines.map((line) => {
+  const formRows = new Map<number, string>()
+  for (let i = 0; i + 4 < lines.length; i++) {
+    if (!/^ +Skill\b/.test(stripTags(lines[i]))) continue
+    reflowFormTable(lines.slice(i, i + 5))?.forEach((line, offset) => formRows.set(i + offset, line))
+  }
+  return lines.map((line, i) => {
+    const formRow = formRows.get(i)
+    if (formRow !== undefined) return formRow
     // Match the explanation before padding splits labels from values, and
     // before internal colour tags can cause the generic reflow to skip it.
     const plain = stripTags(line).replace(/\u0001/g, '').trim()
