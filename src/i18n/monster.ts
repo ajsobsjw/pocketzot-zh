@@ -958,14 +958,14 @@ function translateMonsterSentence(line: string): string | null {
   }
 
   // Summoned monsters: assembled from fixed fragments.
-  const summon = /^This monster has been (temporarily summoned to this location|created by magic and is temporary)\. (?:If angered it will immediately vanish, yielding |Killing it yields )no experience or items(; it is incapable of using stairs)?\.$/.exec(line)
+  const summon = /^This monster has been (temporarily summoned to this location|created by magic and is temporary)\. (If angered (it|they|he|she) will immediately vanish, yielding |Killing (it|them|him|her) yields )no experience or items(?:; (it|they|he|she) (?:is|are) incapable of using stairs)?\.$/.exec(line)
   if (summon) {
     const kind = summon[1].startsWith('temporarily')
       ? '此怪物是被临时召唤到这里的'
       : '此怪物由魔法创造，是临时的'
-    const angered = line.includes('If angered')
-    const reward = angered ? '若被激怒，它会立即消失，不提供经验或物品' : '击杀它不会获得经验或物品'
-    return `${kind}。${reward}${summon[2] ? '；它无法使用楼梯' : ''}。`
+    const pronouns: Record<string, string> = { it: '它', they: '它们', them: '它们', he: '他', him: '他', she: '她', her: '她' }
+    const reward = summon[3] ? `若被激怒，${pronouns[summon[3]]}会立即消失，不提供经验或物品` : `击杀${pronouns[summon[4]]}不会获得经验或物品`
+    return `${kind}。${reward}${summon[5] ? `；${pronouns[summon[5]]}无法使用楼梯` : ''}。`
   }
 
   // "It has an unusual item: a wand of fire."

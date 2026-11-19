@@ -222,48 +222,41 @@ const VERB_ZH: Record<string, string> = {
   whips: '鞭打了', whip: '鞭打了', lashes: '抽打了', lash: '抽打了',
   butts: '顶了', butt: '顶了', gnaws: '啃咬了', gnaw: '啃咬了',
   nibbles: '轻咬了', nibble: '轻咬了', blasts: '轰击了', blast: '轰击了',
+  puncture: '刺穿了', punctures: '刺穿了', bash: '猛击了', bashes: '猛击了',
+  'clumsily bash': '笨拙地撞击了', 'tail-slap': '用尾巴拍击了', 'tail-slaps': '用尾巴拍击了',
+  'tentacle-slap': '用触手拍击了', 'tentacle-slaps': '用触手拍击了',
+  touches: '触碰了', touch: '触碰了',
+  carve: '砍进了', dice: '切碎了', slice: '切割了', fracture: '击裂了', shave: '削伤了',
+  thump: '捶了', sock: '猛揍了', shatter: '击碎了', splatter: '打得飞溅',
+  flog: '鞭打了', flagellate: '鞭笞了', thrash: '痛打了', scratch: '抓伤了',
+  mangle: '撕烂了', eviscerate: '剖开了', batter: '猛击了', pummel: '连击了',
+  squash: '压扁了', beat: '殴打了',
 }
 
-/** Generic "actor verb target" sentence, the shape most combat lines share. */
+const combatVerbs = Object.keys(VERB_ZH).sort((a, b) => b.length - a.length).join('|')
+const combatLine = new RegExp(
+  `^(.+?)\\s+(?:(barely|closely|completely)\\s+)?(${combatVerbs})\\s+(.+?)(,?\\s+but (?:does|do) no damage)?([.!]+)$`,
+)
+
+/** Match only when both actors and any named weapon can be resolved. */
 function translateCombat(plain: string): string | null {
-  // "You bite the cane toad but do no damage." — the player's own action has no
-  // actor noun, so it needs its own shape.
-  const youM = /^You\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
-  if (youM) {
-    const target = translateCapture(youM[3])
-    if (target === youM[3]) return null
-    const verb = youM[2]
-    let body: string
-    if (verb.startsWith('miss')) {
-      body = youM[1] === 'barely' ? `你勉强没有击中${target}`
-        : youM[1] === 'closely' ? `你差一点击中${target}`
-          : youM[1] === 'completely' ? `你完全没有击中${target}`
-            : `你没有击中${target}`
-    } else {
-      const manner = youM[1] === 'barely' ? '勉强' : youM[1] === 'completely' ? '完全' : ''
-      body = `你${manner}${VERB_ZH[verb] ?? verb}${target}`
-    }
-    if (youM[4]) body += '，但没有造成伤害'
-    return body + (youM[5].includes('!') ? '！' : '。')
-  }
-  const m = /^(The|A|An|Your|You)\s+(.+?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
-  if (m) {
-    const actor = m[1] === 'You' ? '你' : translateCapture(`${m[1]} ${m[2]}`)
-    if (actor === `${m[1]} ${m[2]}`) return null
-    const target = translateCapture(m[5])
-    // An instrument clause ("hits X with Y") belongs to the dictionary templates;
-    // a failed target translation means this is not the simple shape.
-    if (target === m[5]) return null
-    return combatBody(actor, target, m[4], m[3], !!m[6], m[7])
-  }
-  // Rows without an article: "frilled lizard barely misses you."
-  const bare = /^([a-z][A-Za-z' -]{1,30}?)\s+(?:(barely|closely|completely)\s+)?(bites?|claws?|stings?|gores?|kicks?|headbutts?|tramples?|trunk-slaps|drains?|constricts?|grabs?|hits?|miss(?:es)?|pecks?|engulfs?|slash(?:es)?|stabs?|cuts?|chops?|crush(?:es)?|bludgeons?|pierces?|impales?|mauls?|rends?|tears?|rips?|smash(?:es)?|strikes?|punches?|zaps?|squeezes?|buffets?|whips?|lash(?:es)?|butts?|gnaws?|nibbles?|blasts?)\s+(.+?)(,?\s+but (?:does|do) no damage)?([.!]+)$/.exec(plain)
-  if (!bare) return null
-  const actor = translateCapture(bare[1])
-  if (actor === bare[1]) return null
-  const target = translateCapture(bare[4])
-  if (target === bare[4]) return null
-  return combatBody(actor, target, bare[3], bare[2], !!bare[5], bare[6])
+  if (splitSentences(plain).length > 1) return null
+  const match = combatLine.exec(plain.replace(/\n[ \t]*/g, ' '))
+  if (!match) return null
+  const [, subject, adverb, verb, targetClause, noDamage, punctuation] = match
+  const actor = translateCapture(subject)
+  const resolved = (name: string): boolean =>
+    /[\u3400-\u9fff]/.test(name) && !/[A-Za-z]/.test(name.replace(/「[^」]*」/g, ''))
+  if (!resolved(actor)) return null
+
+  const armed = /^(.+?) with (?:(?:its|their|his|her|your) )?(.+)$/.exec(targetClause)
+  const defender = translateCapture(armed?.[1] ?? targetClause)
+  if (!resolved(defender)) return null
+  if (!armed) return combatBody(actor, defender, verb, adverb, !!noDamage, punctuation)
+  if (!matcher) return null
+  const weapon = translateItem(matcher, armed[2])
+  if (!weapon || !resolved(weapon)) return null
+  return combatBody(`${actor}用${weapon}`, defender, verb, adverb, !!noDamage, punctuation)
 }
 
 function combatBody(actor: string, target: string, verb: string, adverb: string | undefined,
@@ -718,8 +711,8 @@ export function tItem(text: string): string {
     const plain = lookup(matcher, text, {})
     out = plain ? plain.out : null
   }
-  if (!out && looksLikeItemName(plainText)) {
-    out = translateItem(matcher, plainText, { loose: true })
+  if (!out && (looksLikeItemName(plainText) || /\{[^{}]+\}(?:\s+\([^()]+\))?[.。]?$/.test(plainText))) {
+    out = translateItem(matcher, plainText, { loose: looksLikeItemName(plainText) })
   }
   if (!out) out = matchTitle(plainText)
   cache.set(key, out)
@@ -806,6 +799,8 @@ export function tMore(text: string): string {
 export function tTitle(text: string): string {
   if (lang !== 'zh') return text
   const plain = text.replace(/<[^>]*>/g, '').trim()
+  const spellHeader = /^(Your spells \((?:cast|describe)\))(\s{2,})Type(\s{2,})Failure(\s{2,})Level$/.exec(plain)
+  if (spellHeader) return `${t(spellHeader[1])}${spellHeader[2]}学派${spellHeader[3]}失败率${spellHeader[4]}等级`
   const spellTrain = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce (?:your|the) failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plain)
   if (spellTrain) {
     const skill = t(spellTrain[1])

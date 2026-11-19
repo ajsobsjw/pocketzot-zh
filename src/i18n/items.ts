@@ -174,6 +174,7 @@ export function propToken(tok: string): string {
 }
 
 const PARENS: Record<string, string> = {  worn: '已穿戴',
+  unknown: '未知', bound: '已束缚', equipped: '已装备',
   cursed: '被诅咒',
   melded: '已融合',
   'in inventory': '在背包中',
@@ -368,7 +369,7 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   if (noHot.includes(';')) {
     const parts = noHot.split(/\s*;\s*/).filter(Boolean)
     const zh = parts.map((p) => translateItem(m, p))
-    if (zh.length > 1 && zh.every((z) => z !== null)) return prefix + zh.join('；')
+    if (zh.length > 1 && zh.every((z) => z !== null)) return prefix + hotkey + zh.join('；')
   }
   // Whole-name hits first (articles included), then the grammar below.
   const bare = noHot.replace(ARTICLES, '')
@@ -448,6 +449,7 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   }
   let suffixZh = ''
   let suffixNote = ''
+  let artefactName = ''
   const ofIdx = base.toLowerCase().indexOf(' of ')
   if (ofIdx > 0) {
     const suffixRaw = base.slice(ofIdx + 1)
@@ -474,7 +476,11 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
       if (keys.every((s) => SUFFIXES[s])) suffixZh = keys.map((s) => SUFFIXES[s]).join('与')
       // An unknown brand/spell name ("parchment of Volatile Blastmotes") stays
       // in its original spelling, but the noun around it is translated.
-      else suffixNote = suffixRaw.replace(/^of\s+/i, '')
+      else {
+        const name = suffixRaw.replace(/^of\s+/i, '')
+        if (brace && /^(?:the\s+)?[A-Z]/.test(name) && !quothName) artefactName = name
+        else suffixNote = name
+      }
     }
   }
 
@@ -485,7 +491,7 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   // "+0" is noise in Chinese names (and every starting weapon has it).
   const plus = parts.plus && parts.plus !== '+0' ? parts.plus : ''
   let out = suffixZh ? `${suffixZh}的${plus}${baseZh}` : `${plus}${baseZh}`
-  if (quothName) out += `「${quothName}」`
+  if (quothName || artefactName) out += `「${quothName || artefactName}」`
   if (!suffixZh && suffixNote) out += `（${suffixNote}）`
   if (parts.qty > 1) out += `×${parts.qty}`
   if (parts.paren) {

@@ -278,6 +278,13 @@ export function translateBody(body: string): string {
   body = body.split(/(\n[ \t]*\n)/).map((block, i) => {
     if (i % 2) return block
     const plain = stripTags(block).trim()
+    if (plain.startsWith('Miscasting this spell ') && plain.includes('\n')) {
+      const detail = translateSpellDetail(plain.replace(/\s+/g, ' '))
+      if (detail) {
+        const outerColor = /^(\s*<([a-z]+)>)[\s\S]*?(<\/\2>\s*)$/i.exec(block)
+        return outerColor ? `${outerColor[1]}${detail}${outerColor[3]}` : detail
+      }
+    }
     const row = /^([^:]{1,40}):\s+([\s\S]+)$/.exec(plain)
     const explanation = translateEgoProse(row ? row[2] : plain)
     return explanation ? (row ? `${labelOf(row[1])}：` : '') + explanation : block
@@ -318,6 +325,11 @@ export function translateBody(body: string): string {
     }
     const experience = /^(\s*)\((\d+) xp, (\d+) skp\)$/.exec(line)
     if (experience) return `${experience[1]}（${experience[2]} 经验，${experience[3]} 技能点）`
+    const armour = /^Base armour rating:\s*(\d+)(?:\s{2,}(Encumbrance rating|Evasion):\s*([+-]?\d+))?$/.exec(plain)
+    if (armour) {
+      const second = armour[2] === 'Evasion' ? '闪避' : '负重等级'
+      return keepColor(`基础护甲值：${armour[1]}${armour[2] ? `       ${second}：${armour[3]}` : ''}`)
+    }
     if (plain === 'This armour is completely useless to you: that is too small for you to equip!')
       return keepColor('这件护甲对你毫无用处：你体型太大，穿不上它！')
     const fullSpellMeta = /^Level:\s*(\d+)\s+Schools?:\s*(.+?)\s+Fail:\s*(\d+)%$/.exec(plain)
@@ -338,7 +350,7 @@ export function translateBody(body: string): string {
       return keepColor(`${label}：${value.replace(/\bmax\b/g, '最高').replace(/\bcollision\b/g, '撞击')}`)
     }
     const detail = translateSpellDetail(line)
-    if (detail) return detail
+    if (detail) return keepColor(detail)
     const itemDetail = translateItemDetail(line)
     if (itemDetail) return itemDetail
     const structured = matchTitle(plain)
@@ -415,26 +427,46 @@ function translateWeaponCategory(text: string): string | null {
   return `这把武器属于“${skill}”类别。${translated.join('')}`
 }
 
+const MISCAST_EFFECTS: Record<string, string> = {
+  'summons a nameless horror': '召唤无名恐怖',
+  'anchors you in place': '将你定在原地',
+  'slows you': '使你减速',
+  'poisons you': '使你中毒',
+  'corrodes you': '腐蚀你',
+}
+
+const MISCAST_DAMAGE: Record<string, string> = {
+  irresistible: '无法抵抗的', draining: '汲取', fire: '火焰', cold: '寒冷',
+  electric: '电击', electricity: '电击', fragmentation: '碎裂', poison: '毒素', acid: '酸',
+}
+
+// DCSS describe.cc composes separate effect alternatives, with damage last.
+// Keep the "or" inside its elemental damage list separate from the effect list.
+function translateMiscast(tail: string): string | null {
+  const alternatives = tail.startsWith('either ')
+  const effects = alternatives ? tail.slice(7) : tail
+  const damage = /(?:^|(?:;\s*(?:or\s+)?|\s+or\s+))deals up to (\d+) (.+) damage$/.exec(effects)
+  const prefix = damage ? effects.slice(0, damage.index) : effects
+  const translated = prefix ? prefix.split(/;\s*(?:or\s+)?|\s+or\s+/).map((effect) => MISCAST_EFFECTS[effect]) : []
+  if (translated.some((effect) => !effect)) return null
+  if (damage) {
+    const elements = damage[2].split(/,\s*(?:or\s+)?|\s+or\s+/).map((kind) => MISCAST_DAMAGE[kind])
+    if (elements.some((element) => !element)) return null
+    translated.push(`造成最多 ${damage[1]} 点${elements.join('或')}伤害`)
+  }
+  if (!translated.length || (alternatives && translated.length < 2)) return null
+  return `施法失误会造成魔法污染，并${alternatives ? '可能' : '额外'}${translated.join('，或')}。`
+}
+
 function translateSpellDetail(line: string): string | null {
   const plain = stripTags(line).trim()
   if (/^You (?:aren't|are not) experienced enough to cast this spell\.$/.test(plain)) {
     return '你的经验等级不足，无法施放此法术。'
   }
-  const miscast = /^Miscasting this spell causes magic contamination and also deals up to (\d+) (.+?) damage\.$/.exec(plain)
-  if (miscast) {
-    const damage: Record<string, string> = { electric: '电击', electricity: '电击', fire: '火焰', cold: '寒冷', poison: '毒素', acid: '酸' }
-    return `施法失误会造成魔法污染，并额外造成最多 ${miscast[1]} 点${damage[miscast[2]] ?? miscast[2]}伤害。`
-  }
-  const anchored = /^Miscasting this spell causes magic contamination and also either anchors you in place or deals up to (\d+) irresistible damage\.$/.exec(plain)
-  if (anchored) return `施放此法术失误会造成魔法污染，并可能将你定在原地，或造成最多 ${anchored[1]} 点无法抵抗的伤害。`
-  const horrorAndDamage = /^Miscasting this spell causes magic contamination and also either summons a nameless horror or deals up to (\d+) (\w+) damage\.$/.exec(plain)
-  if (horrorAndDamage) {
-    const element: Record<string, string> = { cold: '寒冷', fire: '火焰', electric: '电击', electricity: '电击', acid: '酸', poison: '毒素' }
-    const damage = element[horrorAndDamage[2]]
-    if (damage) return `施放此法术失误会造成魔法污染，并可能召唤无名恐怖，或造成最多 ${horrorAndDamage[1]} 点${damage}伤害。`
-  }
-  const poisonOrDamage = /^Miscasting this spell causes magic contamination and also either poisons you or deals up to (\d+) irresistible damage\.$/.exec(plain)
-  if (poisonOrDamage) return `施放此法术失误会造成魔法污染，并可能使你中毒，或造成最多 ${poisonOrDamage[1]} 点无法抵抗的伤害。`
+  const miscast = /^Miscasting this spell causes magic contamination(?: and also (.+))?\.$/.exec(plain)
+  if (miscast) return miscast[1] ? translateMiscast(miscast[1]) : '施放此法术失误会造成魔法污染。'
+  const failureFloor = /^You cannot reach a failure rate of (\d+)% for this spell by training only its schools\.$/.exec(plain)
+  if (failureFloor) return `仅训练此法术所属的学派，无法将它的失败率降至 ${failureFloor[1]}%。`
   const training = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce (?:your|the) failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plain)
   if (training) {
     const skill = spellTrainingSkill(training[1]) ?? t(training[1])
