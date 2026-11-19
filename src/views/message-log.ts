@@ -9,7 +9,7 @@ import type { ClientMsg } from '../ws/types'
 import type { Handlers, MsgOf } from '../ws/dispatcher'
 import { dcssToHtml } from '../game/dcss-colors'
 import { LANG_CHANGED_EVENT, isZh, t, tMore } from '../i18n'
-import { isKeyHintsLine, parsePromptText, PROMPT_TRIGGER_RE, type PromptSegment } from './prompt-parse'
+import { isKeyHintsLine, isSwapOptionsLine, parsePromptText, PROMPT_TRIGGER_RE, type PromptSegment } from './prompt-parse'
 import { systemKeyboardField } from './text-field'
 import { downloadPackFile } from '../offline/save-transfer'
 
@@ -73,6 +73,8 @@ export class MessageLog {
   private readonly moreLine = document.createElement('p')
   // The live prompt: the prompt rows of one msgs batch (see onMsgs).
   private livePrompt: HTMLElement[] = []
+  // The open get-line field and its leading space, inside the host row.
+  private textInputNodes: ChildNode[] = []
   // Armed by {msg:'dump'} (offline '#'); onMsgs spends it on the engine's
   // "Char dumped to …" line, which becomes a tap-to-download line.
   private pendingDumpFile: string | null = null
@@ -197,8 +199,13 @@ export class MessageLog {
         this.decorateDumpUrlRow(row, this.pendingDumpUrl)
         this.pendingDumpUrl = null
         this.pushRow(row)
-      } else if (!inX && m.channel === 2
-          && (PROMPT_TRIGGER_RE.test(m.text) || isKeyHintsLine(m.text))) {
+      } else if (!inX && ((m.channel === 2
+          && (PROMPT_TRIGGER_RE.test(m.text) || isKeyHintsLine(m.text)))
+          // The swap chooser's plain option rows follow its prompt lines in
+          // one batch (prompt-parse.ts SWAP_OPTION_RE). An RC
+          // force_more_message / flash_screen_message on those lines splits
+          // the batch: no buttons then, never stray ones.
+          || (m.channel === 0 && promptBatch && isSwapOptionsLine(m.text)))) {
         const row = this.promptRow(m.text)
         this.livePrompt.push(row)
         this.pushRow(row)
@@ -311,8 +318,6 @@ export class MessageLog {
 
   showTextInput(prefill: string, maxlen: number, tag?: string): void {
     this.removeTextInput()
-    const row = document.createElement('p')
-    row.className = 'game-msg game-text-input-row'
     const input = systemKeyboardField('game-text-input')
     input.value = prefill
     input.maxLength = maxlen
@@ -339,13 +344,26 @@ export class MessageLog {
         this.d.focusView()
       }
     })
-    row.appendChild(input)
-    this.pushRow(row, false)  // input row isn't pruned by the 50-row cap
+    // On the prompt's own line, as the reference appends its field to the
+    // last .game_message (textinput.js init_input). The host row takes the
+    // marker class so the log-tap exclusion and textInputOpen see it; a
+    // log with no row yet gets one of its own.
+    let host = this.element.querySelector<HTMLElement>('.game-msg')
+    if (!host) {
+      host = this.markedRow('game-msg')
+      this.pushRow(host)
+    }
+    host.classList.add('game-text-input-row')
+    const gap = document.createTextNode(' ')
+    host.append(gap, input)
+    this.textInputNodes = [gap, input]
     requestAnimationFrame(() => this.d.guardedFocus(input))
   }
 
   removeTextInput(): void {
-    this.element.querySelector('.game-text-input-row')?.remove()
+    for (const n of this.textInputNodes) n.remove()
+    this.textInputNodes = []
+    this.element.querySelector('.game-text-input-row')?.classList.remove('game-text-input-row')
   }
 
   // X mode entered or left: a pending --more-- swaps presentation, and

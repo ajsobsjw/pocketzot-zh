@@ -18,37 +18,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Clone upstream
-        run: git clone --depth 1 https://github.com/pocketzot/pocketzot.git upstream
-
-      - name: Apply localization patch
+      - name: Test merging upstream into the Chinese branch
         run: |
-          cd upstream
-          git apply ../localization.patch
-          # Keep upstream's dependency manifest; the patch only changes its build script.
-          git checkout HEAD -- package.json package-lock.json
+          git fetch --no-tags https://github.com/pocketzot/pocketzot.git main
+          git -c user.name='PocketZot sync check' -c user.email='actions@users.noreply.github.com' merge --no-commit --no-ff FETCH_HEAD
 
       - name: Install dependencies
-        run: cd upstream && npm ci --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
-      - name: Type check
-        run: cd upstream && npx tsc
+      - name: Type check and regression tests
+        run: npx tsc --noEmit && npx tsc -p tsconfig.test.json && npx vitest run
 
       - name: Build
-        run: cd upstream && npx vite build
+        run: npx vite build
 
       - name: Add offline engine and tiles
-        run: node tools/fetch-offline.mjs --dist upstream/dist
+        run: node tools/fetch-offline.mjs --dist dist
 
       - name: Package corresponding source
-        run: |
-          cd upstream
-          zip -qr dist/source.zip . -x 'node_modules/*' 'dist/*' '.git/*'
+        run: zip -qr dist/source.zip . -x 'node_modules/*' 'dist/*' '.git/*'
 
       # Upstream compatibility is checked daily, but only the tested fork in
       # deploy.yml publishes production. Do not overwrite it with untested trunk.
@@ -56,4 +51,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: upstream-compatibility-build
-          path: upstream/dist
+          path: dist

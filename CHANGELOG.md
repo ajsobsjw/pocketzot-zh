@@ -7,9 +7,29 @@ formatting and HTML chrome differ. Drift is a bug.
 
 # What's new
 
+## 2026-11-18
+
+- Added "large inner flame" descriptor for giant monsters with inner flame,
+  per the new icon in trunk.
+
+## 2026-11-16
+
+- Improved character title display and updated it for the new trunk format.
+
+## 2026-10-29
+
+- Performance improvements to map and HUD rendering.
+- Other improvements.
+
+## 2026-10-22
+
+- Ring swap prompts in the message log are now tappable.
+- Improved message log formatting.
+- Fixed an issue that could prevent the spell rail from loading.
+
 ## 2026-10-16
 
-- Changed the key layout for the 'm' menu.
+- The `m` menu now uses a QWERTY layout.
 - Improved handling for when the system keyboard is shown.
 
 ## 2026-10-08

@@ -28,7 +28,7 @@ import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 import { translatePage } from '../i18n/pages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
-import { translateGodLine } from '../i18n/god'
+import { translateGodLine, translateGodServiceFee } from '../i18n/god'
 
 interface ExportSource { runs: () => DcssRun[][]; slug: string }
 
@@ -197,7 +197,11 @@ export class LayoutView {
       if (msg.extra) sections.push(translateGodSection(msg.name ?? '', 'extra', msg.extra))
       // Altar-only join prompt (ui-layouts.js:350-353). service_fee is non-empty
       // only for Gozag — already pre-formatted with leading space and parens.
-      if (msg.is_altar) sections.push(isZh() && !msg.service_fee ? '<cyan>J</cyan>/<cyan>Enter</cyan>：加入信仰' : `<cyan>J</cyan>/<cyan>Enter</cyan>: join religion${msg.service_fee ?? ''}`)
+      if (msg.is_altar) {
+        const fee = msg.service_fee ?? ''
+        sections.push(isZh() ? `<cyan>J</cyan>/<cyan>Enter</cyan>：加入信仰${translateGodServiceFee(fee)}`
+          : `<cyan>J</cyan>/<cyan>Enter</cyan>: join religion${fee}`)
+      }
       rawBody = sections.join('\n\n')
     }
     if (msg.type === 'describe-monster') {

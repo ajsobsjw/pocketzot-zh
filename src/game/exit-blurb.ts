@@ -9,13 +9,13 @@
 // character_description / game_time, continuation lines indented by
 // _hiscore_newline_string):
 //
-//   17930053 sekai the Intangible (level 27, 323/323 HPs)            *
-//                Began as a Merfolk Wanderer on May 1, 2026.         *
+//   12345678 Bram the Intangible (level 27, 300/300 HPs)             *
+//                Began as a Merfolk Wanderer on Jan 1, 2026.         *
 //                Was the Champion of Cheibriados.                    (godded)
 //                Escaped with the Orb                                 ┐ death
 //                ... and 15 runes!                                    │ desc +
 //                                                                     │ place
-//                The game lasted 03:29:45 (86006 turns).             *
+//                The game lasted 01:23:45 (60000 turns).             *
 //
 // Starred lines are format-fixed and consumed here; everything between is
 // the death description + place, kept as `rest` for the card's verbose
@@ -30,12 +30,15 @@ export interface ExitBlurb {
                                  // clause is matched but not kept — no card slot)
   combo?: string                 // "Merfolk Wanderer" — species + job, unsplit
   godRank?: string               // "Was the Champion of Cheibriados." verbatim
-  duration?: string              // "03:29:45"
+  duration?: string              // "01:23:45"
   turns?: number
   rest: string                   // the remaining lines, '\n'-joined
 }
 
-const HEAD = /^(\d+) (.+?) the (.+?) \(level (\d+)(?:, (-?\d+)\/(\d+)(?: \(\d+\))? HPs)?\)(?: \*(WIZ|EXPLORE)\*)?$/
+// Never re-anchor on " the " between name and title: since trunk 2a1ee2751f
+// the joiner varies (skills.cc player_title_prefix: " La ", " of a ", ", ",
+// bare " "), and nothing here reads the name or title.
+const HEAD = /^(\d+) .+ \(level (\d+)(?:, -?\d+\/\d+(?: \(\d+\))? HPs)?\)(?: \*(WIZ|EXPLORE)\*)?$/
 const BEGAN = /^Began as an? (.+?) on .+\.$/
 const GOD = /^Was (?:an? |the )?.+ of .+\.$|^Was a (?:Favourite )?Plaything of Xom\.$/
 // make_time_string (stringutil.cc:601) prefixes "N day(s) " past 24 h of
@@ -57,9 +60,9 @@ export function parseExitBlurb(message: string): ExitBlurb | null {
   const lines = message.split('\n').map((l) => l.trim()).filter((l) => l !== '')
   const head = lines[0]?.match(HEAD)
   if (!head) return null
-  const out: ExitBlurb = { score: Number(head[1]), xl: Number(head[4]), rest: '' }
-  if (head[7] === 'WIZ') out.mode = 'wizmode'
-  else if (head[7] === 'EXPLORE') out.mode = 'explore'
+  const out: ExitBlurb = { score: Number(head[1]), xl: Number(head[2]), rest: '' }
+  if (head[3] === 'WIZ') out.mode = 'wizmode'
+  else if (head[3] === 'EXPLORE') out.mode = 'explore'
   const rest: string[] = []
   for (const l of lines.slice(1)) {
     const began = l.match(BEGAN)

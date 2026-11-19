@@ -1691,7 +1691,7 @@ export function buildGameView(opts: GameViewOptions): HTMLElement {
       // COMMAND-while-COMMAND repeat (game.js set_input_mode early-returns).
       if (prevInputMode !== 1) {
         messageLog.markLast('cmd')
-        harvester.retryOnCommandEntry()  // a given-up probe's one retry
+        harvester.retryOnCommandEntry()  // a failed probe's retry (spell-harvest.ts armRetry)
       }
       harvester.maybeAutoHarvest()  // populate the spell rail on first entry to play
       harvester.reharvestIfDirty()  // refresh after a `=` reassign (or a deferred memorise/forget)
@@ -1808,7 +1808,7 @@ export function buildGameView(opts: GameViewOptions): HTMLElement {
     menuShift.reset()
     closeClientOverlays()
     menuView.dropFilter()
-    harvester.reset()
+    harvester.abort()  // a probe this cuts short gets its retry (spell-harvest.ts)
     if (!gameOverSeen) hideOverlay()
   }
 
@@ -2228,6 +2228,7 @@ export function buildGameView(opts: GameViewOptions): HTMLElement {
     // Its give-up timer would otherwise repaint this view's spell surfaces.
     harvester.reset()
     spellRail.dispose()
+    statsView.dispose()
     if (tileAnimTimer !== null) clearInterval(tileAnimTimer)
   }
   registerViewDispose(view, dispose)

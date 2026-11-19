@@ -1,11 +1,28 @@
 // @vitest-environment happy-dom
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { StatsView } from './stats-view'
 import { InventoryStore } from '../inventory-store'
 
 function makeView(): StatsView {
   return new StatsView(new InventoryStore())
 }
+
+afterEach(() => { vi.unstubAllGlobals() })
+
+describe('StatsView orientation listener', () => {
+  it('dispose() releases it — a live MQL listener roots the whole game view on the window', () => {
+    const listeners = new Set<unknown>()
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: (_t: string, fn: unknown) => { listeners.add(fn) },
+      removeEventListener: (_t: string, fn: unknown) => { listeners.delete(fn) },
+    }))
+    const v = makeView()
+    expect(listeners.size).toBe(1)
+    v.dispose()
+    expect(listeners.size).toBe(0)
+  })
+})
 
 function pietyEl(v: StatsView): HTMLElement {
   return v.element.querySelector('#hud-piety')!
@@ -144,6 +161,14 @@ describe('StatsView identity line', () => {
     expect(identityText(v)).toContain('Zap, Duchess of Dis')
   })
 
+  it('joins trunk titles that carry their own leading space (2a1ee2751f)', () => {
+    const v = makeView()
+    v.update({ name: 'Zap', title: ' the Chiller', species: 'Human' })
+    expect(identityText(v)).toContain('Zap the Chiller')
+    v.update({ name: 'Zap', title: ', Who Moves the Sun', species: 'Human' })
+    expect(identityText(v)).toContain('Zap, Who Moves the Sun')
+  })
+
   it('flags wizard and explore games', () => {
     const v = makeView()
     v.update({ name: 'Zap', title: 'the Chiller', species: 'Human', explore: true })
@@ -174,6 +199,54 @@ describe('StatsView settings chip', () => {
   })
 })
 
+// A `player` message lands every turn, usually changing a field or two; the
+// render must only touch the slots whose value changed.
+describe('StatsView write memo', () => {
+  const full = {
+    name: 'Zap', title: 'the Chiller', species: 'Human', god: 'Okawaru', piety_rank: 3,
+    hp: 20, hp_max: 30, mp: 5, mp_max: 9, str: 10, str_max: 12, int: 9, int_max: 9, dex: 11, dex_max: 11,
+    ac: 4, ac_mod: 1, ev: 10, ev_mod: 0, sh: 0, sh_mod: 0, xl: 5, progress: 40, place: 'Dungeon', depth: 4,
+    time: 1230, adjusted_noise: 200, contam: 50, weapon_index: 3, quiver_desc: 'c) 10 stones',
+  }
+
+  function mutationsDuring(v: StatsView, fn: () => void): MutationRecord[] {
+    const obs = new MutationObserver(() => {})
+    obs.observe(v.element, { childList: true, subtree: true, attributes: true, characterData: true })
+    fn()
+    const records = obs.takeRecords()
+    obs.disconnect()
+    return records
+  }
+
+  it('a repeat of the same state writes nothing', () => {
+    const v = makeArmedView()
+    v.update(full)
+    expect(mutationsDuring(v, () => v.update(full))).toEqual([])
+  })
+
+  it('a time-only delta touches only the time slot', () => {
+    const v = makeArmedView()
+    v.update(full)
+    const timeEl = v.element.querySelector('#hud-time-val')!
+    const records = mutationsDuring(v, () => v.update({ time: 1240 }))
+    expect(records.length).toBeGreaterThan(0)
+    for (const r of records) expect(timeEl.contains(r.target)).toBe(true)
+    expect(timeEl.textContent).toBe('124.0 (1.0)')
+  })
+
+  it('still repaints a slot that returns to an earlier value by another route', () => {
+    // #hud-piety takes text for Xom and markup for other gods; the memo must
+    // not confuse the two forms of the same visible string.
+    const v = makeView()
+    v.update({ god: 'Xom', piety_rank: 0 })
+    expect(pietyEl(v).textContent).toBe('*.....')
+    v.update({ god: 'Okawaru', piety_rank: 1 })
+    expect(pietyEl(v).textContent).toBe('*.....')
+    v.update({ god: 'Xom', piety_rank: 2 })
+    expect(pietyEl(v).textContent).toBe('..*...')
+  })
+})
+
 describe('StatsView stat_colour warning', () => {
   function statEl(v: StatsView, id: string): HTMLElement {
     return v.element.querySelector<HTMLElement>(`#${id}`)!
@@ -197,7 +270,7 @@ describe('StatsView stat_colour warning', () => {
 
   it('ranks lost > threshold > drained, as the reference does', () => {
     const v = makeView()
-    v.update({ str: 2, str_max: 10, status: [{ text: 'lost str' }] })
+    v.update({ str: 2, str_max: 10, status: [{ light: 'Crippled', text: 'lost str' }] })
     const str = statEl(v, 'hud-str')
     expect(str.classList.contains('stat-zero')).toBe(true)
     expect(str.style.color).toBe('')

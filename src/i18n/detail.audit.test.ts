@@ -7,6 +7,7 @@ import { loadDescript, zhDescribe } from './describe'
 import { translateBody } from './body'
 import { translatePage } from './pages'
 import { columnTable, menuColumns } from '../views/menu-columns'
+import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from './monster'
 
 afterAll(() => setLang('en'))
 
@@ -16,10 +17,11 @@ it('audits captured display fragments instead of counting a changed page as a hi
   const buckets = new Map<string, { total: number; misses: Map<string, number> }>()
   const audit = (kind: string, original: string, shown: string) => {
     const source = original.replace(/<[^>]*>/g, '').trim()
-    const output = shown.replace(/<[^>]*>/g, '').trim()
+    const output = shown.replace(/<[^>]*>/g, '').replace(/「[^」]*」/g, '').trim()
     if (!/[A-Za-z]{3}/.test(source) || /^SPELLSET_PLACEHOLDER$/.test(source)) return
     // Search prefixes and free-form player input are parser-facing syntax.
     if (/^(?:Stash search prefixes|Menu\/colouring prefixes):/.test(source)) return
+    if (/^Search for what \[Enter for /.test(source) && output.startsWith('搜索什么')) return
     const bucket = buckets.get(kind) ?? { total: 0, misses: new Map<string, number>() }
     bucket.total++
     if (output === source || /\b(?:You|Your|This|The|It|would|damage|spell|armour|weapon)\b/i.test(output))
@@ -44,18 +46,20 @@ it('audits captured display fragments instead of counting a changed page as a hi
       if (msg.title) audit('detail-title', msg.title, tTitle(msg.title))
       if (String(msg.type).startsWith('describe') && msg.body) {
         const replaced = zhDescribe(msg.title ?? '', msg.body, msg.type) ?? msg.body
-        const translated = translateBody(replaced)
-        const sourceBlocks = msg.body.split(/\n[ \t]*\n/)
+        const translated = msg.type === 'describe-monster' ? translateMonsterBody(replaced) : translateBody(replaced)
+        const sourceBlocks: string[] = msg.body.split(/\n[ \t]*\n/)
         const outputBlocks = translated.split(/\n[ \t]*\n/)
         for (let i = 0; i < sourceBlocks.length; i++) {
           const sourceLines = sourceBlocks[i].split('\n')
           const outputLines = (outputBlocks[i] ?? '').split('\n')
           if (sourceLines.length === outputLines.length)
-            sourceLines.forEach((line, n) => audit('detail-line', line, outputLines[n]))
-          else audit('detail-block', sourceBlocks[i], outputBlocks[i] ?? '')
+            sourceLines.forEach((line, n) => audit(`${msg.type}-line`, line, outputLines[n]))
+          else audit(`${msg.type}-block`, sourceBlocks[i], outputBlocks[i] ?? '')
         }
+        if (msg.type === 'describe-monster' && msg.status) audit('monster-status', msg.status, translateMonsterStatus(msg.status))
+        if (msg.type === 'describe-monster' && msg.quote) audit('monster-quote', msg.quote, translateMonsterQuote(msg.quote))
       } else if (msg.type === 'formatted-scroller' && msg.text) {
-        const plain = msg.text.replace(/<[^>]*>/g, '')
+        const plain: string = msg.text.replace(/<[^>]*>/g, '')
         const translated = translatePage(plain)
         const sources = plain.split('\n')
         const outputs = translated.split('\n')
@@ -68,6 +72,6 @@ it('audits captured display fragments instead of counting a changed page as a hi
     for (const [text, count] of [...misses].sort((a, b) => b[1] - a[1]).slice(0, 25))
       console.log(`  ${count} ${text.slice(0, 180)}`)
   }
-  expect(buckets.get('detail-line')?.total).toBeGreaterThan(20)
+  expect([...buckets].filter(([kind]) => kind.startsWith('describe-')).reduce((sum, [, bucket]) => sum + bucket.total, 0)).toBeGreaterThan(20)
   expect(buckets.get('help-line')?.total).toBeGreaterThan(10)
 })

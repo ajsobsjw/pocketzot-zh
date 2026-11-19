@@ -60,10 +60,21 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', fakeStorage())
 })
 
-afterEach(() => {
+afterEach(async () => {
   for (const view of mounted.splice(0)) disposeView(view)
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
+  // Two things kept every disposed view reachable for the whole file (~9 MB
+  // apiece, which ran it into the worker's heap ceiling; heap-snapshot
+  // retainer paths, 2026-10-19):
+  // - vitest runs sync tests back-to-back on microtasks alone, so the
+  //   happy-dom zero-timers/rAF callbacks a view schedules while building
+  //   never ran — they queued up, each closing over its view. Cancel them.
+  // - A vi.fn() records each call's `this` in mock.contexts, and the
+  //   harness's `send` is called as conn.send(…): conn → conn.onMessage →
+  //   the view. Clear the mocks.
+  await (window as unknown as { happyDOM: { abort(): Promise<void> } }).happyDOM.abort()
+  vi.clearAllMocks()
 })
 
 // At a command-key read (input_mode 1), the only state where the harvest may
@@ -180,6 +191,32 @@ describe('message log (msgs)', () => {
     h.send.mockClear()
     live.find(b => b.textContent?.startsWith('(T)'))!.click()
     expect(sent(h)).toEqual([{ msg: 'input', text: 'T' }])
+  })
+
+  // item-use.cc _item_swap_prompt, batch shape captured on CDI 0.34
+  // (2026-10-22): two prompt lines, then the options as one joined PLAIN line.
+  it('makes the swap chooser\'s plain option row tappable until play resumes', () => {
+    const h = setup()
+    h.dispatch({ msg: 'msgs', messages: [
+      { text: '<cyan>To do this, you must remove one of the following items:<lightgrey>', channel: 2 },
+      { text: '<cyan>(<white>?<cyan> for menu, <white>Esc<cyan> to cancel)<lightgrey>', channel: 2 },
+      { text: '<white><<<lightgrey> or c - a ring of fire<lightgrey>; </lightgrey>'
+        + '<white>><lightgrey> or d - a ring of ice', channel: 0 },
+    ] })
+    const btns = () => [...msgLog(h).querySelectorAll<HTMLButtonElement>('.game-prompt .action-btn')]
+    expect(btns().map(b => b.textContent)).toEqual(['< or c', '> or d'])
+    btns()[1].click()
+    expect(sent(h)).toContainEqual({ msg: 'input', text: '>' })
+    h.dispatch({ msg: 'input_mode', mode: 1 })
+    expect(btns().every(b => b.disabled)).toBe(true)
+  })
+
+  it('leaves a swap-shaped plain line outside a prompt batch untapped', () => {
+    const h = setup()
+    h.dispatch({ msg: 'msgs', messages: [
+      { text: '<white><<<lightgrey> or c - a ring of fire (left hand)', channel: 0 },
+    ] })
+    expect(msgLog(h).querySelector('.game-prompt')).toBeNull()
   })
 
   // The offline '#' dump line: {msg:'dump'} (mini-server synthesis) arms the
@@ -402,6 +439,22 @@ describe('message log (msgs)', () => {
     expect(moreLine(h)?.textContent).toBe('--继续--')
     await setLang('en')
     expect(moreLine(h)?.textContent).toBe('--more--')
+  })
+
+  it('a get-line field rides its prompt row and leaves it intact on close', () => {
+    const h = setup()
+    // Wire order from the quit capture (20-quit-game-over): prompt, then init_input.
+    h.dispatch({ msg: 'msgs', messages: [{ text: 'older' }, { text: 'Name it? ', channel: 2 }] })
+    h.dispatch({ msg: 'init_input', type: 'messages', prefill: '', maxlen: 80 })
+    expect(msgTexts(h)).toEqual(['older', 'Name it?'])
+    const prompt = msgRows(h)[0]
+    expect(prompt.querySelector('.game-text-input')).not.toBeNull()
+    h.send.mockClear()
+    prompt.querySelector<HTMLElement>('span:not(.msg-turn-mark)')!.click()
+    expect(sent(h)).toEqual([])  // no Ctrl-P into the line reader
+    h.dispatch({ msg: 'close_input' })
+    expect(msgLog(h).querySelector('.game-text-input, .game-text-input-row')).toBeNull()
+    expect(msgTexts(h)).toEqual(['older', 'Name it?'])
   })
 })
 
@@ -802,7 +855,7 @@ describe('overlay-stack cross-reads', () => {
   it('back offers the save prompt only when idle; over a menu it is Esc', () => {
     const h = setup()
     h.dispatch({ msg: 'input_mode', mode: 1 })                  // auto harvest: I
-    h.dispatch({ msg: 'menu', tag: 'spell', items: [] })        // captured, Esc sent
+    h.dispatch({ msg: 'menu', tag: 'spell', title: { text: ' Your spells (describe)' }, items: [] })  // captured, Esc sent
     h.dispatch({ msg: 'close_menu' })                           // swallowed
     h.send.mockClear()
     back()
@@ -1743,8 +1796,8 @@ describe('language switch with a describe page open', () => {
   it('renders a captured potion describe page with localized title and footer', async () => {
     const h = setup()
     const fixture = await import('../golden/09-inventory-describe-stack.golden.json')
-    const page = fixture.default.messages.find((message: { msg: string; title?: string }) =>
-      message.msg === 'ui-push' && message.title?.includes('potion of magic'))!
+    const page = fixture.default.messages.find((message) =>
+      message.msg === 'ui-push' && typeof message.title === 'string' && message.title.includes('potion of magic'))!
     h.dispatch(page)
     const title = () => overlay(h).querySelector('.overlay-title')?.textContent ?? ''
     const body = () => overlay(h).querySelector('.overlay-body')?.textContent ?? ''
@@ -2681,7 +2734,10 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
     baseRow('-', 'c', 99, "Ozocubu's Armour", 'Ice', '4%', 3),
   ]
   const startHarvest = () => hooks().__dcssHarvestSpells()
-  const feedBase = (h: Harness) => h.dispatch({ msg: 'menu', tag: 'spell', items: BASE })
+  // The probe menu's title as the wire carries it (golden 19): indented by
+  // set_title(me, true, true), colour-tagged. The capture is gated on it.
+  const WIRE_TITLE = { text: '<lightgrey> <white>Your spells (describe)              Type                      Failure  Level  ' }
+  const feedBase = (h: Harness) => h.dispatch({ msg: 'menu', tag: 'spell', title: WIRE_TITLE, items: BASE })
   const fullHarvest = (h: Harness) => { startHarvest(); feedBase(h) }
   const sentInputI = (h: Harness) => sent(h).filter(m => m.msg === 'input' && (m as { text?: string }).text === 'I')
 
@@ -2716,7 +2772,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
     // The engine pads name+schools to column 58, leaving exactly ONE space
     // before the failure column; a whitespace-run split merges schools+fail
     // and shifts level into fail. Fixed-position slicing must not.
-    h.dispatch({ msg: 'menu', tag: 'spell', items: [
+    h.dispatch({ msg: 'menu', tag: 'spell', title: WIRE_TITLE, items: [
       baseRow('-', 'd', 100, 'Momentum Strike', 'Conjuration/Translocation', '5%', 2),
     ] })
     expect(byLetter('d')).toMatchObject({
@@ -2815,7 +2871,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
   // the probe's own title ("Your spells (describe)"), since the user has the
   // channel back and could open a spell-tagged menu themselves.
   describe('slow-link harvest (late-base window)', () => {
-    const PROBE_TITLE = { text: 'Your spells (describe)   Type                      Failure  Level' }
+    const PROBE_TITLE = WIRE_TITLE
     afterEach(() => { vi.useRealTimers() })
 
     it('captures a base reply that lands after the suppression timeout, still silently', () => {
@@ -2870,7 +2926,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
     // After a give-up the probe's one retry fires only on an input_mode 0→1
     // transition (SpellHarvester.retryOnCommandEntry).
     describe('retry after a give-up', () => {
-      const giveUp = (h: Harness) => {
+      const giveUp = () => {
         startHarvest()
         vi.advanceTimersByTime(1500 + 8500)
         expect(cache()).toHaveLength(0)
@@ -2879,7 +2935,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
       it("retries once the player's next command returns to COMMAND", () => {
         vi.useFakeTimers()
         const h = setup()
-        giveUp(h)
+        giveUp()
         h.dispatch({ msg: 'input_mode', mode: 0 })
         expect(sentInputI(h)).toHaveLength(1)
         h.dispatch({ msg: 'input_mode', mode: 1 })
@@ -2892,7 +2948,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
       it('ignores the COMMAND repeat a spectator join sends', () => {
         vi.useFakeTimers()
         const h = setup()
-        giveUp(h)
+        giveUp()
         h.dispatch({ msg: 'input_mode', mode: 1 })  // tileweb.cc _send_everything
         h.dispatch({ msg: 'msgs', messages: [{ text: 'bob joined.' }] })
         expect(sentInputI(h)).toHaveLength(1)
@@ -2902,19 +2958,18 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
         feedBase(h)
       })
 
-      it('a reply later than the give-up renders, and the retry waits for its close', () => {
+      it('a reply later than the give-up renders, fills the rail from its rows, and stands down the retry', () => {
         vi.useFakeTimers()
         const h = setup()
-        giveUp(h)
+        giveUp()
         h.dispatch({ msg: 'input_mode', mode: 0 })  // the engine read our `I`
-        h.dispatch({ msg: 'menu', tag: 'spell', title: { text: 'Your spells (describe)' }, items: BASE })
-        expect(isHidden(overlay(h))).toBe(false)
+        h.dispatch({ msg: 'menu', tag: 'spell', title: WIRE_TITLE, items: BASE })
+        expect(isHidden(overlay(h))).toBe(false)     // too late to swallow: it shows
+        expect(cache()).toHaveLength(2)              // but its rows are the harvest
         h.dispatch({ msg: 'msgs', messages: [{ text: 'x' }] })
-        expect(sentInputI(h)).toHaveLength(1)
         h.dispatch({ msg: 'close_menu' })
         h.dispatch({ msg: 'input_mode', mode: 1 })
-        expect(sentInputI(h)).toHaveLength(2)
-        feedBase(h)
+        expect(sentInputI(h)).toHaveLength(1)        // nothing left to fetch
       })
     })
 
@@ -2926,6 +2981,67 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
       h.dispatch({ msg: 'msgs', messages: [{ text: "You don't know any spells." }] })
       startHarvest() // terminator reset the phase → a fresh probe fires
       expect(sentInputI(h)).toHaveLength(2)
+    })
+
+    // A probe cut short by something other than its reply (SpellHarvester
+    // abort) must leave the game a way back: the wire order of golden 15
+    // for a map wipe during load — the drag's `X` reaches the engine ahead
+    // of the auto-probe's `I`, which the level map spends as
+    // CMD_MAP_FIND_STASH (cmd-keys.h); leaving the map sends
+    // close_all_menus (ui.cc pop_layout → redraw_screen → tileweb.cc
+    // pop_all_ui_layouts), then input_mode 0→1. The old reset() there
+    // cleared the ladder with no retry: one `I` per game, no menu ever
+    // shown, no rail.
+    describe('a probe cut short by close_all_menus (level map opened by a stray X)', () => {
+      it('re-probes once at the command prompt that follows the map', () => {
+        vi.useFakeTimers()
+        const h = setup()
+        startHarvest()                               // the first prompt's auto-probe
+        expect(sentInputI(h)).toHaveLength(1)
+        h.dispatch({ msg: 'input_mode', mode: 0 })  // the engine read the queued X
+        vi.advanceTimersByTime(1500)                // suppression over; still listening
+        h.dispatch({ msg: 'close_all_menus' })      // the player leaves the level map
+        h.dispatch({ msg: 'input_mode', mode: 1 })
+        expect(sentInputI(h)).toHaveLength(2)
+        feedBase(h)
+        expect(cache()).toHaveLength(2)
+        // Nothing further: the capture settled it.
+        h.dispatch({ msg: 'close_menu' })
+        h.dispatch({ msg: 'close_all_menus' })      // list_spells → redraw_screen (golden 19)
+        h.dispatch({ msg: 'input_mode', mode: 1 })
+        expect(sentInputI(h)).toHaveLength(2)
+      })
+
+      it('a stray menu key ahead of the probe (strip wipe: i) gets the same retry', () => {
+        vi.useFakeTimers()
+        const h = setup()
+        startHarvest()
+        expect(sentInputI(h)).toHaveLength(1)
+        h.dispatch({ msg: 'input_mode', mode: 0 })
+        h.dispatch({ msg: 'menu', tag: 'inventory', title: { text: 'Inventory' }, items: [] })
+        expect(isHidden(overlay(h))).toBe(false)
+        h.dispatch({ msg: 'close_menu' })
+        h.dispatch({ msg: 'input_mode', mode: 1 })
+        expect(sentInputI(h)).toHaveLength(2)
+        feedBase(h)
+        expect(cache()).toHaveLength(2)
+      })
+    })
+
+    // The rail's last line of defence: the player's own `I`/`z` spell list
+    // carries the same rows a probe fetches, so a rail whose probes were all
+    // lost fills the moment they look at their spells — without a probe.
+    it('fills an empty rail from a spell list the player opened themselves', () => {
+      vi.useFakeTimers()
+      const h = setup()
+      startHarvest()
+      h.dispatch({ msg: 'menu', tag: 'inventory', title: { text: 'Inventory' }, items: [] })
+      h.dispatch({ msg: 'close_menu' })
+      expect(cache()).toHaveLength(0)
+      h.dispatch({ msg: 'menu', tag: 'spell', title: { text: '<lightgrey> <white>Your spells (cast)' }, items: BASE })
+      expect(isHidden(overlay(h))).toBe(false)  // theirs: rendered, not swallowed
+      expect(cache()).toHaveLength(2)
+      expect(sentInputI(h)).toHaveLength(1)     // and no probe was sent for it
     })
   })
 
@@ -3116,7 +3232,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
       // A re-harvest yields a 3rd spell; the visible grid reflects it (via
       // refreshSpellTab) without the player re-tapping the tab.
       startHarvest()
-      h.dispatch({ msg: 'menu', tag: 'spell', items: [...BASE, baseRow('-', 'd', 100, 'Magic Dart', 'Conj', '3%', 1)] })
+      h.dispatch({ msg: 'menu', tag: 'spell', title: WIRE_TITLE, items: [...BASE, baseRow('-', 'd', 100, 'Magic Dart', 'Conj', '3%', 1)] })
       expect(gridBtns(h)).toHaveLength(3)
     })
 
@@ -3142,7 +3258,7 @@ describe('spell harvest (silent I → Esc) + preface parsing', () => {
       expect(spellTab(h)!.classList.contains('active')).toBe(true)
       // Re-harvest returns an empty spell menu (forgot the last spell).
       startHarvest()
-      h.dispatch({ msg: 'menu', tag: 'spell', items: [] })
+      h.dispatch({ msg: 'menu', tag: 'spell', title: WIRE_TITLE, items: [] })
       expect(spellTab(h)!.style.display).toBe('none')
       expect(h.view.querySelector<HTMLElement>('.tc-tab[data-tab="micro"]')!.classList.contains('active')).toBe(true)
     })
@@ -3486,9 +3602,6 @@ describe('newchar counting', () => {
 
   afterEach(() => { import.meta.env.DEV = realDev })
 
-  // The latched 'newchar' twin rides along, but its Set is module state
-  // shared with every other test here — assert the unlatched row, which
-  // can't depend on what ran first.
   const each = (suffix = ''): string[] =>
     beacons.filter((u) => u === `/api/e?e=newchar-each${suffix}`)
   const chars = (): string[] => beacons.filter((u) => u.includes('newchar'))

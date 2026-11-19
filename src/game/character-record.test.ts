@@ -8,13 +8,13 @@ vi.mock('../avatars', async (orig) => ({
   saveAvatar: vi.fn(),
   recordAvatarOutcome: vi.fn(),
 }))
-vi.mock('../counter', () => ({ count: vi.fn(), countEach: vi.fn() }))
+vi.mock('../counter', () => ({ countEach: vi.fn() }))
 vi.mock('./tiles/atlas-dedup', () => ({ cachedFingerprint: () => null }))
 vi.mock('./tiles/avatar-bake', () => ({ ensureDollBaked: vi.fn(), isBakeableLoader: () => false }))
 vi.mock('./spell-order', () => ({ clearSpellOrder: vi.fn() }))
 
 import { saveAvatar, recordAvatarOutcome } from '../avatars'
-import { count, countEach } from '../counter'
+import { countEach } from '../counter'
 import { clearSpellOrder } from './spell-order'
 import { CharacterRecord } from './character-record'
 
@@ -58,12 +58,12 @@ describe('CharacterRecord', () => {
     r.recordEnding('dead', 'Slain')
     r.recordEnding('dead', 'Slain')                    // game_ending then game_ended
     expect(recordAvatarOutcome).toHaveBeenCalledTimes(1)
-    expect(count).toHaveBeenCalledWith('dead')
+    expect(countEach).toHaveBeenCalledExactlyOnceWith('dead-each')
   })
 
   it('wizard or explore mode keeps the stamp but drops the public counters', () => {
     const r = played()
-    r.onPlayer(player({ name: 'Synth', wizard: true }))
+    r.onPlayer(player({ name: 'Synth', wizard: 1 }))
     r.onMessageLine(PICKUP('golden'))
     r.recordEnding('won', 'Escaped with the Orb and 3 runes')
     expect(recordAvatarOutcome).toHaveBeenCalledTimes(1)
@@ -105,7 +105,7 @@ describe('CharacterRecord', () => {
     expect(r.meta.runes).toBeUndefined()
     expect(r.meta.gems).toBeUndefined()
     expect(r.meta.orb).toBeUndefined()
-    expect([saveAvatar, recordAvatarOutcome, count, countEach, clearSpellOrder]
+    expect([saveAvatar, recordAvatarOutcome, countEach, clearSpellOrder]
       .every(f => vi.mocked(f).mock.calls.length === 0)).toBe(true)
   })
 
