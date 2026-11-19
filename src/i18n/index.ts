@@ -234,8 +234,9 @@ const VERB_ZH: Record<string, string> = {
 }
 
 const combatVerbs = Object.keys(VERB_ZH).sort((a, b) => b.length - a.length).join('|')
+// Consume the article first so "The zap hits …" uses "zap" as the subject.
 const combatLine = new RegExp(
-  `^(.+?)\\s+(?:(barely|closely|completely)\\s+)?(${combatVerbs})\\s+(.+?)(,?\\s+but (?:does|do) no damage)?([.!]+)$`,
+  `^((?:(?:[Tt]he|[Aa]n?)\\s+)?\\S.*?)\\s+(?:(barely|closely|completely)\\s+)?(${combatVerbs})\\s+(.+?)(,?\\s+but (?:does|do) no damage)?([.!]+)$`,
 )
 
 /** Match only when both actors and any named weapon can be resolved. */

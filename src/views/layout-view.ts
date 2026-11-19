@@ -27,6 +27,7 @@ import { LANG_CHANGED_EVENT, t, isZh } from '../i18n'
 import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 import { translatePage } from '../i18n/pages'
+import { translateMessageHistory } from '../i18n/messages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 import { translateGodLine, translateGodServiceFee } from '../i18n/god'
 
@@ -167,6 +168,9 @@ export class LayoutView {
     const loader = this.d.loader()
     let titleSrc = msg.title ?? msg.prompt ?? ''
     let rawBody = msg.text ?? msg.body ?? msg.desc ?? ''
+    // DCSS replay_messages sends an untagged scroller that opens at the end.
+    const messageHistory = msg.type === 'formatted-scroller' &&
+      (msg.tag === 'messages' || (!msg.tag && msg.start_at_end && !msg.title))
     if (msg.type === 'version') {
       rawBody = [msg.information, msg.features, msg.changes].filter(Boolean).join('\n\n')
     }
@@ -175,11 +179,11 @@ export class LayoutView {
     // (msg.quote, feats[].quote) and god power lists, which must not be
     // reflowed (dialogue-format quote lines look like label rows). game-over
     // is one fixed-width terminal block — leave it alone.
-    if (msg.type === 'formatted-scroller') rawBody = reflowOverview(rawBody)
+    if (msg.type === 'formatted-scroller' && !messageHistory) rawBody = reflowOverview(rawBody)
     // Only an item describe can carry the Ctrl-F search highlight
     // (overlay-body.ts liftSearchHighlight).
     const searchHighlight = msg.type === 'describe-item'
-    if (msg.type !== 'game-over') rawBody = unwrapHangingIndents(unpadMutationCategory(rawBody), searchHighlight)
+    if (msg.type !== 'game-over' && !messageHistory) rawBody = unwrapHangingIndents(unpadMutationCategory(rawBody), searchHighlight)
     if (msg.type === 'describe-god') {
       // describe-god has no `title`/`text` — name is the heading, and the
       // body is split across pane fields (description / favour+powers_list /
@@ -243,8 +247,10 @@ export class LayoutView {
       // panel also has an attack table, a to-hit line and a notice chance, so
       // it gets the structural rules first.
       rawBody = msg.type === 'describe-monster' ? translateMonsterBody(rawBody) : translateBody(rawBody)
+    } else if (messageHistory) {
+      rawBody = translateMessageHistory(rawBody)
     } else if (isZh()) {
-      // Scrollers include help/manual pages and history, not just describes.
+      // Scrollers include help/manual pages, not just describes.
       // Translate the entire display copy before colour spans split sentences.
       const plain = stripDcss(rawBody)
       const translated = translatePage(plain)
@@ -254,8 +260,7 @@ export class LayoutView {
     // Strip the placeholder when there's no spellset to render in its place;
     // otherwise keep it so we can split the body around it below.
     if (!spellset?.length) rawBody = rawBody.replace(/SPELLSET_PLACEHOLDER/g, '')
-    rawBody = propagateDarkgreyColor(rawBody)
-    rawBody = rawBody
+    if (!messageHistory) rawBody = propagateDarkgreyColor(rawBody)
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^((?:<[^>]+>)*)\s+/, '$1')
       .replace(/\s+((?:<[^>]+>)*)$/, '$1')
@@ -286,6 +291,7 @@ export class LayoutView {
       if (rawBody) {
         const bodyEl = document.createElement('div')
         bodyEl.className = 'overlay-body fg7'
+        if (messageHistory) bodyEl.dataset.noI18n = ''
         // Scroller bodies take the tighter line pitch (style.css
         // .overlay-body--scroller); describe-* panels stay at prose pitch.
         if (msg.type === 'formatted-scroller') bodyEl.classList.add('overlay-body--scroller')

@@ -1,7 +1,6 @@
 // Display copies only. Never feed translated help, search tokens or terminal
 // rows back to the engine. Keep the number of rows stable for scroll messages.
 import { isZh, t, tItem } from './index'
-import { spellField } from './titles'
 import { lookupProse } from './describe'
 
 const HELP: Record<string, string> = {
@@ -91,12 +90,6 @@ export function translatePage(text: string): string {
     return blocks.map((block, i) => i % 2 ? block : translatePage(block)).join('')
   }
   return text.split('\n').map((line) => {
-    const standaloneNoise = /^\(Noise:\s*([^)]+)\)\s*(.+)$/.exec(line.trim())
-    if (standaloneNoise) {
-      const level = spellField('Noise', standaloneNoise[1])
-      const quality = spellField('Noise', standaloneNoise[2])
-      return `噪音：${level === standaloneNoise[1] ? standaloneNoise[1] : level}，${quality}`
-    }
     const keyed = /^(\s*\S*\s*:\s*)(.+)$/.exec(line)
     if (keyed && HELP[keyed[2]]) return keyed[1] + HELP[keyed[2]]
     const parts = line.split(/(\s{2,})/)

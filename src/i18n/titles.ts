@@ -396,6 +396,7 @@ export const TITLE_RULES: TitleRule[] = [
   { re: /^Power: (\d+)%$/, to: (m) => `威力：${m[1]}%` },
   { re: /^Damage: (.+)$/, to: (m) => `伤害：${m[1].replace(/\bmax\b/g, '最高')}` },
   { re: /^Range: (.+)$/, to: (m) => `射程：${m[1] === 'N/A' ? '无' : m[1]}` },
+  { re: /^\(Noise:\s*([^)]+)\)\s*(.+)$/, to: (m) => `噪音：${spellField('Noise', m[1])}，${spellField('Noise', m[2])}` },
   { re: /^Noise: (.+)$/, to: (m) => `噪音：${spellField('Noise', m[1])}` },
   { re: /^School: (.+)$/, to: (m) => `学派：${spellSchools(m[1])}` },
   { re: /^Fail: (.+)$/, to: (m) => `失败率：${m[1]}` },

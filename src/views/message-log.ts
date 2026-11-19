@@ -9,6 +9,7 @@ import type { ClientMsg } from '../ws/types'
 import type { Handlers, MsgOf } from '../ws/dispatcher'
 import { dcssToHtml } from '../game/dcss-colors'
 import { LANG_CHANGED_EVENT, isZh, t, tMore } from '../i18n'
+import { displayMessageLine as displayLine } from '../i18n/messages'
 import { isKeyHintsLine, isSwapOptionsLine, parsePromptText, PROMPT_TRIGGER_RE, type PromptSegment } from './prompt-parse'
 import { systemKeyboardField } from './text-field'
 import { downloadPackFile } from '../offline/save-transfer'
@@ -44,17 +45,6 @@ const DUMP_OK_LINE = 'Char dumped successfully'
 // clip. 5 = a full describe's plain lines (Location, Here:, items, feature,
 // cloud; the prompt rides the actions row), so a describe never loses one.
 const XDESC_MAX_LINES = 5
-
-// Translate a whole wire line for display. A leading colour tag is kept (the
-// line keeps its channel colour); interior markup is dropped for lines that
-// translate, because the translated sentence reorders words and would split
-// mid-phrase otherwise. Untranslated lines keep every tag.
-function displayLine(text: string): string {
-  const lead = /^<[a-z]+>/i.exec(text)
-  const body = lead ? text.slice(lead[0].length) : text
-  const out = t(body)
-  return out === body ? text : (lead ? lead[0] : '') + out
-}
 
 export class MessageLog {
   readonly element = document.createElement('div')
@@ -531,6 +521,7 @@ export class MessageLog {
     p.dataset.i18nRaw = text
     const content = document.createElement('span')
     content.className = 'msg-body'
+    content.dataset.noI18n = ''
     content.innerHTML = dcssToHtml(displayLine(text))
     p.appendChild(content)
     return p
