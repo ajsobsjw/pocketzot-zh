@@ -48,13 +48,25 @@ export function spellTrainingSkill(raw: string): string | null {
 }
 
 const SPELL_NOISE: Record<string, string> = {
-  whisper: '耳语', silent: '无声', loud: '响亮', 'very loud': '非常响亮',
-  extremely: '极响', deafening: '震耳欲聋', 'n/a': '无',
+  silent: '无声', 'almost silent': '几乎无声', quiet: '安静', 'a bit loud': '略响',
+  loud: '响亮', 'very loud': '非常响亮', 'extremely loud': '极响', deafening: '震耳欲聋',
+  whisper: '耳语', 'n/a': '无',
+}
+
+export function translateNoiseRow(text: string): string | null {
+  const parts = /^(?:Noise:\s*(.+)|\(Noise:\s*([^)]+)\)\s*(.+))$/.exec(text)
+  if (!parts) return null
+  const value = (parts[1] ?? `${parts[2]} ${parts[3]}`).replace(/^\(([^)]+)\)\s+/, '$1 ')
+  return `噪音：${spellField('Noise', value)}`
 }
 
 export function spellField(label: string, raw: string): string {
   if (label === 'School' || label === 'Schools') return spellSchools(raw)
-  if (label === 'Noise') return SPELL_NOISE[raw.toLowerCase()] ?? raw
+  if (label === 'Noise') {
+    const [, level, count] = /^(.*?)(?:\s*\((\d+)\))?$/.exec(raw.trim().replace(/\s+/g, ' '))!
+    const translated = SPELL_NOISE[level.toLowerCase()]
+    return translated ? translated + (count ? `（${count}）` : '') : raw
+  }
   if (raw === 'None' && /^(?:Defences|Resists|Resistances)$/.test(label)) return '无'
   if (label === 'Defences') {
     return raw.replace(/\b(Defence|Defences|AC|EV|Will):\s*/g, (_match, inner: string) =>
@@ -396,8 +408,7 @@ export const TITLE_RULES: TitleRule[] = [
   { re: /^Power: (\d+)%$/, to: (m) => `威力：${m[1]}%` },
   { re: /^Damage: (.+)$/, to: (m) => `伤害：${m[1].replace(/\bmax\b/g, '最高')}` },
   { re: /^Range: (.+)$/, to: (m) => `射程：${m[1] === 'N/A' ? '无' : m[1]}` },
-  { re: /^\(Noise:\s*([^)]+)\)\s*(.+)$/, to: (m) => `噪音：${spellField('Noise', m[1])}，${spellField('Noise', m[2])}` },
-  { re: /^Noise: (.+)$/, to: (m) => `噪音：${spellField('Noise', m[1])}` },
+  { re: /^(?:Noise:\s*.+|\(Noise:\s*[^)]+\)\s*.+)$/, to: (m) => translateNoiseRow(m[0])! },
   { re: /^School: (.+)$/, to: (m) => `学派：${spellSchools(m[1])}` },
   { re: /^Fail: (.+)$/, to: (m) => `失败率：${m[1]}` },
   { re: /^Defences: (.+)$/, to: (m) => `防御：${spellField('Defences', m[1])}` },

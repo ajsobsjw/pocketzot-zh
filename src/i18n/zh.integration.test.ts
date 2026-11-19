@@ -278,6 +278,19 @@ describe('real dictionary', () => {
     expect(tTitle(training)).toContain('把空气魔法训练到 6.5')
   })
 
+  it('translates every engine spell-noise tier as a complete phrase', async () => {
+    await setLang('zh')
+    for (const [level, zh] of [
+      ['Silent', '无声'], ['Almost silent', '几乎无声'], ['Quiet', '安静'], ['A bit loud', '略响'],
+      ['Loud', '响亮'], ['Very loud', '非常响亮'], ['Extremely loud', '极响'], ['Deafening', '震耳欲聋'],
+    ]) {
+      expect(t(`Noise: ${level}`)).toBe(`噪音：${zh}`)
+      expect(translateBody(`<lightgrey>Noise: ${level}</lightgrey>`)).toBe(`<lightgrey>噪音：${zh}</lightgrey>`)
+    }
+    expect(translateBody('(Noise: A) bit loud')).toBe('噪音：略响')
+    expect(translateBody('Noise: A bit loud (4)')).toBe('噪音：略响（4）')
+  })
+
   it('translates the observed Mystic Blast spell panel without partial English fields', async () => {
     await setLang('zh')
     const raw = [

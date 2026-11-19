@@ -36,7 +36,7 @@ it('translates standalone spell noise metadata and concatenated combat history r
     'You stop stampeding. You kill the goblin.',
   ].join('\n')
   const out = translatePage(history)
-  expect(out).toContain('噪音：极响，响亮')
+  expect(out).toContain('噪音：极响')
   expect(out).toContain('似乎什么都没发生。')
   expect(out).toContain('地精')
   expect(out.split('\n')).toHaveLength(history.split('\n').length)

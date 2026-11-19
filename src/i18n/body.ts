@@ -7,7 +7,7 @@
 import { isZh, t } from './index'
 import { propLabel } from './items'
 import { EGO_LABELS, translateEgoProse } from './egos'
-import { matchTitle, spellField, spellSchools, spellTrainingSkill } from './titles'
+import { matchTitle, spellField, spellSchools, spellTrainingSkill, translateNoiseRow } from './titles'
 
 function displayWidth(s: string): number {
   let n = 0
@@ -318,11 +318,8 @@ export function translateBody(body: string): string {
     const plain = stripTags(line).replace(/\u0001/g, '').trim()
     const outerColor = /^(\s*<([a-z]+)>).*<\/\2>\s*$/i.exec(line)
     const keepColor = (text: string): string => outerColor ? `${outerColor[1]}${text}</${outerColor[2]}>` : text
-    const standaloneNoise = /^\(Noise:\s*([^)]+)\)\s*(.+)$/.exec(plain)
-    if (standaloneNoise) {
-      const level = spellField('Noise', standaloneNoise[1])
-      return keepColor(`噪音：${level === standaloneNoise[1] ? standaloneNoise[1] : level}，${spellField('Noise', standaloneNoise[2])}`)
-    }
+    const noise = translateNoiseRow(plain)
+    if (noise) return keepColor(noise)
     const experience = /^(\s*)\((\d+) xp, (\d+) skp\)$/.exec(line)
     if (experience) return `${experience[1]}（${experience[2]} 经验，${experience[3]} 技能点）`
     const armour = /^Base armour rating:\s*(\d+)(?:\s{2,}(Encumbrance rating|Evasion):\s*([+-]?\d+))?$/.exec(plain)
@@ -338,13 +335,7 @@ export function translateBody(body: string): string {
     if (labelValue && DESCRIBE_LABELS[labelValue[1]]) {
       const label = DESCRIBE_LABELS[labelValue[1]]
       const value = labelValue[2]
-      if (/^(?:Noise|School|Schools|Defences|Resists|Resistances)$/.test(labelValue[1])) {
-        const noise = /^(?:\((?:Noise:\s*)?([^)]+)\)\s*)?(.+)$/.exec(value)
-        if (labelValue[1] === 'Noise' && noise) {
-          const level = noise[1] ? spellField('Noise', noise[1].trim()) : ''
-          const quality = spellField('Noise', noise[2].trim())
-          return keepColor(`噪音：${level ? `${level}，` : ''}${quality}`)
-        }
+      if (/^(?:School|Schools|Defences|Resists|Resistances)$/.test(labelValue[1])) {
         return keepColor(`${label}：${spellField(labelValue[1], value)}`)
       }
       return keepColor(`${label}：${value.replace(/\bmax\b/g, '最高').replace(/\bcollision\b/g, '撞击')}`)

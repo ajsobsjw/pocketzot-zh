@@ -751,6 +751,8 @@ const MORE_WORDS: Array<[RegExp, string]> = [
   [/\btoggle spell headers\b/gi, '切换法术栏标题'],
   [/\bSelect a spell to describe\b/gi, '选择法术查看描述'],
   [/\bMemorise\b/gi, '记忆'],
+  [/\bImbue\b/gi, '灌注'],
+  [/\bCast(?=\s*\||\s*$)/gi, '施法'],
   [/\bDescribe\b/gi, '描述'],
   [/\bHide\b/gi, '隐藏'],
   [/\bShow\b/gi, '显示'],

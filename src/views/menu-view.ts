@@ -11,7 +11,7 @@ import type { NavKey } from '../game/input/input-router'
 import type { TileLoader } from '../game/tiles/tile-loader'
 import { renderTiles } from '../game/tiles/tile-view'
 import { dcssToHtml, uiColor } from '../game/dcss-colors'
-import { stripDcss, formatMore, formatMoreHtml, computeScrollPos } from './overlay-body'
+import { stripDcss, formatMore, computeScrollPos } from './overlay-body'
 import {
   MF_ARROWS_SELECT, MF_MULTISELECT, coalesceMenuItems, isPromptFamily,
   type MenuItem, type MenuModel, type MenuMsg,
@@ -501,16 +501,13 @@ export class MenuView {
   // element stays in the DOM — update_menu and the XXX scroll handler
   // re-fill it and visibility must come back with the text.
   private setFooter(footerEl: HTMLElement, more: string, pos: string): void {
-    footerEl.innerHTML = formatMoreHtml(more, pos)
+    const source = more.replace(/XXX/g, pos)
+    // The engine colours the active spell action as well as the keys.
+    // Translate text runs without rebuilding or guessing the colour spans.
+    footerEl.innerHTML = dcssToHtml(isZh() ? source.split(/(<\/?(?:bg:)?[a-z]+>)/i)
+      .map((run, i) => i % 2 ? run : tMore(run)).join('') : source)
+    footerEl.dataset.noI18n = ''
     footerEl.style.display = formatMore(more, pos) ? '' : 'none'
-    // The nav keyhelp ("[Up|Down] select  [Esc] exit") is per-menu and split by
-    // colour markup, so it is translated as a whole only for display; the raw
-    // string still drives bar.syncAccept below.
-    if (isZh()) {
-      const plain = footerEl.textContent ?? ''
-      const shown = tMore(plain)
-      if (shown !== plain) footerEl.innerHTML = dcssToHtml(translateFooterMarkup(more, pos))
-    }
   }
 
   // Derive the footer from current state, mirroring the reference client's
@@ -716,33 +713,6 @@ export class MenuView {
     }
     return header
   }
-}
-
-function translateFooterMarkup(raw: string, pos: string): string {
-  const source = raw.replace(/XXX/g, pos)
-  const plain = stripDcss(source)
-  const translated = tMore(plain)
-  let markup = ''
-  for (const line of source.split('\n')) {
-    const rawLine = stripDcss(line)
-    const zhLine = tMore(rawLine)
-    if (markup) markup += '\n'
-    if (zhLine === rawLine) markup += line
-    else markup += translateFooterLine(line, zhLine)
-  }
-  return translated === plain ? source : markup
-}
-
-function translateFooterLine(markup: string, translated: string): string {
-  if (!/<w>/i.test(markup)) return translated
-  const highlighted = Array.from(markup.matchAll(/<w>(.*?)<\/w>/gi), (match) => match[1])
-  let index = 0
-  return translated.replace(/\[([^\]]+)\]/g, (token, key: string) => {
-    const sourceKey = highlighted[index++]
-    return sourceKey && tMore(`[${sourceKey}]`) === token
-      ? `［<w>${key}</w>］`
-      : token
-  })
 }
 
 function displayShopItemText(text: string): string {

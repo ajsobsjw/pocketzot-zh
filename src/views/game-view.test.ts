@@ -1261,7 +1261,7 @@ describe('ui-push / ui-pop overlay stack', () => {
     })
     await setLang('zh')
     const body = overlay(h).querySelector<HTMLElement>('.overlay-body')!
-    expect(body.textContent).toContain('噪音：极响，响亮')
+    expect(body.textContent).toContain('噪音：极响')
     expect(body.textContent).toContain('似乎什么都没发生。')
     expect(body.textContent).toContain('地精')
     await setLang('en')
@@ -1840,6 +1840,8 @@ describe('language switch with a describe page open', () => {
     const raw = [
       '<lightblue>Level: 4     School: Air/Summoning     Fail: 28%</lightblue>',
       'Noise: whisper',
+      '<lightblue>Noise: Quiet</lightblue>',
+      'Noise: A <yellow>bit</yellow> loud',
       'Defences: Defence: 3',
       'Resists: None',
       'With your current stats and equipment, training Air Magic to 6.5 would reduce your failure rate to 10%. This would take about 2.7 XLs.',
@@ -1850,6 +1852,9 @@ describe('language switch with a describe page open', () => {
       await setLang('zh')
       expect(body().textContent).toContain('学派：气系／召唤系')
       expect(body().textContent).toContain('噪音：耳语')
+      expect(body().textContent).toContain('噪音：安静')
+      expect(body().textContent).toContain('噪音：略响')
+      expect(body().textContent).not.toContain('bit')
       expect(body().textContent).toContain('防御：防御：3')
       expect(body().textContent).toContain('抗性：无')
       expect(body().textContent).toContain('把空气魔法训练到 6.5')
@@ -2209,17 +2214,23 @@ describe('floating prompt (yesno/travel popups)', () => {
     const { setLang } = await import('../i18n')
     await setLang('zh')
     const h = setup()
+    const more = (active: string) => '<lightgrey>6 spell levels left\n[<w>Tab</w>] '
+      + ['Memorise', 'Describe', 'Hide', 'Show'].map(mode => mode === active ? `<w>${mode}</w>` : mode).join('|')
+      + '   [<w>Ctrl-F</w>] search   [<w>?</w>] help   [<w>Esc</w>] exit</lightgrey>'
     h.dispatch({ msg: 'menu', tag: 'spell', flags: 0xc0342,
       title: { text: 'Memorise' },
-      more: '<lightgrey>[<w>Tab</w>] Memorise | Describe | Hide | Show  [<w>Ctrl-F</w>] Search  [<w>?</w>] Help  [<w>Esc</w>] Exit</lightgrey>',
-      alt_more: '<lightgrey>[<w>Tab</w>] Memorise | Describe | Hide | Show  [<w>Ctrl-F</w>] Search  [<w>?</w>] Help  [<w>Esc</w>] Exit</lightgrey>',
+      more: more('Memorise'), alt_more: more('Memorise'),
       items: [{ level: 2, text: ' a - Magic Dart', hotkeys: [97] }] })
     const footer = overlay(h).querySelector<HTMLElement>('.menu-footer')!
-    expect(footer.textContent).toContain('记忆 | 描述 | 隐藏 | 显示')
-    const highlighted = Array.from(footer.querySelectorAll<HTMLElement>('span[style]')).map((el) => el.textContent)
-    expect(highlighted).toContain('Tab')
-    expect(highlighted.length).toBeGreaterThanOrEqual(4)
+    const highlighted = () => Array.from(overlay(h).querySelectorAll('.menu-footer span[style="color:#eeeeec"]'), el => el.textContent)
+    expect(footer.textContent).toContain('记忆|描述|隐藏|显示')
+    expect(footer.textContent).toContain('6 个法术等级可用')
+    for (const [mode, zh] of [['Memorise', '记忆'], ['Describe', '描述'], ['Hide', '隐藏'], ['Show', '显示']]) {
+      h.dispatch({ msg: 'update_menu', more: more(mode), alt_more: more(mode) })
+      expect(highlighted()).toEqual(['Tab', zh, 'Ctrl-F', '?', 'Esc'])
+    }
     await setLang('en')
+    expect(highlighted()).toEqual(['Tab', 'Show', 'Ctrl-F', '?', 'Esc'])
   })
 
   it('floats over the visible game in a card, with the default answer highlighted', () => {
