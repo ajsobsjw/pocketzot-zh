@@ -53,6 +53,21 @@ const SPELL_NOISE: Record<string, string> = {
   whisper: '耳语', 'n/a': '无',
 }
 
+const PREVIEW_STATS: Record<string, string> = {
+  AC: '护甲', EV: '闪避', SH: '格挡',
+  str: '力量', strength: '力量', int: '智力', intelligence: '智力', dex: '敏捷', dexterity: '敏捷',
+}
+
+// The baseline, result and change are all engine values. In particular a
+// preview can show decimals even though the HUD displays an integer.
+export function translateStatPreview(line: string): string | null {
+  const m = /^Your (AC|EV|SH|Str|Int|Dex|strength|intelligence|dexterity) would (remain unchanged|(increase|decrease) by ([+-]?\d+(?:\.\d+)?)(?:\s*\(([+-]?\d+(?:\.\d+)?)\s*->\s*([+-]?\d+(?:\.\d+)?)\))?)\.?$/.exec(line)
+  if (!m) return null
+  const label = PREVIEW_STATS[m[1]] ?? PREVIEW_STATS[m[1].toLowerCase()]
+  const change = m[3] ? `${m[3] === 'increase' ? '提高' : '降低'} ${m[4]}` : '保持不变'
+  return `你的${label}将${change}${m[5] ? `（${m[5]} → ${m[6]}）` : ''}。`
+}
+
 export function translateNoiseRow(text: string): string | null {
   const parts = /^(?:Noise:\s*(.+)|\(Noise:\s*([^)]+)\)\s*(.+))$/.exec(text)
   if (!parts) return null
@@ -255,14 +270,6 @@ export const TITLE_RULES: TitleRule[] = [
     to: () => '如果你改穿这件护甲：',
   },
   { re: /^If you switch to wielding this weapon:$/, to: () => '如果你改用这把武器：' },
-  {
-    re: /^Your AC would (increase by|decrease by|remain unchanged)(.*)$/,
-    to: (m) => `你的护甲将${m[1] === 'increase by' ? '提高' : m[1] === 'decrease by' ? '降低' : '保持不变'}${m[2]}`,
-  },
-  {
-    re: /^Your EV would (increase by|decrease by|remain unchanged)(.*)$/,
-    to: (m) => `你的闪避将${m[1] === 'increase by' ? '提高' : m[1] === 'decrease by' ? '降低' : '保持不变'}${m[2]}`,
-  },
 
   // --- monster panel prose ---
   { re: /^It can see invisible\.$/, to: () => '它能看见隐形。' },
@@ -516,6 +523,8 @@ export const TITLE_RULES: TitleRule[] = [
 ]
 
 export function matchTitle(text: string): string | null {
+  const preview = text.startsWith('Your ') ? translateStatPreview(text) : null
+  if (preview) return preview
   for (const r of TITLE_RULES) {
     const m = r.re.exec(text)
     if (m) return r.to(m)

@@ -7,7 +7,7 @@
 import { isZh, t } from './index'
 import { propLabel } from './items'
 import { EGO_LABELS, translateEgoProse } from './egos'
-import { matchTitle, spellField, spellSchools, spellTrainingSkill, translateNoiseRow } from './titles'
+import { matchTitle, spellField, spellSchools, spellTrainingSkill, translateNoiseRow, translateStatPreview } from './titles'
 import { sliceDcss } from '../game/dcss-colors'
 
 function displayWidth(s: string): number {
@@ -365,6 +365,8 @@ export function translateBody(body: string): string {
     const keepColor = (text: string): string => outerColor ? `${outerColor[1]}${text}</${outerColor[2]}>` : text
     const noise = translateNoiseRow(plain)
     if (noise) return keepColor(noise)
+    const preview = plain.startsWith('Your ') ? translateStatPreview(plain) : null
+    if (preview) return keepColor(preview)
     const experience = /^(\s*)\((\d+) xp, (\d+) skp\)$/.exec(line)
     if (experience) return `${experience[1]}（${experience[2]} 经验，${experience[3]} 技能点）`
     const armour = /^Base armour rating:\s*(\d+)(?:\s{2,}(Encumbrance rating|Evasion):\s*([+-]?\d+))?$/.exec(plain)

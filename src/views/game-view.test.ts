@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { buildGameView, type SpectateTarget } from './game-view'
 import { setLang } from '../i18n'
+import { installAutoTranslate } from '../i18n/dom'
 import { disposeView } from './view-dispose'
 import { unwrapHangingIndents } from './overlay-body'
 import { ENABLE_SPELL_TAB } from '../game/input/touch'
@@ -3771,6 +3772,38 @@ describe('game_ending: the offline flush-time outcome', () => {
 // The handler table's module-owned entries that no golden capture carries:
 // each must reach its view through the whole game view.
 describe('messages routed to the views that own them', () => {
+  it.each([false, true])('updates defense and attribute deltas with translation enabled (landscape: %s)', async (landscape) => {
+    vi.stubGlobal('matchMedia', () => ({ matches: landscape, addEventListener() {}, removeEventListener() {} }))
+    const stop = installAutoTranslate(document.body)
+    const h = setup()
+    const ids = ['ac', 'ev', 'sh', 'str', 'int', 'dex']
+    const slot = (id: string) => h.view.querySelector<HTMLElement>(`#hud-${id}`)!
+    const values = () => ids.map(id => slot(id).textContent)
+    const paint = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    try {
+      await setLang('zh')
+      h.dispatch({ msg: 'player', ac: 4, ev: 12, sh: 2, str: 10, str_max: 10, int: 9, dex: 15, dex_max: 15 })
+      await paint()
+      expect(values()).toEqual(['4', '12', '2', '10', '9', '15'])
+      h.dispatch({ msg: 'player', ac: 8, ev: 9, sh: 0, ac_mod: 4, ev_mod: -3, str: 8, int: 12, dex: 0 })
+      await paint()
+      expect(values()).toEqual(['8', '9', '0', '8(10)', '12', '0(15)'])
+      expect(slot('ac').classList.contains('def-boosted')).toBe(true)
+      expect(slot('ev').classList.contains('def-degenerated')).toBe(true)
+      h.dispatch({ msg: 'player', str_max: 12, dex: 15, ac_mod: 0, ev_mod: 0 })
+      expect(values()).toEqual(['8', '9', '0', '8(12)', '12', '15'])
+      expect(slot('ac').classList.contains('def-boosted')).toBe(false)
+      expect(slot('ev').classList.contains('def-degenerated')).toBe(false)
+      await setLang('en')
+      h.dispatch({ msg: 'player', ac: 4, ev: 12, sh: 2, str: 12, int: 9, dex: 17 })
+      await paint()
+      expect(values()).toEqual(['4', '12', '2', '12', '9', '17'])
+    } finally {
+      await setLang('en')
+      stop()
+    }
+  })
+
   it('chat, update_spectators and super_hide_chat reach the chat view', () => {
     const h = setup()
     h.dispatch({ msg: 'update_spectators', count: 1, names: 'spec_one' })
@@ -3788,6 +3821,37 @@ describe('messages routed to the views that own them', () => {
     expect(str().style.color).toBe('')
     h.dispatch({ msg: 'options', options: { stat_colour: [{ value: 10, colour: 'red' }] } })
     expect(str().style.color).not.toBe('')
+  })
+
+  it('displays both sides of item stat previews and replaces them on a body update', async () => {
+    const h = setup()
+    const raw = [
+      'If you transformed using this talisman:',
+      'Your AC would increase by 3.5 (4.0 -> 7.5).',
+      'Your EV would decrease by 1.5 (12.5 -> 11.0).',
+      'Your SH would decrease by 2.0 (2.0 -> 0.0).',
+      'Your Str would increase by 2 (10 -> 12).',
+      'Your Dex would remain unchanged.',
+    ].join('\n')
+    const lines = () => [...overlay(h).querySelectorAll('.overlay-body .overlay-line')].map(el => el.textContent)
+    try {
+      await setLang('zh')
+      h.dispatch({ msg: 'ui-push', type: 'describe-item', title: 'An uncatalogued talisman', body: raw })
+      expect(lines().slice(1)).toEqual([
+        '你的护甲将提高 3.5（4.0 → 7.5）。',
+        '你的闪避将降低 1.5（12.5 → 11.0）。',
+        '你的格挡将降低 2.0（2.0 → 0.0）。',
+        '你的力量将提高 2（10 → 12）。',
+        '你的敏捷将保持不变。',
+      ])
+      const next = 'Your SH would increase by 3.0 (0.0 -> 3.0).'
+      h.dispatch({ msg: 'ui-state', body: next })
+      expect(lines()).toEqual(['你的格挡将提高 3.0（0.0 → 3.0）。'])
+      await setLang('en')
+      expect(lines()).toEqual([next])
+    } finally {
+      await setLang('en')
+    }
   })
 
   it('ui-scroller-scroll reaches the layout view', () => {

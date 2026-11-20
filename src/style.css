@@ -3393,7 +3393,7 @@ html.map-hold, html.map-hold * {
 
 .hg-inline-stats {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.15rem 0.4rem;
   font-size: 0.7rem;
   line-height: 1.2;
@@ -3405,19 +3405,15 @@ html.map-hold, html.map-hold * {
 
 .hg-stats-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: 0.15rem 0.6rem;
   font-size: 0.7rem;
   line-height: 1.2;
-  overflow: hidden;
 }
-/* Non-shrinking, so the right-aligned .hg-warn (Contam/Doom) keeps its width.
-   Edge case: the row only overflows (clipping the rightmost warning) when BOTH
-   Contam and Doom are active AND a stat is drained ("St 5 (10)") at the same
-   time — an uncommon conjunction, and Doom may not even be sent by 0.34. Any
-   single warning, or both with no drain, fits at iPhone width. If that triple
-   conjunction matters, let this shrink/wrap or tighten gaps in a media query. */
-.hg-stats-row .hg-inline-stats { flex: 0 0 auto; }
+/* Keep defenses and attributes in intact groups. On narrow screens or when
+   drained maxima make the row longer, wrap before clipping a number. */
+.hg-stats-row .hg-inline-stats { max-width: 100%; }
 /* Noise + Time form a right-aligned group on the XL row (.hg-noise-time pins it
    right). inline-flex centers the bar cell against the "N" cap; the Noise↔Time
    gap is set to match the inter-stat gap (e.g. AC↔EV ≈ 0.47em). */
