@@ -714,7 +714,8 @@ export function tItem(text: string): string {
     const plain = lookup(matcher, text, {})
     out = plain ? plain.out : null
   }
-  if (!out && (looksLikeItemName(plainText) || /\{[^{}]+\}(?:\s+\([^()]+\))?[.。]?$/.test(plainText))) {
+  const labelledScroll = /^(?:(?:an?|the|\d+)\s+)?scrolls?\s+labell?ed\s+\S/i.test(plainText)
+  if (!out && (labelledScroll || looksLikeItemName(plainText) || /\{[^{}]+\}(?:\s+\([^()]+\))?[.。]?$/.test(plainText))) {
     out = translateItem(matcher, plainText, { loose: looksLikeItemName(plainText) })
   }
   if (!out) out = matchTitle(plainText)

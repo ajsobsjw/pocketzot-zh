@@ -473,6 +473,14 @@ describe('real dictionary', () => {
     expect(tItem('g - the ring "Voer" {rF+ MP+9}')).toContain('「Voer」')
   })
 
+  it('localizes unidentified scroll names without interpreting their labels', async () => {
+    await setLang('zh')
+    expect(tItem('A scroll labelled AMYFOX AWAXAHY.')).toBe('卷轴（标签 AMYFOX AWAXAHY）')
+    expect(tItem('A scroll labelled AMYFOX AWAXAHY {keep}.')).toBe('卷轴（标签 AMYFOX AWAXAHY） {keep}')
+    expect(tItem('e - a scroll labeled VAXIUSKUYF (unknown)')).toBe('e - 卷轴（标签 VAXIUSKUYF）（未知）')
+    expect(tItem('e - 30 gold 2 scrolls labelled VAXIUSKUYF (unknown)')).toBe('e - 卷轴（标签 VAXIUSKUYF）×2（未知）（30 金币）')
+  })
+
   it('builds item names, and refuses unknowns', () => {
     expect(tItem('a - dagger')).toBe('a - 匕首')
     expect(tItem('+1 dagger of venom')).toBe('淬毒的+1匕首')

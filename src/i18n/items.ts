@@ -407,16 +407,6 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   const unknown = /^(.*?)\s+\(unknown\)$/i.exec(parts.body)
   if (unknown) parts.body = unknown[1]
 
-  // "scroll labelled PAMOANNURGHA": the noun is known, the label is a random
-  // string the game prints as-is.
-  const labelled = /^(.*?)\s+labelled\s+(.+)$/i.exec(parts.body)
-  if (labelled) {
-    const noun = phrase(m, labelled[1].split(/\s+/))
-    if (!noun) return null
-    const qty = parts.qty > 1 ? `×${parts.qty}` : ''
-    return prefix + `${parts.hotkey}${parts.plus ? parts.plus : ''}${noun}（标签 ${labelled[2]}）${qty}`
-  }
-
   // Artefact property braces: keep the token order, translate the known
   // abbreviations ("rF+ Str-1 MP+9"), leave anything else as-is.
   let propNote = ''
@@ -439,7 +429,10 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   }
 
   // "dagger of venom", "ring of protection and evasion"
-  let base = body
+  // The generated scroll label is opaque. Keep it out of the name grammar,
+  // but let quantities, inscriptions and qualifiers use the normal path.
+  const scroll = /^scrolls?\s+labell?ed\s+(.+)$/i.exec(body)
+  let base = scroll ? 'scroll' : body
   // Named artefacts: 'the ring "Voer"' → 「Voer」戒指.
   const quoted = /^(.*?)\s*"([^"]+)"(.*)$/.exec(body)
   let quothName = ''
@@ -491,6 +484,7 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   // "+0" is noise in Chinese names (and every starting weapon has it).
   const plus = parts.plus && parts.plus !== '+0' ? parts.plus : ''
   let out = suffixZh ? `${suffixZh}的${plus}${baseZh}` : `${plus}${baseZh}`
+  if (scroll) out += `（标签 ${scroll[1]}）`
   if (quothName || artefactName) out += `「${quothName || artefactName}」`
   if (!suffixZh && suffixNote) out += `（${suffixNote}）`
   if (parts.qty > 1) out += `×${parts.qty}`

@@ -45,6 +45,8 @@ describe('game view in Chinese', () => {
       ['<green>a +0 dagger of freezing</green>; <darkgrey>a kobold corpse</darkgrey>', '冰冻的匕首；狗头人尸体'],
       ['a +0 dagger; <darkgrey>a kobold skeleton</darkgrey>', '匕首；狗头人骷髅'],
       ['2 scrolls labelled GODAM VEULI; a smoky potion; a blorptastic', '卷轴（标签 GODAM VEULI）×2；烟熏的药水；a blorptastic'],
+      ['You see here <lightblue>a scroll labelled AMYFOX AWAXAHY</lightblue>.', '你在这里看到卷轴（标签 AMYFOX AWAXAHY）。'],
+      ['d - 2 scrolls labelled BAYMNICI ZEASE (gained 1)', 'd - 卷轴（标签 BAYMNICI ZEASE）×2（获得 1）'],
       ['You see here a +0 dagger of freezing.', '你在这里看到冰冻的匕首。'],
       ['There is an entrance to Leluj’s General Store here.', '这里是 Leluj 的杂货店入口。'],
     ]
