@@ -26,7 +26,72 @@ import { dcssToHtml, escHtml, uiColor } from '../game/dcss-colors'
 import { stripDcss } from './overlay-body'
 import type { OverlayScreenCtx, UiPushMsg } from './game-overlays'
 import { parseNewgameChoice, balanceRows, toItem, type NgcItem, type NgcShape } from './newgame-model'
-import { isZh, t, tItem } from '../i18n'
+import { isZh, t, tItem, tTitle } from '../i18n'
+
+const NEWGAME_SUB_ZH: Record<string, string> = {
+  'Recommended species': '推荐种族',
+  'Random species': '随机种族',
+  'Recommended background': '推荐职业',
+  'Random background': '随机职业',
+  'Recommended character': '推荐角色',
+  'Random character': '随机角色',
+  'Viable character': '可行角色',
+  'List aptitudes': '查看资质表',
+  'Pick background first': '先选职业',
+  'Pick species first': '先选种族',
+  'Help': '帮助',
+  'Return to character menu': '返回角色菜单',
+  'Return to game mode menu': '返回模式菜单',
+  'Random weapon': '随机武器',
+  'Random map': '随机地图',
+  'Choose seed': '选择种子',
+  'Pre-generate dungeon': '预生成地牢',
+}
+
+const NEWGAME_GROUP_ZH: Record<string, string> = {
+  Simple: '入门',
+  Intermediate: '进阶',
+  Advanced: '高阶',
+  Warrior: '战士',
+  Zealot: '狂信者',
+  'Warrior-mage': '魔战士',
+  Mage: '法师',
+  Metamorph: '变形者',
+  Delver: '深入者',
+}
+
+function translateMarkupRuns(raw: string): string {
+  if (!isZh() || !raw) return raw
+  return raw.split(/(<[^>]+>)/).map((part) => {
+    if (!part || part.startsWith('<')) return part
+    const lead = part.slice(0, part.length - part.trimStart().length)
+    const trail = part.slice(part.trimEnd().length)
+    const core = part.trim()
+    if (!core) return part
+    const out = tTitle(core)
+    return out !== core ? `${lead}${out}${trail}` : part
+  }).join('')
+}
+
+function translateSubButton(raw: string): string {
+  if (!isZh() || !raw) return raw
+  const m = /^((?:<[^>]+>)*)(\s*(?:Space|Bksp|Tab|Enter|Esc|\S)\s+-\s+)([\s\S]+)$/.exec(raw)
+  if (!m) return translateMarkupRuns(raw)
+  const label = m[3].replace(/<\/[^>]+>$/, '').trim()
+  const close = /(<\/[^>]+>)$/.exec(m[3])?.[1] ?? ''
+  const hit = NEWGAME_SUB_ZH[label]
+  if (hit) return `${m[1]}${m[2]}${hit}${close}`
+  const direct = t(label)
+  if (direct !== label) return `${m[1]}${m[2]}${direct}${close}`
+  const item = tItem(label)
+  if (item !== label) return `${m[1]}${m[2]}${item}${close}`
+  return raw
+}
+
+function translateNewgameSuffix(raw: string): string {
+  if (!isZh() || !raw) return raw
+  return raw.replace(/\(([+-]?\d+)\s+apt\)/i, '($1 资质)')
+}
 
 // DEV insurance: override the item shape everywhere (see spec "C→B
 // insurance" — every shape must stay one flip away). Driven by
@@ -98,7 +163,7 @@ export function showNewgameChoice(ctx: OverlayScreenCtx, msg: UiPushMsg): Newgam
   const titleText = document.createElement('div')
   if (msg.title) {
     const line = document.createElement('div')
-    line.innerHTML = dcssToHtml(msg.title)
+    line.innerHTML = dcssToHtml(translateMarkupRuns(msg.title))
     titleText.appendChild(line)
   }
   // prompt is only sent on the weapon screen; the reference drops it on
@@ -106,7 +171,7 @@ export function showNewgameChoice(ctx: OverlayScreenCtx, msg: UiPushMsg): Newgam
   if (msg.prompt) {
     const line = document.createElement('div')
     line.className = 'ngv-prompt'
-    line.innerHTML = dcssToHtml(msg.prompt)
+    line.innerHTML = dcssToHtml(translateMarkupRuns(msg.prompt))
     titleText.appendChild(line)
   }
   titleEl.appendChild(titleText)
@@ -171,7 +236,7 @@ export function showNewgameChoice(ctx: OverlayScreenCtx, msg: UiPushMsg): Newgam
       // verbatim rather than re-aligning client-side. Kept literal by
       // white-space:pre on .ngv-action.
       const raw = String(btn.label ?? btn.labels?.[0] ?? '').trimEnd()
-      a.innerHTML = dcssToHtml(raw)
+      a.innerHTML = dcssToHtml(translateSubButton(raw))
       // Same two-tap contract as the main items: first tap arms (outline +
       // the wire description in the footer), second tap sends. A one-tap
       // "! - Random character" or "Tab - <previous character>" next to a
@@ -282,12 +347,12 @@ export function showNewgameChoice(ctx: OverlayScreenCtx, msg: UiPushMsg): Newgam
     el.appendChild(renderTiles(loader, item.tiles, spriteScale ?? (kind === 'card' ? 2 : ROW_SPRITE_SCALE)))
     const name = document.createElement('span')
     name.className = `ngv-${kind}-name`
-    name.textContent = item.name
+    name.textContent = isZh() ? tItem(item.name) : item.name
     el.appendChild(name)
     if (item.suffix) {
       const suffix = document.createElement('span')
       suffix.className = 'ngv-row-suffix'
-      suffix.textContent = item.suffix
+      suffix.textContent = translateNewgameSuffix(item.suffix)
       el.appendChild(suffix)
     }
     itemByEl.set(el, item)
@@ -298,7 +363,7 @@ export function showNewgameChoice(ctx: OverlayScreenCtx, msg: UiPushMsg): Newgam
   function sectionHeader(label: string, cls = 'ngv-sec-h'): HTMLElement {
     const h = document.createElement('div')
     h.className = cls
-    h.textContent = label
+    h.textContent = isZh() ? (NEWGAME_GROUP_ZH[label] ?? t(label)) : label
     return h
   }
 

@@ -9,6 +9,7 @@ import type { MenuBar } from './menu-bar'
 import { extractSkillHotkeys } from './skill-hotkeys'
 import { reflowSkillCrt, plainText, localizeSkillRows } from './skill-reflow'
 import { translateTerminalLine } from '../i18n/pages'
+import { LANG_CHANGED_EVENT } from '../i18n'
 import { escHtml } from '../game/dcss-colors'
 
 export interface CrtViewDeps {
@@ -29,9 +30,15 @@ export interface CrtViewDeps {
 
 export class CrtView {
   private readonly d: CrtViewDeps
+  private readonly onLangChange = (): void => { this.render() }
 
   constructor(deps: CrtViewDeps) {
     this.d = deps
+    window.addEventListener(LANG_CHANGED_EVENT, this.onLangChange)
+  }
+
+  dispose(): void {
+    window.removeEventListener(LANG_CHANGED_EVENT, this.onLangChange)
   }
 
   // A freshly pushed CRT frame: an empty screen until its txt rows land.

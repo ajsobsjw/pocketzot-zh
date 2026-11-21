@@ -23,10 +23,10 @@ import {
   splitGodPowerCosts, unpadMutationCategory, renderSpellbook, stripDcss,
 } from './overlay-body'
 import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
-import { LANG_CHANGED_EVENT, t, tItem, isZh } from '../i18n'
+import { LANG_CHANGED_EVENT, t, tItem, tMore, tTitle, isZh } from '../i18n'
 import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
-import { translatePage } from '../i18n/pages'
+import { translateOverviewMarkup, translatePage } from '../i18n/pages'
 import { translateMessageHistory } from '../i18n/messages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 import { translateGodLine, translateGodServiceFee } from '../i18n/god'
@@ -81,11 +81,17 @@ export class LayoutView {
     this.scheduleScrollerSync()
   }
 
-  // Rebuild from the raw ui-push: describe prose and formatted-scroller pages
-  // are translated before entering the DOM.
+  // Rebuild from the raw ui-push: describe prose, formatted-scroller, game-over,
+  // version, and character-creation screens are translated before entering DOM.
   private readonly onLangChange = (): void => {
     const top = this.d.topLayout()
-    if (!top || (!String(top.type ?? '').startsWith('describe') && top.type !== 'formatted-scroller')) return
+    if (!top) return
+    const kind = String(top.type ?? '')
+    if (kind === 'newgame-choice' || kind === 'newgame-random-combo') {
+      if (this.d.visible()) this.d.repaint()
+      return
+    }
+    if (!kind.startsWith('describe') && kind !== 'formatted-scroller' && kind !== 'game-over' && kind !== 'version') return
     // A cutoff-hidden frame stays on the stack but is not on screen: showing it
     // again would resurrect the overlay over the map the engine is targeting.
     if (!this.d.visible()) return
@@ -179,7 +185,8 @@ export class LayoutView {
     // (msg.quote, feats[].quote) and god power lists, which must not be
     // reflowed (dialogue-format quote lines look like label rows). game-over
     // is one fixed-width terminal block — leave it alone.
-    if (msg.type === 'formatted-scroller' && !messageHistory) rawBody = reflowOverview(rawBody)
+    const overview = msg.type === 'formatted-scroller' && !messageHistory && isDungeonOverview(rawBody)
+    if (overview) rawBody = reflowOverview(rawBody)
     // Only an item describe can carry the Ctrl-F search highlight
     // (overlay-body.ts liftSearchHighlight).
     const searchHighlight = msg.type === 'describe-item'
@@ -232,9 +239,13 @@ export class LayoutView {
       titleSrc = feats[0].title ?? ''
       rawBody = feats.map((f, i) => {
         const parts: string[] = []
-        if (i > 0 && f.title) parts.push(f.title)
-        if (f.body && f.body !== f.title) parts.push(f.body)
-        if (f.quote) parts.push(f.quote)
+        const featTitle = stripDcss(f.title ?? '')
+        if (i > 0 && f.title) parts.push(isZh() ? tTitle(f.title) : f.title)
+        if (f.body && f.body !== f.title) {
+          const body = isZh() ? (zhDescribe(featTitle, f.body, 'describe-feature') ?? f.body) : f.body
+          parts.push(body)
+        }
+        if (f.quote) parts.push(isZh() ? translateMonsterQuote(f.quote) : f.quote)
         return parts.join('\n\n')
       }).filter(Boolean).join('\n\n')
     }
@@ -242,13 +253,17 @@ export class LayoutView {
     // Phase D light: swap the English prose for the localized description when
     // the title names something in dat/descript/zh. Computed lines stay.
     if (String(msg.type ?? '').startsWith('describe')) {
-      if (msg.type !== 'describe-god') rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
+      if (msg.type !== 'describe-god' && msg.type !== 'describe-feature-wide') {
+        rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
+      }
       // Property rows ("rPois:  It protects…") and lone sentences. The monster
       // panel also has an attack table, a to-hit line and a notice chance, so
       // it gets the structural rules first.
       rawBody = msg.type === 'describe-monster' ? translateMonsterBody(rawBody) : translateBody(rawBody)
     } else if (messageHistory) {
       rawBody = translateMessageHistory(rawBody)
+    } else if (overview && isZh()) {
+      rawBody = translateOverviewMarkup(rawBody)
     } else if (isZh()) {
       // Scrollers include help/manual pages, not just describes.
       // Translate the entire display copy before colour spans split sentences.
@@ -352,7 +367,7 @@ export class LayoutView {
       if (msg.more && stripDcss(msg.more).trim()) {
         const moreEl = document.createElement('div')
         moreEl.className = 'overlay-footer scroller-more'
-        moreEl.innerHTML = dcssToHtml(msg.more)
+        moreEl.innerHTML = dcssToHtml(isZh() ? tMore(msg.more) : msg.more)
         overlay.appendChild(moreEl)
       }
       if (msg.actions) {
@@ -550,14 +565,15 @@ export class LayoutView {
     for (const token of tokens) {
       // ", or " gets split into ", " + "or X" because the comma alternative
       // wins first; drop the vestigial "or " so labels read as plain items.
-      const t = token.trim().replace(/^or\s+/, '')
-      if (!t) continue
-      const keyMatch = t.match(/\((.)\)/)
+      const raw = token.trim().replace(/^or\s+/, '')
+      if (!raw) continue
+      const keyMatch = raw.match(/\((.)\)/)
+      const display = isZh() ? translateActionToken(raw) : raw
       if (keyMatch) {
         const key = keyMatch[1]
         const btn = document.createElement('button')
         btn.className = 'action-btn'
-        btn.innerHTML = dcssToHtml(t)
+        btn.innerHTML = dcssToHtml(display)
         btn.addEventListener('click', () => {
           this.d.send({ msg: 'input', text: key })
           this.d.focusView()
@@ -565,12 +581,52 @@ export class LayoutView {
         bar.appendChild(btn)
       } else {
         const span = document.createElement('span')
-        span.innerHTML = dcssToHtml(t)
+        span.innerHTML = dcssToHtml(display)
         bar.appendChild(span)
       }
     }
     return bar
   }
+}
+
+const ACTION_TOKEN_ZH: Record<string, string> = {
+  '(w)ield': '(w) 持握',
+  '(u)nwield': '(u) 卸下',
+  '(q)uiver': '(q) 放入箭袋',
+  '(Q)uiver': '(Q) 放入箭袋',
+  '(w)ear': '(w) 穿戴',
+  '(t)ake off': '(t) 脱下',
+  'e(v)oke': '(v) 激发',
+  '(v)oke': '(v) 激发',
+  '(r)ead': '(r) 阅读',
+  '(p)ut on': '(p) 佩戴',
+  '(r)emove': '(r) 取下',
+  '(q)uaff': '(q) 饮用',
+  '(g)et': '(g) 拾取',
+  '(d)rop': '(d) 丢弃',
+  '(i)nscribe': '(i) 刻写',
+  '(=)adjust': '(=) 调整字母',
+  '(s)kill target': '(s) 技能目标',
+  '(g)o to location': '(g) 前往位置',
+  '(!)details': '(!) 详情',
+  '(!)toggle': '(!) 切换',
+  '(f)ire': '(f) 射击',
+  '(m)emorise': '(m) 记忆',
+  '(f)orget': '(f) 遗忘',
+  '(c)ast': '(c) 施法',
+  '(a)bility': '(a) 能力',
+  '(b)uy': '(b) 购买',
+  '(p)ut on shopping list': '(p) 加入购物清单',
+}
+
+function translateActionToken(raw: string): string {
+  const plain = stripDcss(raw).trim()
+  const prefix = /^You can\s+/i.exec(plain)
+  const core = prefix ? plain.slice(prefix[0].length) : plain
+  const hit = ACTION_TOKEN_ZH[core] ?? ACTION_TOKEN_ZH[core.toLowerCase()]
+  if (hit) return prefix ? `你可以${hit}` : hit
+  const fallback = t(plain)
+  return fallback !== plain ? fallback : raw
 }
 
 const lineHeightOf = (el: HTMLElement): number => parseFloat(getComputedStyle(el).lineHeight) || 19

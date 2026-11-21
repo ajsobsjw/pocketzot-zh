@@ -8,6 +8,8 @@ import {
   filterAndSortMonsters, nameColor,
 } from './monster-style'
 import { iconNameMap, monsterStatusLabels, type IconNames } from './monster-status'
+import { isZh, LANG_CHANGED_EVENT, tItem, tLabel } from '../../i18n'
+import { translateMonsterPanelStatus } from '../../i18n/status'
 
 // Sprite scale on the row's left edge. The base tile is 32x32 logical px;
 // scale 1.5 lines up with the row's 48px height defined in .mp-tile / .mp-row.
@@ -24,10 +26,18 @@ export class MonsterPanelView {
   // words read cell.icons.
   private iconNames: IconNames | null = null
   private lastMonsters: ReadonlyMap<string, MonsterCell> | null = null
+  private readonly onLangChange = (): void => {
+    if (this.lastMonsters) this.update(this.lastMonsters)
+  }
 
   constructor(private readonly store: MapStore) {
     this.element = document.createElement('div')
     this.element.className = 'mp-list'
+    window.addEventListener(LANG_CHANGED_EVENT, this.onLangChange)
+  }
+
+  dispose(): void {
+    window.removeEventListener(LANG_CHANGED_EVENT, this.onLangChange)
   }
 
   setOnPickCoord(cb: (x: number, y: number) => void): void {
@@ -59,7 +69,7 @@ export class MonsterPanelView {
       // invisible monster (store.invisMonDesc) shows there but has no
       // coordinate to describe, so it gets no row here. The wording must
       // stay true next to that list entry — "no monsters" wouldn't be.
-      empty.textContent = 'Nothing in view to examine.'
+      empty.textContent = isZh() ? tLabel('Nothing in view to examine.') : 'Nothing in view to examine.'
       this.element.appendChild(empty)
       return
     }
@@ -110,7 +120,8 @@ export class MonsterPanelView {
     const nameEl = document.createElement('div')
     nameEl.className = 'mp-name'
     nameEl.style.color = color
-    nameEl.textContent = mon.name ?? '?'
+    const rawName = mon.name ?? '?'
+    nameEl.textContent = isZh() ? tItem(rawName) : rawName
     // The marks withSprite defers to are drawn by appendIconOverlays from the
     // same icons module that fills iconNames — until it resolves (or if it
     // never does: the setLoader catch only warns) the words stay as fallback.
@@ -119,7 +130,9 @@ export class MonsterPanelView {
     if (statuses.length > 0) {
       const statusEl = document.createElement('span')
       statusEl.className = 'mp-status'
-      statusEl.textContent = ` (${statuses.join(', ')})`
+      statusEl.textContent = isZh()
+        ? `（${statuses.map(translateMonsterPanelStatus).join('，')}）`
+        : ` (${statuses.join(', ')})`
       nameEl.appendChild(statusEl)
     }
     row.appendChild(nameEl)

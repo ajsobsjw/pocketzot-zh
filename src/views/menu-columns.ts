@@ -56,7 +56,10 @@ const SCHOOL_ZH: Record<string, string> = {
 
 const COST_PART_ZH: Record<string, string> = {
   MP: '法力', HP: '生命', Piety: '虔诚', Exhaustion: '疲劳',
-  Injury: '受伤', Drain: '汲取',
+  Injury: '受伤', Drain: '汲取', Noise: '噪音', Breath: '吐息',
+  Delay: '延迟', Torment: '折磨', Instant: '瞬发',
+  'Cursed item': '诅咒物品', Free: '免费', Gold: '金币',
+  Torchlight: '火把光亮',
 }
 
 /** Translate a "Ice/Conjuration" schools cell, or null when unknown. */
@@ -73,14 +76,29 @@ export function zhCost(plain: string): string | null {
   if (parts.length === 0) return null
   const out: string[] = []
   for (const part of parts) {
-    const resource = /^(\d+) (MP|HP)$/.exec(part)
+    const resource = /^(\d+) (MP|HP|Gold)$/.exec(part)
     if (resource) {
       out.push(`${resource[1]} ${COST_PART_ZH[resource[2]]}`)
+      continue
+    }
+    const permMp = /^Permanent MP \((\d+) left\)$/.exec(part)
+    if (permMp) {
+      out.push(`永久法力（剩 ${permMp[1]}）`)
+      continue
+    }
+    const uses = /^(\d+)\/(\d+) uses available$/.exec(part)
+    if (uses) {
+      out.push(`可用 ${uses[1]}/${uses[2]} 次`)
       continue
     }
     const piety = /^(Piety)(-+)$/.exec(part)
     if (piety) {
       out.push(`${COST_PART_ZH[piety[1]]}${piety[2]}`)
+      continue
+    }
+    const card = /^A Card(?:\s+\((\d+)\s+left\))?$/.exec(part)
+    if (card) {
+      out.push(card[1] ? `一张卡牌（剩 ${card[1]}）` : '一张卡牌')
       continue
     }
     if (COST_PART_ZH[part]) {

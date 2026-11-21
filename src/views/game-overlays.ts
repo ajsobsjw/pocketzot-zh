@@ -15,6 +15,7 @@ import { dcssToHtml } from '../game/dcss-colors'
 import { systemKeyboardField } from './text-field'
 import type { SpellBook } from './overlay-body'
 import type { NewgameItems } from './newgame-model'
+import { isZh, t, tTitle } from '../i18n'
 
 export interface UiPushMsg {
   type: string
@@ -136,7 +137,7 @@ export function showInputDialog(ctx: OverlayScreenCtx, msg: UiPushMsg): void {
   if (msg.prompt) {
     const promptEl = document.createElement('div')
     promptEl.className = 'input-dialog-prompt'
-    promptEl.innerHTML = dcssToHtml(msg.prompt)
+    promptEl.innerHTML = dcssToHtml(isZh() ? tTitle(msg.prompt) : msg.prompt)
     wrap.appendChild(promptEl)
   }
 
@@ -189,14 +190,14 @@ export function showSeedSelection(ctx: OverlayScreenCtx, msg: UiPushMsg): void {
   if (msg.title) {
     const header = document.createElement('div')
     header.className = 'seed-header'
-    header.innerHTML = dcssToHtml(msg.title)
+    header.innerHTML = dcssToHtml(isZh() ? tTitle(msg.title) : msg.title)
     wrap.appendChild(header)
   }
 
   if (msg.body) {
     const bodyText = document.createElement('div')
     bodyText.className = 'seed-body-text fg7'
-    bodyText.innerHTML = dcssToHtml(msg.body)
+    bodyText.innerHTML = dcssToHtml(isZh() ? t(msg.body) : msg.body)
     wrap.appendChild(bodyText)
   }
 
@@ -263,7 +264,7 @@ export function showSeedSelection(ctx: OverlayScreenCtx, msg: UiPushMsg): void {
   if (msg.footer) {
     const footer = document.createElement('div')
     footer.className = 'seed-footer fg7'
-    footer.innerHTML = dcssToHtml(msg.footer)
+    footer.innerHTML = dcssToHtml(isZh() ? t(msg.footer) : msg.footer)
     wrap.appendChild(footer)
   }
 

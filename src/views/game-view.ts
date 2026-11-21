@@ -2223,12 +2223,15 @@ export function buildGameView(opts: GameViewOptions): HTMLElement {
     // (or the next view) now owns.
     menuView.dispose()
     layoutView.dispose()
+    crtView.dispose()
     cancelTileGesture()
     advisory.disarm()
     // Its give-up timer would otherwise repaint this view's spell surfaces.
     harvester.reset()
     spellRail.dispose()
     statsView.dispose()
+    statusView.dispose()
+    monsterPanel.dispose()
     if (tileAnimTimer !== null) clearInterval(tileAnimTimer)
   }
   registerViewDispose(view, dispose)

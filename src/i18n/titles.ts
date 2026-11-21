@@ -104,8 +104,20 @@ export const TITLE_RULES: TitleRule[] = [
     to: (m) => `${m[1]} 个匹配：只找到无用物品；按 = 显示。`,
   },
   {
-    re: /^(\d+) (?:match|matches): view\s+\[toggle: !\], by type \[\/\], (show|hide) useless & duplicates \[=\]$/,
-    to: (m) => `${m[1]} 个匹配：查看［! 切换］，按类型［/］，${m[2] === 'show' ? '显示' : '隐藏'}无用与重复物品［=］`,
+    re: /^(\d+) (?:match|matches): (travel|view)\s*\[toggle: !\], by (dist|distance|type|name) \[\/\], (show|hide) useless & duplicates \[=\]$/,
+    to: (m) => {
+      const mode = m[2] === 'travel' ? '前往' : '查看'
+      const sort = m[3] === 'type' ? '类型' : m[3] === 'name' ? '名称' : '距离'
+      return `${m[1]} 个匹配：${mode}［! 切换］，按${sort}［/］，${m[4] === 'show' ? '显示' : '隐藏'}无用与重复物品［=］`
+    },
+  },
+  {
+    re: /^Choose a gizmo to assemble\.$/,
+    to: () => '选择要组装的小装置。',
+  },
+  {
+    re: /^Choose an item to acquire\.$/,
+    to: () => '选择要获取的物品。',
   },
   // "Gear: 1/52 gear slots    (Left/Right/Tab to switch category)"
   {
@@ -167,7 +179,7 @@ export const TITLE_RULES: TitleRule[] = [
   },
   // "Welcome, <name>." / "Welcome, <name> the Deep Elf."
   {
-    re: /^Welcome, (\S+) the (.+)$/,
+    re: /^Welcome, (\S+) the ([^.]+)\.?$/,
     to: (m) => `欢迎，${m[1]}（${m[2]}）。`,
   },
   {

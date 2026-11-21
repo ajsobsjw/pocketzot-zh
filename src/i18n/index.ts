@@ -699,6 +699,11 @@ export function tItem(text: string): string {
     const item = translateItem(matcher, rawShopPrice[2].replace(/\s+\(unknown\)$/i, ''), { loose: true })
     if (item) out = `${item}${unknown ? '（未知）' : ''}（${rawShopPrice[1]} 金币）`
   }
+  // Acquirement gold row: "a - 500 gold pieces (you have 123 gold)"
+  const acqGold = /^(\S\s*[-+#$]\s+)?(\d+)\s+gold(?:\s+pieces)?\s+\(you have (\d+) gold\)$/i.exec(plainText)
+  if (acqGold) {
+    out = `${acqGold[1] ?? ''}${acqGold[2]} 枚金币（你现有 ${acqGold[3]} 金币）`
+  }
   // Inventory category rows: "Potions        (go to first with !)".
   const cat = /^(.+?)\s{2,}\(go to first with (.+)\)$/.exec(plainText)
   if (cat) {
@@ -758,8 +763,14 @@ const SPELL_HEAD_ZH: Record<string, string> = {
 const MORE_WORDS: Array<[RegExp, string]> = [
   [/\bbuy marked items\b/gi, '购买已标记物品'],
   [/\bbuy shopping list\b/gi, '购买购物清单'],
+  [/\bselect gizmo to assemble\b/gi, '选择要组装的小装置'],
+  [/\bselect item for acquirement\b/gi, '选择要获取的物品'],
+  [/\bexamine gizmo\b/gi, '查看小装置'],
   [/\bexamine items?\b/gi, '查看物品'],
   [/\bexamine\b/gi, '查看'],
+  [/\bassemble\b/gi, '组装'],
+  [/\bacquire\b/gi, '获取'],
+  [/\bgizmo\b/gi, '小装置'],
   [/\btoggle spell headers\b/gi, '切换法术栏标题'],
   [/\bSelect a spell to describe\b/gi, '选择法术查看描述'],
   [/\bMemorise\b/gi, '记忆'],
@@ -796,9 +807,18 @@ const MORE_WORDS: Array<[RegExp, string]> = [
 
 export function tMore(text: string): string {
   if (lang !== 'zh' || !text) return text
-  if (text.trim() === '--more--') return '--继续--'
-  if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
+  const plain = text.replace(/<[^>]*>/g, '').trim()
+  if (plain === '--more--') return text.replace('--more--', '--继续--')
+  if (plain === '[Y]es or [N]o only, please.') {
+    return text.replace('[Y]es or [N]o only, please.', '请只回答是 [Y] 或否 [N]。')
+  }
   let out = text
+    .replace(/\b(Acquire|Assemble)\s+([^?]+)\?\s*\(([yY]\/N)\)/g, (_all, verb: string, item: string, yn: string) => {
+      const zhItem = tItem(item.trim())
+      return `${verb === 'Assemble' ? '组装' : '获取'}${zhItem}？（${yn}）`
+    })
+    .replace(/\bHit any key to exit\b/gi, '按任意键退出')
+    .replace(/\bPress any key to continue\b/gi, '按任意键继续')
     .replace(/\bsort \((type|price|name)\)/gi, (_all, order: string) => `排序（${SHOP_SORT_ZH[order.toLowerCase()]}）`)
     .replace(/\b(\d+) spells? hidden\b/gi, '已隐藏 $1 个法术')
     .replace(/\bMatches:/g, '匹配：')
@@ -822,6 +842,39 @@ export function tMore(text: string): string {
 function shopKind(kind: string): string {
   const kinds: Record<string, string> = { 'General Store': '杂货店', 'Weapon Shop': '武器店', 'Armour Shop': '护甲店', 'Jewellery Shop': '首饰店', 'Wand Shop': '魔杖店', 'Book Shop': '书店', 'Food Shop': '食品店', 'Potion Shop': '药水店', 'Scroll Shop': '卷轴店' }
   return kinds[kind] ?? t(kind)
+}
+
+function translateRole(role: string): string {
+  const direct = t(role)
+  if (direct !== role) return direct
+  // "Minotaur Berserker" / "Deep Elf Fire Elementalist" -> split into species + background.
+  const words = role.split(/\s+/)
+  for (let i = 1; i < words.length; i++) {
+    const left = words.slice(0, i).join(' ')
+    const right = words.slice(i).join(' ')
+    const zl = t(left)
+    const zr = t(right)
+    if (zl !== left && zr !== right) return `${zl}${zr}`
+  }
+  return role
+}
+
+const NEWGAME_PROMPTS_ZH: Record<string, string> = {
+  'Please select your species.': '请选择你的种族。',
+  'Please select your background.': '请选择你的职业。',
+  'Please select your weapon.': '请选择你的武器。',
+  'You have a choice of weapons.': '你可以选择一把初始武器。',
+  'You have a choice of spells.': '你可以选择初始法术。',
+  'Please select a map.': '请选择一张地图。',
+  'Select a game seed': '选择游戏种子',
+  'Choose a custom seed for your game.': '为你的游戏选择自定义种子。',
+}
+
+function translateNewgamePrompt(plain: string): string {
+  const hit = NEWGAME_PROMPTS_ZH[plain]
+  if (hit) return hit
+  const direct = t(plain)
+  return direct !== plain ? direct : plain
 }
 
 /** Dynamic titles (gear slots, casting, prompts) that have no dictionary key. */
@@ -853,6 +906,22 @@ export function tTitle(text: string): string {
   }
   const shoppingList = /^Shopping list: (\d+) items?, total cost (\d+) gold pieces?$/i.exec(plain)
   if (shoppingList) return `购物清单：${shoppingList[1]} 件物品，共 ${shoppingList[2]} 金币`
+  // "Welcome, crawler the Minotaur. Please select your background."
+  const welcome = /^Welcome, (\S+)(?: the ([^.]+))?\.(?:\s+(.+))?$/.exec(plain)
+  if (welcome) {
+    const role = welcome[2] ? translateRole(welcome[2]) : ''
+    const head = role ? `欢迎，${welcome[1]}（${role}）。` : `欢迎，${welcome[1]}。`
+    if (!welcome[3]) return head
+    const tail = translateNewgamePrompt(welcome[3])
+    return `${head}${tail}`
+  }
+  // "You are a Naga Reaver." (newgame-random-combo prompt)
+  const youAre = /^You are an? ([^.]+)\.$/.exec(plain)
+  if (youAre) {
+    const role = translateRole(youAre[1])
+    if (role !== youAre[1]) return `你是一名${role}。`
+  }
+  if (NEWGAME_PROMPTS_ZH[plain]) return NEWGAME_PROMPTS_ZH[plain]
   const out = matchTitle(plain)
   if (out) return out
   // Menu-style title with the hotkey baked in: "a - a +0 robe (worn)."

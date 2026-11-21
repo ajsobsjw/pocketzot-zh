@@ -230,11 +230,17 @@ function dropTrailingBlanks(cells: string[]): string[] {
 export function localizeSkillRows(rows: string[]): string[] {
   if (!isZh()) return rows
   const HEADER_WORDS: Array<[string, string]> = [
-    ['Level', '等级'], ['Train', '训练'], ['Apt', '资质'],
+    ['Level', '等级'], ['Train', '训练'], ['Target', '目标'],
+    ['Progr', '进度'], ['Points', '点数'], ['Cost', '消耗'], ['Apt', '资质'],
   ]
   // Static lines of the skill screen: explanation text and the command footer.
   const HELP: Array<[RegExp, string]> = [
+    [/^You have gained great experience\. Select the skills to train\.$/, '你获得了大量经验。请选择要训练的技能。'],
     [/^Press the letter of a skill to read its description\.$/, '按技能对应的字母可查看它的说明。'],
+    [/^Press the letter of a skill to choose whether you want to practise it\. Skills marked with '-' will not be trained\.$/, '按技能对应的字母选择是否训练。标记为“-”的技能将不会训练。'],
+    [/^Press the letter of a skill to cycle between disabled \(-\), enabled \(\+\) and focused \(\*\)\. Focused skills train twice as fast relative to others\.$/, '按技能对应的字母在停用（-）、启用（+）和专注（*）之间切换。专注技能的训练速度是其他技能的两倍。'],
+    [/^Press the letter of a skill to set its target\.$/, '按技能对应的字母来设定其训练目标。'],
+    [/^Press the letter of a skill to clear its target\.$/, '按技能对应的字母来清除其训练目标。'],
     [/^Press \? for a general explanation of skilling and the various toggles\.$/, '按 ? 查看技能训练和各种开关的总说明。'],
     [/^The percentage of incoming experience used to train each skill is in brown\.$/, '用于训练各项技能的可用经验百分比以棕色显示。'],
     [/^The species aptitude is in white\.$/, '物种资质以白色显示。'],
@@ -251,6 +257,8 @@ export function localizeSkillRows(rows: string[]): string[] {
     [/^The current training targets, if any\.$/, '当前设定的训练目标（如果有）。'],
     [/^The percentage of the progress done before reaching next level is in cyan\.$/, '距离下一级还差的进度百分比以青色显示。'],
     [/^The relative cost of raising each skill is in (?:cyan|red)\.(?: \(or (?:red|cyan) if enhanced by a manual\)\.)?$/, '提升各项技能的相对消耗以青色显示（若受手册强化则为红色）。'],
+    [/^The number of experience points invested in each skill is in cyan\.$/, '投入各项技能的经验点数以青色显示。'],
+    [/^The new skill levels after gaining the experience are in cyan\.$/, '获得经验后的新技能等级以青色显示。'],
     [/^\[\?\] Skill descriptions$/, '[?] 技能说明'],
     [/^\[\?\] Return to skill selection$/, '[?] 返回技能选择'],
     [/^\[a-z\] skill descriptions$/, '[a-z] 技能说明'],
@@ -272,14 +280,24 @@ export function localizeSkillRows(rows: string[]): string[] {
     [/\bset skill target\b/g, '设定技能目标'],
     [/\bskill descriptions\b/g, '技能说明'],
     [/\ball skills\b/g, '全部技能'],
+    [/\bnew level\b/g, '新等级'],
     [/\bauto\b/g, '自动'],
     [/\bmanual\b/g, '手动'],
     [/\buseful\b/g, '有用'],
     [/\btraining\b/g, '训练'],
+    [/\btrain\b/g, '训练'],
+    [/\bfocus\b/g, '专注'],
+    [/\bprogress\b/g, '进度'],
+    [/\bpoints\b/g, '点数'],
     [/\bcost\b/g, '消耗'],
     [/\btargets\b/g, '目标'],
+    [/\benhanced\b/g, '强化'],
+    [/\breduced\b/g, '降低'],
+    [/\bmodified\b/g, '修正'],
+    [/\bbase\b/g, '基础'],
     [/\bmode\b/g, '模式'],
     [/\bHelp\b/g, '帮助'],
+    [/\ball\b/g, '全部'],
   ]
   const tidyRuns = (s: string): string => s
     .replace(/([\u4e00-\u9fff]) (?=[\u4e00-\u9fff|])/g, '$1')
@@ -308,11 +326,12 @@ export function localizeSkillRows(rows: string[]): string[] {
   return rows.map((html) => {
     let out = html
     const plain = plainText(out)
-    // Header row: "     Skill     Level Train  Apt" (names are not angles).
-    if (/\bLevel\b/.test(plain) && /\bApt\b/.test(plain) && !/^\s*\S\s+[+*]/.test(plain)) {
+    // Header row: "     Skill     Level Train  Apt" (or Target/Progr/Points/Cost/> New, with or without Apt).
+    if (/\bSkill\b/.test(plain) && /\bLevel\b/.test(plain) && !/^\s*\S\s+[+*]/.test(plain)) {
       // The name column's "Skill" word (5 columns) keeps its width; the row can
       // carry both the left and right column headers, so replace every word.
       out = out.replace(/\bSkill\b/g, '技能 ')
+      out = out.replace(/(&gt;|>)\s*New\b/g, '$1 新 ')
       for (const [en, zh] of HEADER_WORDS) {
         const pad = Math.max(0, en.length - zh.length * 2)
         out = out.replace(new RegExp(`\\b${en}\\b`, 'g'), zh + ' '.repeat(pad))
@@ -329,6 +348,10 @@ export function localizeSkillRows(rows: string[]): string[] {
         if (/[.!?]$/.test(plain.trim())) return wrapWhole(out, zh)
         return translateRuns(out)
       }
+    }
+    if (/^\[[^\]]+\]\s+/.test(plain.trim())) {
+      const translated = translateRuns(out)
+      if (translated !== out) return translated
     }
     // "  a + Fighting       0.2   4%  -2": key and sign occupy up to two
     // space-separated tokens before the name.

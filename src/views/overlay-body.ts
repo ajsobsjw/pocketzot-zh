@@ -10,6 +10,7 @@ import { dcssToHtml, uiColor, stripDcss, DCSS_COLOR_MAP } from '../game/dcss-col
 import { TEX, type TileLoader } from '../game/tiles/tile-loader'
 import { renderTiles } from '../game/tiles/tile-view'
 import type { SpellEntry } from '../game/spell-harvest'
+import { isZh, t, tItem } from '../i18n'
 
 // Existing importers reach these through this module; the definitions live
 // with the rest of the DCSS-markup / spell-model code.
@@ -19,6 +20,52 @@ export type { SpellEntry }
 export interface SpellBook {
   label: string
   spells: SpellEntry[]
+}
+
+function translateBookLabel(raw: string): string {
+  if (!isZh()) return raw
+  const trimmed = raw.replace(/^\n+/, '').trim()
+  if (!trimmed) return raw
+  const plain = stripDcss(trimmed)
+  const pronoun = (p: string) => ({ It: '它', They: '它们', He: '他', She: '她' }[p] ?? p)
+  const vuln = (v?: string): string => {
+    if (!v) return ''
+    const map: Record<string, string> = {
+      silence: '受沉默影响',
+      'silence and antimagic': '受沉默与反魔法影响',
+      'antimagic (but not silence)': '受反魔法影响（但不受沉默影响）',
+    }
+    return `（${map[v] ?? v}）`
+  }
+  const wand = /^(It|They|He|She)\s+possess(?:es)? the following wand spells:$/.exec(plain)
+  if (wand) return `${pronoun(wand[1])}拥有以下魔杖法术：`
+  const mastered = /^(It|They|He|She)\s+(?:has|have) mastered the following spells(?:\s+\(vulnerable to ([^)]+(?:\([^)]*\))?)\))?:$/.exec(plain)
+  if (mastered) return `${pronoun(mastered[1])}掌握了以下法术${vuln(mastered[2])}：`
+  const abil = /^(It|They|He|She)\s+possess(?:es)? the following (natural|magical|divine) abilities(?:\s+\(vulnerable to ([^)]+(?:\([^)]*\))?)\))?:$/.exec(plain)
+  if (abil) {
+    const desc: Record<string, string> = { natural: '天生', magical: '魔法', divine: '神圣' }
+    return `${pronoun(abil[1])}拥有以下${desc[abil[2]]}能力${vuln(abil[3])}：`
+  }
+  const hit = t(plain)
+  return hit !== plain ? hit : raw.replace(/^\n+/, '')
+}
+
+function translateSpellTitle(raw: string): string {
+  if (!isZh() || !raw) return raw
+  const m = /^((?:<[^>]+>[^<]*<\/[^>]+>\s*)+)?([\s\S]+)$/.exec(raw)
+  const prefix = m?.[1] ?? ''
+  const body = (m?.[2] ?? raw).trim()
+  if (!body || /<[^>]+>/.test(body)) return raw
+  const zh = tItem(body)
+  if (zh !== body) return prefix + zh
+  const direct = t(body)
+  return direct !== body ? prefix + direct : raw
+}
+
+function translateSpellEffect(raw: string): string {
+  if (!isZh() || !raw) return raw
+  if (raw.trim() === '(immune)') return '（免疫）'
+  return raw.replace(/\b(\d+-\d+)\s+MP\b/g, '$1 法力')
 }
 
 // Render a single spellset book as DOM: an optional header line followed
@@ -31,7 +78,7 @@ export function renderSpellbook(loader: TileLoader | null, book: SpellBook, colo
   if (book.label?.trim()) {
     const label = document.createElement('div')
     label.className = 'overlay-line'
-    label.innerHTML = dcssToHtml(book.label.replace(/^\n+/, ''))
+    label.innerHTML = dcssToHtml(translateBookLabel(book.label.replace(/^\n+/, '')))
     wrap.appendChild(label)
   }
   const list = document.createElement('div')
@@ -48,12 +95,12 @@ export function renderSpellbook(loader: TileLoader | null, book: SpellBook, colo
     // `title` can carry markup: Dithmenos worshippers get a marionette marker
     // prefix, `<magenta>!</magenta>` / `<lightmagenta>*</lightmagenta>`
     // (describe-spells.cc _write_book, dith_marker).
-    text.innerHTML = dcssToHtml(` ${spell.letter} - ${spell.title}`)
+    text.innerHTML = dcssToHtml(` ${spell.letter} - ${translateSpellTitle(spell.title)}`)
     item.appendChild(text)
     if (spell.effect) {
       const eff = document.createElement('span')
       eff.className = 'overlay-spell-effect'
-      eff.innerHTML = dcssToHtml(spell.effect)
+      eff.innerHTML = dcssToHtml(translateSpellEffect(spell.effect))
       item.appendChild(eff)
     }
     if (spell.range_string) {
