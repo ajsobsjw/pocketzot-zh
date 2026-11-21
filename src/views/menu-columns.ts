@@ -38,6 +38,7 @@
 import { dcssToHtml, escHtml, sliceDcss, stripDcss } from '../game/dcss-colors'
 import type { MenuItem } from '../game/menu-model'
 import { isZh, tItem, tTitle } from '../i18n'
+import { spellField } from '../i18n/titles'
 
 const HEAD_ZH: Record<string, string> = {
   Type: '学派', Failure: '失败率', Level: '等级',
@@ -51,15 +52,6 @@ const SCHOOL_ZH: Record<string, string> = {
   Earth: '土系', Poison: '毒系', Hexes: '诅咒系', Charms: '魅惑系',
   Forgecraft: '锻造术', Alchemy: '炼金术', Translocation: '传送系',
   Translocations: '传送系', Conjurations: '咒法系', Summonings: '召唤系',
-}
-
-const NOISE_ZH: Record<string, string> = {
-  'N/A': '无',
-  'Almost silent': '几乎无声',
-  Quiet: '低微',
-  Loud: '响亮',
-  'Very loud': '非常响亮',
-  'Extremely loud': '极其响',
 }
 
 const COST_PART_ZH: Record<string, string> = {
@@ -266,14 +258,13 @@ export function columnTable(cols: MenuColumns, items: MenuItem[]): ColumnTable |
   if (parsed.size === 0) return null
 
   const zh = isZh()
-  // A structured row is localized only when every free-text field in its
-  // shape is known. This keeps a new engine field or a truncated cost from
-  // producing a half-Chinese row.
+  // Schools and costs have compound values. Keep those rows intact if the
+  // field can't be parsed. A standalone noise cell has its own fallback.
   const rowZh = (r: ParsedRow): boolean => {
     if (!zh) return false
     if (cols.rows === 'spells') return zhSchools(r.sub ?? '') !== null
     if (cols.rows === 'abilities') return zhCost(r.sub ?? '') !== null
-    return NOISE_ZH[r.cells[3]?.plain] !== undefined
+    return true
   }
   const zhName = (r: ParsedRow): string => {
     if (!rowZh(r)) return r.name
@@ -294,7 +285,7 @@ export function columnTable(cols: MenuColumns, items: MenuItem[]): ColumnTable |
   const cellText = (r: ParsedRow, i: number): string => {
     const plain = r.cells[i].plain
     if (!rowZh(r)) return plain
-    if (grid && i === 3) return NOISE_ZH[plain] ?? plain
+    if (grid && i === 3) return spellField('Noise', plain)
     return plain === 'N/A' ? '无' : plain
   }
   const widths = heads.map((h, i) =>

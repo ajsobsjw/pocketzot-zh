@@ -234,12 +234,9 @@ export class MenuView {
   private onUpdateMenu(m: UpdateMenuMsg): void {
     const active = this.model.active
     if (!active) return
+    if (m.alt_more !== undefined) active.alt_more = m.alt_more
     if (m.more !== undefined) {
       active.more = m.more
-      // Menu::update_more's webtiles send carries both template variants
-      // (webtiles_write_more writes more AND alt_more every time); keep
-      // ours current so updateFooter derives from the right pair.
-      if (m.alt_more !== undefined) active.alt_more = m.alt_more
       // On a prompt popup a changed `more` is yesno()'s error channel
       // (see MenuModel promptInitialMore) — un-hide the footer so the
       // rejection ("Uppercase [Y]es or [N]o only, please.") is visible.
@@ -328,7 +325,7 @@ export class MenuView {
     titleEl.innerHTML = ''
     const promptEl = document.createElement('span')
     promptEl.className = 'menu-filter-prompt'
-    promptEl.innerHTML = dcssToHtml(prompt)
+    promptEl.innerHTML = dcssToHtml(translateKeyHelp(prompt))
     titleEl.appendChild(promptEl)
     const input = systemKeyboardField('input-dialog-field menu-filter-input')
     input.addEventListener('keydown', (e) => {
@@ -502,10 +499,7 @@ export class MenuView {
   // re-fill it and visibility must come back with the text.
   private setFooter(footerEl: HTMLElement, more: string, pos: string): void {
     const source = more.replace(/XXX/g, pos)
-    // The engine colours the active spell action as well as the keys.
-    // Translate text runs without rebuilding or guessing the colour spans.
-    footerEl.innerHTML = dcssToHtml(isZh() ? source.split(/(<\/?(?:bg:)?[a-z]+>)/i)
-      .map((run, i) => i % 2 ? run : tMore(run)).join('') : source)
+    footerEl.innerHTML = dcssToHtml(translateKeyHelp(source, this.model.active?.tag === 'spell'))
     footerEl.dataset.noI18n = ''
     footerEl.style.display = formatMore(more, pos) ? '' : 'none'
   }
@@ -715,8 +709,25 @@ export class MenuView {
   }
 }
 
+function translateKeyHelp(source: string, spell = false): string {
+  if (!isZh()) return source
+  // Keep the engine's active-action and shortcut colors. The expression
+  // after Matches is player input, even if it contains a word like "Hide".
+  return source.split('\n').map(line => {
+    const match = spell ? /\bMatches: /.exec(line) : null
+    const end = match ? match.index + match[0].length : line.length
+    return line.slice(0, end).split(/(<\/?(?:bg:)?[a-z]+>)/i)
+      .map((run, i) => i % 2 ? run : tMore(run)).join('') + line.slice(end)
+  }).join('\n')
+}
+
 function displayShopItemText(text: string): string {
   const plain = text.replace(/<[^>]*>/g, '').trim()
+  const listed = /^(\S\s+[-+#$]\s+)?(\[[^\]]+\])\s*(\d+\s+gold\b.+)$/i.exec(plain)
+  if (listed) {
+    const translated = tItem(listed[3])
+    if (translated !== listed[3]) return `${listed[1] ?? ''}${listed[2]} ${translated}`
+  }
   const translated = tItem(plain)
   return translated === plain ? displayItemText(text) : translated
 }

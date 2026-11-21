@@ -2242,23 +2242,64 @@ describe('floating prompt (yesno/travel popups)', () => {
     const { setLang } = await import('../i18n')
     await setLang('zh')
     const h = setup()
-    const more = (active: string) => '<lightgrey>6 spell levels left\n[<w>Tab</w>] '
-      + ['Memorise', 'Describe', 'Hide', 'Show'].map(mode => mode === active ? `<w>${mode}</w>` : mode).join('|')
-      + '   [<w>Ctrl-F</w>] search   [<w>?</w>] help   [<w>Esc</w>] exit</lightgrey>'
+    const more = (active: string, primary = 'Memorise') => '<lightgreen>6 spell levels left</lightgreen> 1 spell hidden   Matches: <w>Hide</w>\n[<w>Tab</w>] '
+      + [primary, 'Describe', 'Hide', 'Show'].map(mode => mode === active ? `<w>${mode}</w>` : mode).join('|')
+      + '   [<w>Ctrl-F</w>] search   [<w>?</w>] help   [<w>Esc</w>] clear'
+    const title = (mode: string) => ({ text: `<w>Spells (${mode})                   Type                      Failure  Level` })
     h.dispatch({ msg: 'menu', tag: 'spell', flags: 0xc0342,
-      title: { text: 'Memorise' },
+      title: title('Memorise'),
       more: more('Memorise'), alt_more: more('Memorise'),
       items: [{ level: 2, text: ' a - Magic Dart', hotkeys: [97] }] })
     const footer = overlay(h).querySelector<HTMLElement>('.menu-footer')!
     const highlighted = () => Array.from(overlay(h).querySelectorAll('.menu-footer span[style="color:#eeeeec"]'), el => el.textContent)
     expect(footer.textContent).toContain('记忆|描述|隐藏|显示')
     expect(footer.textContent).toContain('6 个法术等级可用')
-    for (const [mode, zh] of [['Memorise', '记忆'], ['Describe', '描述'], ['Hide', '隐藏'], ['Show', '显示']]) {
-      h.dispatch({ msg: 'update_menu', more: more(mode), alt_more: more(mode) })
-      expect(highlighted()).toEqual(['Tab', zh, 'Ctrl-F', '?', 'Esc'])
+    for (const [mode, zh] of [['Cast', '施法'], ['Imbue', '灌注'], ['Memorise', '记忆'], ['Describe', '描述'], ['Hide', '隐藏'], ['Show', '显示']]) {
+      const footerText = more(mode, mode === 'Cast' || mode === 'Imbue' ? mode : 'Memorise')
+      h.dispatch({ msg: 'update_menu', title: title(mode), more: footerText, alt_more: footerText })
+      expect(overlay(h).querySelector('.overlay-title')?.textContent).toMatch(new RegExp(`法术（${zh}）.*学派.*失败率.*等级`))
+      expect(highlighted()).toEqual(['Hide', 'Tab', zh, 'Ctrl-F', '?', 'Esc'])
+      expect(footer.textContent).toContain('已隐藏 1 个法术')
+      expect(footer.textContent).toContain('匹配： Hide')
+      expect(footer.textContent).toContain('清除')
     }
     await setLang('en')
-    expect(highlighted()).toEqual(['Tab', 'Show', 'Ctrl-F', '?', 'Esc'])
+    expect(highlighted()).toEqual(['Hide', 'Tab', 'Show', 'Ctrl-F', '?', 'Esc'])
+  })
+
+  it('localizes shop mode and sort changes while keeping the active mode highlighted', async () => {
+    const h = setup()
+    const more = (examine: boolean, order: string, action: string) => '[<w>Esc</w>] exit  [<w>Tab</w>] '
+      + (examine ? 'buy|<w>examine</w> items  [a-c] examine item' : '<w>buy</w>|examine items  [a-c] mark item for purchase')
+      + `\n[<w>/</w>] sort (${order})  [<w>Enter</w>] ${action}  [A-C] put item on shopping list`
+    const footer = () => overlay(h).querySelector('.menu-footer')!
+    const accept = () => h.view.querySelector('[data-dynamic="accept"]')?.textContent
+    try {
+      await setLang('zh')
+      const initial = more(false, 'type', 'buy marked items')
+      h.dispatch({ msg: 'menu', tag: 'shop', title: { text: "Welcome to Leluj's General Store! What would you like to do?" }, items: [], more: initial, alt_more: initial })
+      expect(overlay(h).querySelector('.overlay-title')?.textContent).toContain('杂货店')
+      expect(footer().textContent).toContain('排序（类型）')
+      expect(footer().textContent).toContain('购买已标记物品')
+      expect(accept()).toBe('⏎ 购买')
+      h.dispatch({ msg: 'update_menu', alt_more: more(true, 'price', 'describe') })
+      expect(footer().textContent).toContain('购买|查看 物品')
+      expect(footer().textContent).toContain('排序（价格）')
+      expect([...footer().querySelectorAll('[style="color:#eeeeec"]')].map(el => el.textContent)).toContain('查看')
+      expect(accept()).toBe('⏎ 查看')
+      h.dispatch({ msg: 'update_menu', alt_more: more(false, 'name', 'buy shopping list'), title: { text: 'Shopping list: 1 item, total cost 40 gold pieces' } })
+      h.dispatch({ msg: 'update_menu_items', items: [{ level: 2, text: 'a - [D:2]    40 gold  a wand of roots', hotkeys: [97] }] })
+      expect(overlay(h).textContent).toContain('购物清单：1 件物品，共 40 金币')
+      expect(overlay(h).textContent).toContain('[D:2] 根须魔杖（40 金币）')
+      expect(footer().textContent).toContain('排序（名称）')
+      expect(footer().textContent).toContain('购买购物清单')
+      expect(accept()).toBe('⏎ 买清单')
+      await setLang('en')
+      expect(footer().textContent).toContain('sort (name)')
+      expect(accept()).toBe('⏎ Buy list')
+    } finally {
+      await setLang('en')
+    }
   })
 
   it('floats over the visible game in a card, with the default answer highlighted', () => {

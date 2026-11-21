@@ -185,13 +185,19 @@ describe('columnTable: anything else stays verbatim', () => {
     expect(t.tracks.startsWith('14ch')).toBe(true)
   })
 
-  it('translates known noise values in the stats view', async () => {
+  it('translates all noise tiers in the stats view without gating the spell name', async () => {
     await setLang('zh')
-    const a = statsRow('a', 'Magic Dart', '100%', '3d3', '5', 'Almost silent')
-    const b = statsRow('b', 'Shatter', '38%', '(3-5)d12', '2-4/7', 'Extremely loud')
-    const t = table('spell', STATS_TITLE, [a, b])!
-    expect(text(t.rows.get(a.text!)!)).toContain('几乎无声')
-    expect(text(t.rows.get(b.text!)!)).toContain('极其响')
+    for (const [noise, expected] of [
+      ['Silent', '无声'], ['Almost silent', '几乎无声'], ['Quiet', '安静'], ['A bit loud', '略响'],
+      ['Loud', '响亮'], ['Very loud', '非常响亮'], ['Extremely loud', '极响'], ['Deafening', '震耳欲聋'],
+      ['New noise', 'New noise'],
+    ]) {
+      const item = statsRow('a', 'Magic Dart', '100%', '3d3', '5', noise)
+      const t = table('spell', STATS_TITLE, [item])!
+      const row = text(t.rows.get(item.text!)!)
+      expect(row).toContain(expected)
+      expect(row).not.toContain('Magic Dart')
+    }
   })
 
   it('leaves out rows that are not ASCII or not on the columns', () => {

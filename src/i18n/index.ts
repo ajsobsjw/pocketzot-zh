@@ -748,7 +748,18 @@ export function hasUiLabel(text: string): boolean {
 }
 
 /** Menu-footer nav keyhelp: a closed vocabulary, applied word-wise. */
+const SHOP_SORT_ZH: Record<string, string> = { type: '类型', price: '价格', name: '名称' }
+const SPELL_MODE_ZH: Record<string, string> = {
+  cast: '施法', memorise: '记忆', describe: '描述', hide: '隐藏', show: '显示', imbue: '灌注', adjust: '调整',
+}
+const SPELL_HEAD_ZH: Record<string, string> = {
+  Type: '学派', Failure: '失败率', Level: '等级', Power: '威力', Damage: '伤害', Range: '射程', Noise: '噪音',
+}
 const MORE_WORDS: Array<[RegExp, string]> = [
+  [/\bbuy marked items\b/gi, '购买已标记物品'],
+  [/\bbuy shopping list\b/gi, '购买购物清单'],
+  [/\bexamine items?\b/gi, '查看物品'],
+  [/\bexamine\b/gi, '查看'],
   [/\btoggle spell headers\b/gi, '切换法术栏标题'],
   [/\bSelect a spell to describe\b/gi, '选择法术查看描述'],
   [/\bMemorise\b/gi, '记忆'],
@@ -777,10 +788,6 @@ const MORE_WORDS: Array<[RegExp, string]> = [
   [/\bletters toggle\b/gi, '字母切换'],
   [/\bmark item for purchase\b/gi, '标记购买'],
   [/\bput item on shopping list\b/gi, '加入购物清单'],
-  [/\bbuy marked items\b/gi, '购买已标记物品'],
-  [/\bbuy shopping list\b/gi, '购买购物清单'],
-  [/\bexamine items\b/gi, '查看物品'],
-  [/\bsort \(type\)\b/gi, '排序（类型）'],
   [/\bsort\b/gi, '排序'],
   [/\bgold\b/gi, '金币'],
   [/\bitems\b/gi, '物品'],
@@ -792,13 +799,21 @@ export function tMore(text: string): string {
   if (text.trim() === '--more--') return '--继续--'
   if (text.trim() === '[Y]es or [N]o only, please.') return '请只回答是 [Y] 或否 [N]。'
   let out = text
+    .replace(/\bsort \((type|price|name)\)/gi, (_all, order: string) => `排序（${SHOP_SORT_ZH[order.toLowerCase()]}）`)
+    .replace(/\b(\d+) spells? hidden\b/gi, '已隐藏 $1 个法术')
+    .replace(/\bMatches:/g, '匹配：')
+    .replace(/\bclear(?=\s*$)/g, '清除')
+    .replace(/\bSearch for what\? \(regex\)/g, '搜索什么？（正则表达式）')
+    .replace(/\b(?:Casting|Select a spell to cast) with Divine Exegesis: (\d+) MP available\b/g, '神谕阐释：可用 $1 点法力')
+    .replace(/\bSelect a spell to imbue your Spellspark Servitor with:/g, '选择要灌注给法术仆从的法术：')
+    .replace(/\bI'll put (it|them|some of them) outside for you\./g, (_all, items: string) =>
+      `我会把${items === 'it' ? '它' : items === 'them' ? '它们' : '其中一些'}放在外面。`)
     .replace(/\bYou have (\d+) gold pieces?( and a voucher)?(\.|(?=\s*$))/gi,
       (_all, gold, voucher) => `你现有 ${gold} 枚金币${voucher ? '和一张购物券' : ''}。`)
     .replace(/\bAfter the purchase, you will have (\d+) gold pieces?\./gi, '购买后还剩 $1 枚金币。')
     .replace(/\bYou are short (\d+) gold pieces? for the purchase\./gi, '你还差 $1 枚金币才能购买。')
     .replace(/\bPurchasing will use your shop voucher and (\d+) gold pieces?\./gi, '购买将使用你的购物券和 $1 枚金币。')
   for (const [re, zh] of MORE_WORDS) out = out.replace(re, zh)
-  out = out.replace(/\b(\d+) 个法术等级可用\b/i, '$1 个法术等级可用')
   // Page's spell-menu status line is a count, not a generic footer keyword.
   out = out.replace(/\b(\d+)\s+spell levels? left\b/i, '$1 个法术等级可用')
   return out
@@ -813,8 +828,11 @@ function shopKind(kind: string): string {
 export function tTitle(text: string): string {
   if (lang !== 'zh') return text
   const plain = text.replace(/<[^>]*>/g, '').trim()
-  const spellHeader = /^(Your spells \((?:cast|describe)\))(\s{2,})Type(\s{2,})Failure(\s{2,})Level$/.exec(plain)
-  if (spellHeader) return `${t(spellHeader[1])}${spellHeader[2]}学派${spellHeader[3]}失败率${spellHeader[4]}等级`
+  const spellHeader = /^(Your )?Spells \((cast|memorise|describe|hide|show|imbue|adjust)\)((?: {2,}(?:Type|Failure|Level|Power|Damage|Range|Noise))*)$/i.exec(plain)
+  if (spellHeader) {
+    const columns = spellHeader[3].replace(/\w+/g, key => SPELL_HEAD_ZH[key] ?? key)
+    return `${spellHeader[1] ? '你的' : ''}法术（${SPELL_MODE_ZH[spellHeader[2].toLowerCase()]}）${columns}`
+  }
   const spellTrain = /^With your current stats and equipment, training (.+?) to ([\d.]+) would reduce (?:your|the) failure rate to (\d+)%\. This would take about ([\d.]+) XLs?\.?$/.exec(plain)
   if (spellTrain) {
     const skill = t(spellTrain[1])
@@ -829,10 +847,12 @@ export function tTitle(text: string): string {
   if (hydra) return `${NUM[hydra[1].toLowerCase()]}头九头蛇`
   const feat = featureName(plain)
   if (feat) return feat
-  const shop = /^Welcome to (.+?)'s (.+?)! What would you like\?$/i.exec(plain)
+  const shop = /^Welcome to (.+?)[’']s (.+?)! What would you like(?: to do)?\?$/i.exec(plain)
   if (shop) {
     return `欢迎光临${shop[1]}的${shopKind(shop[2])}！想买点什么？`
   }
+  const shoppingList = /^Shopping list: (\d+) items?, total cost (\d+) gold pieces?$/i.exec(plain)
+  if (shoppingList) return `购物清单：${shoppingList[1]} 件物品，共 ${shoppingList[2]} 金币`
   const out = matchTitle(plain)
   if (out) return out
   // Menu-style title with the hotkey baked in: "a - a +0 robe (worn)."

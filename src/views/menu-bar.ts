@@ -10,6 +10,7 @@ import { bindPressedClass } from '../game/input/touch'
 import { escHtml } from '../game/dcss-colors'
 import { MF_ALLOW_FILTER, MF_MULTISELECT } from '../game/menu-model'
 import { primeSystemKeyboard } from './text-field'
+import { isZh } from '../i18n'
 
 // Menus whose tag earns a permanent bottom control bar (shown on open,
 // kept under layered ui-pushes, rebuilt across input-mode changes). Every
@@ -201,8 +202,14 @@ export class MenuBar {
     // labels a word or two — the bar has five buttons across the phone
     // width (see the accept rule in style.css).
     const buyMatch = footerText.match(/\[Enter\]\s+buy\s+(marked\s+items|shopping\s+list)/i)
-    if (acceptMatch) btn.innerHTML = glyphHtml(`⏎ Accept ${acceptMatch[1]}`)
-    else if (buyMatch) btn.innerHTML = glyphHtml(/list/i.test(buyMatch[1]) ? '⏎ Buy list' : '⏎ Buy')
+    const zh = isZh()
+    if (acceptMatch) {
+      const count = /\d+/.exec(acceptMatch[1])?.[0]
+      btn.innerHTML = glyphHtml(zh ? `⏎ 确认（已选 ${count}）` : `⏎ Accept ${acceptMatch[1]}`)
+    } else if (buyMatch) {
+      const list = /list/i.test(buyMatch[1])
+      btn.innerHTML = glyphHtml(list ? (zh ? '⏎ 买清单' : '⏎ Buy list') : (zh ? '⏎ 购买' : '⏎ Buy'))
+    } else if (zh && /\[Enter\]\s+describe\b/i.test(footerText)) btn.innerHTML = glyphHtml('⏎ 查看')
     else btn.innerHTML = glyphHtml('⏎')
   }
 
