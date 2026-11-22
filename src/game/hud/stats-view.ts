@@ -2,6 +2,7 @@ import type { PlayerMsg } from '../../ws/types'
 import type { InventoryStore } from '../inventory-store'
 import { escHtml, dcssToHtml, DCSS_COLOR_MAP } from '../dcss-colors'
 import { compactPlace, nameTitle } from '../char-label'
+import { isZh, LANG_CHANGED_EVENT, t, tItem } from '../../i18n'
 
 const BAR_RES = 10000  // basis points; matches reference player.js precision
 
@@ -70,6 +71,7 @@ export class StatsView {
     this.layout = this.mql?.matches ? 'square' : 'compact'
     this.mount()
     this.mql?.addEventListener('change', this.onOrientationChange)
+    window.addEventListener(LANG_CHANGED_EVENT, this.onLangChange)
   }
 
   // The one place the template enters the DOM: the slot refs and the write
@@ -102,6 +104,12 @@ export class StatsView {
   // the heap snapshot's retainer path ran through this listener's `this`.
   dispose(): void {
     this.mql?.removeEventListener('change', this.onOrientationChange)
+    window.removeEventListener(LANG_CHANGED_EVENT, this.onLangChange)
+  }
+
+  private onLangChange = (): void => {
+    this.mount()
+    this.render()
   }
 
   // Swap templates on rotate and repaint from the accumulated state — both
@@ -157,15 +165,18 @@ export class StatsView {
     const speciesDisplay = s.species_display_name || species
     const god = s.god ?? ''
     const piety = s.piety_rank ?? 0
-    const godStr = god && god !== 'No God' ? ` of ${god}` : ''
+    const zh = isZh()
+    const speciesLabel = zh && speciesDisplay ? t(speciesDisplay) : speciesDisplay
+    const godLabel = zh && god && god !== 'No God' ? t(god) : god
+    const godStr = god && god !== 'No God' ? (zh ? `（信仰${godLabel}）` : ` of ${god}`) : ''
     const titled = nameTitle(name, title)
     // Wizard/explore games are non-scoring; flag them like the reference's
     // #stats_wizmode. Explore mode is reachable from the WebTiles lobby ('+').
-    const modeFlag = s.wizard ? ' *WIZARD*' : s.explore ? ' *EXPLORE*' : ''
-    const speciesGod = speciesDisplay + godStr
+    const modeFlag = s.wizard ? (zh ? ' *巫师模式*' : ' *WIZARD*') : s.explore ? (zh ? ' *探索模式*' : ' *EXPLORE*') : ''
+    const speciesGod = speciesLabel + godStr
     if (this.layout === 'compact') {
       // compact: one combined line
-      const idLine = titled && speciesGod ? `${titled}, ${speciesGod}` : titled || speciesGod
+      const idLine = titled && speciesGod ? `${titled}${zh ? '，' : ', '}${speciesGod}` : titled || speciesGod
       this.setText('#hud-id', idLine + modeFlag)
     } else {
       // square: separate title and species lines, as in the reference
@@ -208,7 +219,7 @@ export class StatsView {
     // Square-only: the HP caption reads "Health:" until a drained "(real max)"
     // needs the room, then shortens to "HP:". Compact has no caption element,
     // so this no-ops there.
-    this.setText('#hud-hp-caption', hpDrained ? 'HP:' : 'Health:')
+    this.setText('#hud-hp-caption', zh ? '生命:' : (hpDrained ? 'HP:' : 'Health:'))
 
     // dd_real_mp_max is sent as 0 for non-Deep-Dwarves; only show parens for DD with reduced max.
     const ddRealMpMax = s.dd_real_mp_max ?? 0
@@ -243,7 +254,7 @@ export class StatsView {
     const goldAura = (s.status ?? []).some(st => st.text === 'gold aura')
     if (this.layout === 'compact') {
       // compact: XL/progress/place/gold composed onto one line
-      let html = `<span class="hg-caption">XL</span><span>${escHtml(String(xl))}</span>`
+      let html = `<span class="hg-caption">${zh ? '级' : 'XL'}</span><span>${escHtml(String(xl))}</span>`
       if (s.progress != null) html += ` ${escHtml(String(s.progress))}%`
       // Compact abbreviates the branch (D:5, Elf:3 — the lobby/morgue short
       // forms) to protect the line's tightest real estate; square keeps the
@@ -367,7 +378,7 @@ export class StatsView {
     // right of the (now-black) bar, mirroring the reference's #stats_noise_status
     // rather than hiding the caption. (game.html keeps <span class="stats_caption">
     // static; player.js only sets #stats_noise_status.)
-    this.setText('#hud-noise-status', silenced ? 'Silenced' : '')
+    this.setText('#hud-noise-status', silenced ? (isZh() ? '沉默' : 'Silenced') : '')
   }
 
   private buildWeapon(offhand: boolean): string {
@@ -410,7 +421,8 @@ export class StatsView {
 
     const letter = idx === -1 ? '-' : indexToLetter(idx)
     const classAttr = classes.length ? ` class="${classes.join(' ')}"` : ''
-    return `<span class="hg-caption">${letter})</span> <span${classAttr}>${escHtml(name)}</span>`
+    const displayName = isZh() ? tItem(name) : name
+    return `<span class="hg-caption">${letter})</span> <span${classAttr}>${escHtml(displayName)}</span>`
   }
 
   // Mirrors stat_class() in player.js: lost (status) → stat_colour warning
@@ -460,12 +472,13 @@ export class StatsView {
     const doomCls = doom >= 75 ? 'fg5' : doom >= 50 ? 'fg12' : doom >= 25 ? 'fg14' : 'fg7'
 
     if (this.layout === 'compact') {
+      const zh = isZh()
       const parts: string[] = []
       if (contam > 0) {
-        parts.push(`<span class="hg-grp"><span class="hg-caption">Contam</span><span class="${contamCls}">${contam}%</span></span>`)
+        parts.push(`<span class="hg-grp"><span class="hg-caption">${zh ? '污染' : 'Contam'}</span><span class="${contamCls}">${contam}%</span></span>`)
       }
       if (doom > 0) {
-        parts.push(`<span class="hg-grp"><span class="hg-caption">Doom</span><span class="${doomCls}">${doom}%</span></span>`)
+        parts.push(`<span class="hg-grp"><span class="hg-caption">${zh ? '厄运' : 'Doom'}</span><span class="${doomCls}">${doom}%</span></span>`)
       }
       // Joined with a space so the Contam↔Doom gap matches the inter-stat gap
       // (e.g. AC↔EV) — .hg-warn applies the same word-spacing to that space.
@@ -560,6 +573,7 @@ export class StatsView {
   }
 
   private compactTemplate(): string {
+    const zh = isZh()
     return `
       <div class="hs-id fg14"><span id="hud-id"></span><span class="hg-piety" id="hud-piety"></span>${this.settingsChip()}</div>
       <div class="hg-bar-pair">
@@ -574,16 +588,16 @@ export class StatsView {
       </div>
       <div class="hg-stats-row">
         <div class="hg-inline-stats">
-          <span class="hg-grp"><span class="hg-caption">AC</span><span id="hud-ac"></span> <span class="hg-caption">EV</span><span id="hud-ev"></span> <span class="hg-caption">SH</span><span id="hud-sh"></span></span>
-          <span class="hg-grp"><span class="hg-caption">St</span><span id="hud-str"></span> <span class="hg-caption">In</span><span id="hud-int"></span> <span class="hg-caption">Dx</span><span id="hud-dex"></span></span>
+          <span class="hg-grp"><span class="hg-caption">${zh ? '防' : 'AC'}</span><span id="hud-ac"></span> <span class="hg-caption">${zh ? '闪' : 'EV'}</span><span id="hud-ev"></span> <span class="hg-caption">${zh ? '盾' : 'SH'}</span><span id="hud-sh"></span></span>
+          <span class="hg-grp"><span class="hg-caption">${zh ? '力' : 'St'}</span><span id="hud-str"></span> <span class="hg-caption">${zh ? '智' : 'In'}</span><span id="hud-int"></span> <span class="hg-caption">${zh ? '敏' : 'Dx'}</span><span id="hud-dex"></span></span>
         </div>
         <span class="hg-warn" id="hud-warn"></span>
       </div>
       <div class="hg-xl-row">
         <span class="hg-xl-place hg-grp" id="hud-xl-place"></span>
         <span class="hg-noise-time">
-          <span class="hg-noise"><span class="hg-caption">N</span><span class="hg-noise-cell" id="hud-noise-cell"><span class="hud-bar-seg noise-full"></span><span class="hud-bar-seg noise-decrease"></span></span><span class="hg-noise-status" id="hud-noise-status"></span></span>
-          <span class="hg-time"><span class="hg-caption">T</span><span id="hud-time-val"></span></span>
+          <span class="hg-noise"><span class="hg-caption">${zh ? '噪' : 'N'}</span><span class="hg-noise-cell" id="hud-noise-cell"><span class="hud-bar-seg noise-full"></span><span class="hud-bar-seg noise-decrease"></span></span><span class="hg-noise-status" id="hud-noise-status"></span></span>
+          <span class="hg-time"><span class="hg-caption">${zh ? '时' : 'T'}</span><span id="hud-time-val"></span></span>
         </span>
       </div>
       ${this.wqQuiverRows()}
@@ -598,30 +612,31 @@ export class StatsView {
   // weapon/quiver rows. Every readout owns a cell, so nothing clips at
   // sidebar width the way the compact template's nowrap rows do.
   private squareTemplate(): string {
+    const zh = isZh()
     return `
       <div class="hs-id fg14"><span id="hud-title"></span>${this.settingsChip()}</div>
-      <div class="hs-species fg14"><span id="hud-species"></span><span class="hg-piety" id="hud-piety"></span><span class="hud-sq-gold" id="hud-gold-ui" style="display:none"><span class="hg-caption">Gold:</span><span id="hud-gold"></span></span></div>
+      <div class="hs-species fg14"><span id="hud-species"></span><span class="hg-piety" id="hud-piety"></span><span class="hud-sq-gold" id="hud-gold-ui" style="display:none"><span class="hg-caption">${zh ? '金币:' : 'Gold:'}</span><span id="hud-gold"></span></span></div>
       <div class="hg-bar-row hud-sq-barline">
-        <span class="hg-caption" id="hud-hp-caption">Health:</span>
+        <span class="hg-caption" id="hud-hp-caption">${zh ? '生命:' : 'Health:'}</span>
         <span class="hg-bar-val" id="hud-hp"></span>
         <div class="hg-bar-cell"><span class="hud-bar-seg hp-full"></span><span class="hud-bar-seg hp-poison"></span><span class="hud-bar-seg hp-decrease"></span><span class="hud-bar-seg hp-increase"></span></div>
       </div>
       <div class="hg-bar-row hud-sq-barline" id="hud-mp-line">
-        <span class="hg-caption">Magic:</span>
+        <span class="hg-caption">${zh ? '法力:' : 'Magic:'}</span>
         <span class="hg-bar-val" id="hud-mp"></span>
         <div class="hg-bar-cell"><span class="hud-bar-seg mp-full"></span><span class="hud-bar-seg mp-decrease"></span><span class="hud-bar-seg mp-increase"></span></div>
       </div>
       <div class="hud-grid">
-        <span><span class="hg-caption">AC:</span><span id="hud-ac"></span></span>
-        <span><span class="hg-caption">Str:</span><span id="hud-str"></span><span class="hud-sq-warn" id="hud-doom-ui" style="display:none"><span class="hg-caption">Doom:</span><span id="hud-doom"></span></span></span>
-        <span><span class="hg-caption">EV:</span><span id="hud-ev"></span></span>
-        <span><span class="hg-caption">Int:</span><span id="hud-int"></span><span class="hud-sq-warn" id="hud-contam-ui" style="display:none"><span class="hg-caption">Contam:</span><span id="hud-contam"></span></span></span>
-        <span><span class="hg-caption">SH:</span><span id="hud-sh"></span></span>
-        <span><span class="hg-caption">Dex:</span><span id="hud-dex"></span></span>
-        <span><span class="hg-caption">XL:</span><span id="hud-xl"></span> <span class="hg-caption">Next:</span><span id="hud-prog"></span></span>
-        <span class="hud-place-chip"><span class="hg-caption">Place:</span><span id="hud-place"></span></span>
-        <span class="hg-noise"><span class="hg-caption">Noise:</span><span class="hg-noise-cell" id="hud-noise-cell"><span class="hud-bar-seg noise-full"></span><span class="hud-bar-seg noise-decrease"></span></span><span class="hg-noise-status" id="hud-noise-status"></span></span>
-        <span class="hg-time"><span class="hg-caption">Time:</span><span id="hud-time-val"></span></span>
+        <span><span class="hg-caption">${zh ? '防御:' : 'AC:'}</span><span id="hud-ac"></span></span>
+        <span><span class="hg-caption">${zh ? '力量:' : 'Str:'}</span><span id="hud-str"></span><span class="hud-sq-warn" id="hud-doom-ui" style="display:none"><span class="hg-caption">${zh ? '厄运:' : 'Doom:'}</span><span id="hud-doom"></span></span></span>
+        <span><span class="hg-caption">${zh ? '闪避:' : 'EV:'}</span><span id="hud-ev"></span></span>
+        <span><span class="hg-caption">${zh ? '智力:' : 'Int:'}</span><span id="hud-int"></span><span class="hud-sq-warn" id="hud-contam-ui" style="display:none"><span class="hg-caption">${zh ? '污染:' : 'Contam:'}</span><span id="hud-contam"></span></span></span>
+        <span><span class="hg-caption">${zh ? '格挡:' : 'SH:'}</span><span id="hud-sh"></span></span>
+        <span><span class="hg-caption">${zh ? '敏捷:' : 'Dex:'}</span><span id="hud-dex"></span></span>
+        <span><span class="hg-caption">${zh ? '等级:' : 'XL:'}</span><span id="hud-xl"></span> <span class="hg-caption">${zh ? '下级:' : 'Next:'}</span><span id="hud-prog"></span></span>
+        <span class="hud-place-chip"><span class="hg-caption">${zh ? '位置:' : 'Place:'}</span><span id="hud-place"></span></span>
+        <span class="hg-noise"><span class="hg-caption">${zh ? '噪音:' : 'Noise:'}</span><span class="hg-noise-cell" id="hud-noise-cell"><span class="hud-bar-seg noise-full"></span><span class="hud-bar-seg noise-decrease"></span></span><span class="hg-noise-status" id="hud-noise-status"></span></span>
+        <span class="hg-time"><span class="hg-caption">${zh ? '时间:' : 'Time:'}</span><span id="hud-time-val"></span></span>
       </div>
       ${this.wqQuiverRows()}
     `

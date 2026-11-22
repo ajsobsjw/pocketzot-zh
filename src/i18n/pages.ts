@@ -41,9 +41,72 @@ const HELP: Record<string, string> = {
   'Show available altars (if any are discovered).': '显示已发现的祭坛。',
 }
 
+const EMPTY_SLOT_ZH: Record<string, string> = {
+  '(no weapon)': '(无武器)',
+  '(no offhand)': '(无副手)',
+  '(no shield)': '(无盾牌)',
+  '(no armour)': '(无护甲)',
+  '(no body armour)': '(无护甲)',
+  '(no helmet)': '(无头盔)',
+  '(no cloak)': '(无斗篷)',
+  '(no scarf)': '(无围巾)',
+  '(no gloves)': '(无手套)',
+  '(no boots)': '(无靴子)',
+  '(no barding)': '(无马铠)',
+  '(no amulet)': '(无护身符)',
+  '(no ring)': '(无戒指)',
+  '(no talisman)': '(无护符)',
+  '(no orb)': '(无宝珠)',
+  '(no gizmo)': '(无小装置)',
+}
+
+const STAT_LABEL_ZH: Record<string, string> = {
+  'Health:': '生命:',
+  'Magic:': '法力:',
+  'Gold:': '金币:',
+  'AC:': 'AC:',
+  'EV:': '闪避:',
+  'SH:': '格挡:',
+  'Str:': '力量:',
+  'Int:': '智力:',
+  'Dex:': '敏捷:',
+  'XL:': '等级:',
+  'God:': '信仰:',
+  'Spells:': '法术:',
+  'Lives:': '生命数:',
+  'Place:': '位置:',
+  'Time:': '时间:',
+  'Turns:': '回合:',
+  'Noise:': '噪音:',
+}
+
+function translateTraitItem(raw: string): string {
+  const s = raw.trim()
+  if (!s) return s
+  const lv = /^(.+?)\s+(\d+)$/.exec(s)
+  if (lv) {
+    const base = t(lv[1])
+    if (base !== lv[1]) return `${base} ${lv[2]}`
+  }
+  return t(s)
+}
+
 function cell(text: string): string {
   const trimmed = text.trim()
   if (!trimmed || !/[A-Za-z]/.test(trimmed)) return text
+  // Preserve single-character section/hotkey labels ("A:", "%:", "@:") so "A:"
+  // never falls into the article/dictionary entry ("a" -> "一阵").
+  if (/^[A-Za-z%@?!]:$/.test(trimmed)) return trimmed
+  if (EMPTY_SLOT_ZH[trimmed]) return EMPTY_SLOT_ZH[trimmed]
+  if (STAT_LABEL_ZH[trimmed]) return STAT_LABEL_ZH[trimmed]
+  const statVal = /^(Health|Magic|Gold|AC|EV|SH|Str|Int|Dex|XL|God|Spells|Lives|Place|Time|Turns|Noise):(\s+)(.+)$/.exec(trimmed)
+  if (statVal) {
+    const lbl = STAT_LABEL_ZH[`${statVal[1]}:`] ?? `${statVal[1]}:`
+    const val = statVal[1] === 'God' || statVal[1] === 'Place' ? t(statVal[3]) : statVal[3]
+    return `${lbl}${statVal[2]}${val}`
+  }
+  const regen = /^(HP|MP)Regen\s+([\d.]+)\/turn$/.exec(trimmed)
+  if (regen) return `${regen[1] === 'HP' ? '生命回复' : '法力回复'} ${regen[2]}/回合`
   // Engine-facing inscription and search syntax must remain verbatim.
   if (/^(?:Stash search prefixes|Menu\/colouring prefixes):/.test(trimmed)) return text
   const direct = HELP[trimmed]
@@ -55,7 +118,14 @@ function cell(text: string): string {
   }
   const colon = /^(:\s*)(.+)$/.exec(trimmed)
   if (colon && HELP[colon[2]]) return colon[1] + HELP[colon[2]]
-  return lookupProse(trimmed) ?? t(trimmed)
+  const whole = lookupProse(trimmed) ?? t(trimmed)
+  if (whole !== trimmed) return whole
+  if (trimmed.includes(', ')) {
+    const pieces = trimmed.split(/,\s+/)
+    const mapped = pieces.map(translateTraitItem)
+    if (mapped.some((m, i) => m !== pieces[i])) return mapped.join('，')
+  }
+  return trimmed
 }
 
 function width(s: string): number {

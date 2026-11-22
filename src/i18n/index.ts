@@ -81,6 +81,10 @@ export function loadDict(): Promise<void> {
 }
 
 export async function initI18n(): Promise<void> {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
+    document.documentElement.translate = false
+  }
   if (lang === 'zh') await loadDict()
 }
 
@@ -95,7 +99,10 @@ export async function setLang(next: Lang): Promise<void> {
     const { loadDescript } = await import('./describe')
     await loadDescript()
   }
-  if (typeof document !== 'undefined') document.documentElement.lang = next === 'zh' ? 'zh-CN' : 'en'
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = next === 'zh' ? 'zh-CN' : 'en'
+    document.documentElement.translate = false
+  }
   // Cached lookups may predate the describe table; drop them after loading.
   cache.clear()
   window.dispatchEvent(new Event(LANG_CHANGED_EVENT))

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang, tItem, tMore, tTitle } from './index'
 import { loadDescript } from './describe'
-import { translateOverviewMarkup } from './pages'
+import { translateOverviewMarkup, translatePage } from './pages'
 import { translateStatusLight, translateMonsterPanelStatus } from './status'
 import { LayoutView } from '../views/layout-view'
 import { CELL_SEP, GRID_MARK, renderSpellbook } from '../views/overlay-body'
@@ -10,6 +10,8 @@ import { localizeSkillRows } from '../views/skill-reflow'
 import { zhCost } from '../views/menu-columns'
 import { CrtView } from '../views/crt-view'
 import { StatusView } from '../game/hud/status-view'
+import { StatsView } from '../game/hud/stats-view'
+import { InventoryStore } from '../game/inventory-store'
 import { MonsterPanelView } from '../game/hud/monster-panel'
 import { MapStore } from '../game/map/map-store'
 import { showNewgameChoice } from '../views/newgame-view'
@@ -303,5 +305,55 @@ describe('localization audit fixes: HUD status pills, monster panel, and newgame
       body: 'Choose a custom seed for your game.',
     })
     expect(overlay.querySelector('.seed-header')?.textContent).toBe('选择游戏种子')
+  })
+
+  it('localizes StatsView HUD captions natively and updates AC/Str live across language switches', async () => {
+    const sv = new StatsView(new InventoryStore())
+    sv.update({
+      name: 'Shshssjdj',
+      title: 'the Cleaver',
+      species: 'Minotaur',
+      god: 'Okawaru',
+      ac: 12,
+      ev: 8,
+      sh: 4,
+      str: 23,
+      int: 5,
+      dex: 10,
+    })
+    expect(sv.element.querySelector('#hud-ac')?.textContent).toBe('12')
+    expect(sv.element.textContent).toContain('防')
+    expect(sv.element.textContent).toContain('力')
+    expect(sv.element.textContent).toContain('Shshssjdj')
+
+    sv.update({ ac: 13, str: 25 })
+    expect(sv.element.querySelector('#hud-ac')?.textContent).toBe('13')
+    expect(sv.element.querySelector('#hud-str')?.textContent).toBe('25')
+
+    await setLang('en')
+    expect(sv.element.querySelector('#hud-ac')?.textContent).toBe('13')
+    expect(sv.element.textContent).toContain('AC')
+    sv.dispose()
+  })
+
+  it('preserves A: label and translates empty slots / regen / stats on the % overview screen', () => {
+    const page = [
+      'Health: 78/78      AC: 13    Str: 25    XL:     9',
+      'Magic:  8/8        EV: 8     Int: 5     God:    Okawaru',
+      'Gold:   290        SH: 4     Dex: 10    Spells: 0/8',
+      'rPois   +          (33%)     (no helmet)',
+      'HPRegen 0.33/turn            (no ring)',
+      'MPRegen 0.11/turn',
+      'A:   Horns 2, retaliatory headbutt',
+    ].join('\n')
+    const out = translatePage(page)
+    expect(out).not.toContain('一阵')
+    expect(out).toContain('A:')
+    expect(out).toContain('力量: 25')
+    expect(out).toContain('敏捷: 10')
+    expect(out).toContain('(无头盔)')
+    expect(out).toContain('(无戒指)')
+    expect(out).toContain('生命回复 0.33/回合')
+    expect(out).toContain('法力回复 0.11/回合')
   })
 })
