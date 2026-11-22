@@ -352,9 +352,17 @@ function translateOne(text: string): string | null {
   const shopEntrance = /^There is an entrance to (.+)['’]s (.+) here\.$/.exec(plainText)
   if (shopEntrance) return `这里是 ${shopEntrance[1]} 的${shopKind(shopEntrance[2])}入口。`
   const encounter = /^You encounter ([^.!?]+)\.$/.exec(plainText)
-  if (encounter && !/\bthe\b|\.\s/.test(encounter[1])) {
-    const name = translateCapture(encounter[1])
-    if (name !== encounter[1]) return `你遭遇了${name}。`
+  if (encounter) {
+    const names = encounter[1].split(/,\s+(?:and\s+)?|\s+and\s+/)
+    const localized = names.map(translateCapture)
+    if (localized.every((name, i) => name !== names[i])) {
+      return `你遭遇了${localized.join('、')}。`
+    }
+  }
+  const screech = /^(.+?) screech(?:es)?(?: (loudly))?!$/.exec(plainText)
+  if (screech) {
+    const name = translateCapture(screech[1])
+    if (name !== screech[1]) return `${name}发出${screech[2] ? '响亮的' : '一声'}尖啸！`
   }
   const kill = /^You kill ([^.!?]+)([!.])$/.exec(plainText)
   if (kill) {
@@ -429,14 +437,15 @@ function translateOne(text: string): string | null {
   // "She is wielding a +5 dagger of holy wrath and carrying a wand of flame."
   // Translate each complete item name rather than relying on a static sentence
   // template whose captures vary with monster gender and equipment.
-  const encounterGear = /^(He|She|It|They) (?:is|are) (wielding|wearing|carrying) (.+?)(?: and (wielding|wearing|carrying) (.+?))?\.$/.exec(plainText)
+  const encounterGear = /^(.+?) (?:is|are) (wielding|wearing|carrying) (.+?)(?: and (wielding|wearing|carrying) (.+?))?\.$/.exec(plainText)
   if (encounterGear) {
-    const pronoun = { He: '他', She: '她', It: '它', They: '它们' }[encounterGear[1]]
+    const pronouns: Record<string, string> = { He: '他', She: '她', It: '它', They: '它们' }
+    const subject = pronouns[encounterGear[1]] ?? translateCapture(encounterGear[1])
     const verbs: Record<string, string> = { wielding: '手持', wearing: '身穿', carrying: '携带' }
-    const first = translateCapture(encounterGear[3])
-    const second = encounterGear[5] ? translateCapture(encounterGear[5]) : ''
-    if (first !== encounterGear[3] && (!encounterGear[5] || second !== encounterGear[5])) {
-      return `${pronoun}${verbs[encounterGear[2]]}${first}${encounterGear[5] ? `，${verbs[encounterGear[4]]}${second}` : ''}。`
+    const first = translateItem(matcher!, encounterGear[3])
+    const second = encounterGear[5] ? translateItem(matcher!, encounterGear[5]) : ''
+    if (subject !== encounterGear[1] && first && (!encounterGear[5] || second)) {
+      return `${subject}${verbs[encounterGear[2]]}${first}${second ? `，${verbs[encounterGear[4]]}${second}` : ''}。`
     }
   }
   // Wand activity names the monster but not the wand's item text.

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang, tItem, tMore, tTitle } from './index'
 import { loadDescript } from './describe'
 import { translateOverviewMarkup, translatePage } from './pages'
+import { translateCharOverview } from './char-overview'
+import { displayMessageLine, translateMessageHistory } from './messages'
 import { translateStatusLight, translateMonsterPanelStatus } from './status'
 import { LayoutView } from '../views/layout-view'
 import { CELL_SEP, GRID_MARK, renderSpellbook } from '../views/overlay-body'
@@ -324,16 +326,171 @@ describe('localization audit fixes: HUD status pills, monster panel, and newgame
     expect(sv.element.querySelector('#hud-ac')?.textContent).toBe('12')
     expect(sv.element.textContent).toContain('防')
     expect(sv.element.textContent).toContain('力')
-    expect(sv.element.textContent).toContain('Shshssjdj')
+    expect(sv.element.textContent).toContain('Shshssjdj 劈裂者')
 
     sv.update({ ac: 13, str: 25 })
     expect(sv.element.querySelector('#hud-ac')?.textContent).toBe('13')
     expect(sv.element.querySelector('#hud-str')?.textContent).toBe('25')
+    sv.update({ title: ' the Severer' })
+    expect(sv.element.textContent).toContain('Shshssjdj 断骨者')
 
     await setLang('en')
     expect(sv.element.querySelector('#hud-ac')?.textContent).toBe('13')
     expect(sv.element.textContent).toContain('AC')
+    expect(sv.element.textContent).toContain('Shshssjdj the Severer')
     sv.dispose()
+  })
+
+  it('localizes the Amaemon encounter in live messages and history without changing wire text', async () => {
+    const raw = '<red>You encounter Amaemon the Diabolical Poisoner and\nan orange demon. Amaemon is wielding the +8 whip "Snakebite" {venom, curare, rPois}.'
+    const cry = 'The orange demon screeches!'
+    const zh = '<red>你遭遇了邪毒师亚麦蒙、橙色恶魔。亚麦蒙手持+8鞭子「蛇咬」 {淬毒, 箭毒, 毒抗}。'
+    expect(displayMessageLine(raw)).toBe(zh)
+    expect(displayMessageLine(cry)).toBe('橙色恶魔发出一声尖啸！')
+    expect(translateMessageHistory(`_${raw.replace('\n', ' ')}\n ${cry}`)).toBe(`_${zh}\n 橙色恶魔发出一声尖啸！`)
+    expect(tItem('a scroll labelled VENOM CURARE')).toContain('VENOM CURARE')
+    await setLang('en')
+    expect(displayMessageLine(raw)).toBe(raw)
+    expect(displayMessageLine(cry)).toBe(cry)
+  })
+
+  it('fully localizes the % character overview screen while preserving DCSS colour tags', async () => {
+    const raw = [
+      '<yellow>Shshssjdj the Cleaver (Minotaur Fighter)       Turns: 7301, Time: 00:39:42</yellow>',
+      '<brown>Health: <lightgrey>78/78      <brown>AC: <lightgrey>13    <brown>Str: <lightgrey>25    <brown>XL:     <lightgrey>9<brown>   Next: <lightgrey>55%',
+      '<brown>Magic:  <lightgrey>8/8        <brown>EV: <lightgrey> 8    <brown>Int: <lightgrey> 5    <brown>God:    <lightgrey><cyan>Okawaru [***...]</cyan>',
+      '<brown>Gold:   <lightgrey>290        <brown>SH: <lightgrey> 4    <brown>Dex: <lightgrey>10    <brown>Spells: <lightgrey>0/8 levels left',
+      '',
+      '<darkgrey>rFire   . . .      (100%) <w>a</w> - <lightgrey>+0 war axe</lightgrey>',
+      '<darkgrey>rCold   . . .      (100%) <w>b</w> - <lightgrey>+0 chain mail</lightgrey>',
+      '<darkgrey>rNeg    . . .      (100%) <w>c</w> - <lightgrey>+0 kite shield</lightgrey>',
+      '<green>rPois   +          (33%)  <darkgrey>(no helmet)</darkgrey>',
+      '<darkgrey>rElec   .          (100%) <darkgrey>(no cloak)</darkgrey>',
+      '<darkgrey>rCorr   .          (100%) <w>l</w> - <lightgrey>pair of gloves</lightgrey>',
+      '<lightgrey>SInv    +                 <darkgrey>(no boots)</darkgrey>',
+      '<lightgrey>Will    +....             <darkgrey>(no amulet)</darkgrey>',
+      '<darkgrey>Stlth   ..........        <darkgrey>(no ring)</darkgrey>',
+      'HPRegen 0.33/turn         <darkgrey>(no ring)</darkgrey>',
+      'MPRegen 0.11/turn',
+      '',
+      '<w>%:</w> no passive effects',
+      '<w>@:</w> no status effects',
+      '<w>A:</w> Horns 2, retaliatory headbutt',
+    ].join('\n')
+
+    const overlay = document.createElement('div')
+    let top: UiPushMsg | undefined
+    const lv = new LayoutView({
+      content: () => overlay,
+      renderOverlay: (_title, build) => { overlay.innerHTML = ''; build() },
+      send: () => {},
+      focusView: () => {},
+      guardedFocus: () => {},
+      loader: () => null,
+      topLayout: () => top,
+      spectating: false,
+      repaint: () => {},
+      showTextPage: () => {},
+      visible: () => true,
+    })
+    top = { type: 'formatted-scroller', tag: 'resists', text: raw }
+    try {
+      lv.show(top)
+
+      const text = overlay.textContent ?? ''
+      expect(text).toContain('Shshssjdj 劈裂者（牛头人战士）')
+      expect(text).toContain('回合: 7301，时间: 00:39:42')
+      expect(text).toContain('生命:   78/78')
+      expect(text).toContain('防御: 13')
+      expect(text).toContain('力量: 25')
+      expect(text).toContain('等级:   9')
+      expect(text).toContain('下级: 55%')
+      expect(text).toContain('法力:   8/8')
+      expect(text).toContain('闪避:  8')
+      expect(text).toContain('智力:  5')
+      expect(text).toContain('信仰:   奥卡瓦鲁 [***...]')
+      expect(text).toContain('金币:   290')
+      expect(text).toContain('格挡:  4')
+      expect(text).toContain('敏捷: 10')
+      expect(text).toContain('法术:   剩余 0/8 级')
+      expect(text).toContain('火抗')
+      expect(text).toContain('冰抗')
+      expect(text).toContain('负能')
+      expect(text).toContain('毒抗')
+      expect(text).toContain('电抗')
+      expect(text).toContain('酸抗')
+      expect(text).toContain('看破隐形')
+      expect(text).toContain('意志')
+      expect(text).toContain('潜行')
+      expect(text).toContain('回血    0.33/回合')
+      expect(text).toContain('回魔    0.11/回合')
+      expect(text).toContain('战斧')
+      expect(text).toContain('锁子甲')
+      expect(text).toContain('鸢盾')
+      expect(text).toContain('手套')
+      expect(text).toContain('(无头盔)')
+      expect(text).toContain('(无斗篷)')
+      expect(text).toContain('(无靴子)')
+      expect(text).toContain('(无护身符)')
+      expect(text).toContain('(无戒指)')
+      expect(text).toContain('%: 无被动效果')
+      expect(text).toContain('@: 无状态效果')
+      expect(text).toContain('A: 角顶 2，报复性头槌')
+      expect(text).not.toContain('一阵')
+      // No stray English words left except the player name and single-letter hotkeys.
+      const leftover = text.replace(/Shshssjdj/g, '').match(/[A-Za-z]{2,}/g) ?? []
+      expect(leftover).toEqual([])
+      // Verify that each translated phrase retains its original DCSS colour.
+      const spans = Array.from(overlay.querySelectorAll('span[style]'))
+      expect(spans.find(s => s.textContent?.includes('劈裂者'))?.getAttribute('style')).toContain('#fce94f')
+      expect(spans.find(s => s.textContent?.includes('毒抗'))?.getAttribute('style')).toContain('#4e9a06')
+      expect(spans.find(s => s.textContent?.includes('无头盔'))?.getAttribute('style')).toContain('#555753')
+      expect(overlay.querySelector<HTMLElement>('.overlay-body')?.dataset.noI18n).toBe('')
+
+      // Switching back to English restores the original English overview.
+      await setLang('en')
+      expect(overlay.textContent).toContain('Shshssjdj the Cleaver (Minotaur Fighter)')
+      expect(overlay.textContent).toContain('Horns 2, retaliatory headbutt')
+    } finally {
+      lv.dispose()
+    }
+  })
+
+  it('handles % overview edge cases: abbreviated combo, vulnerability, melded/unarmed, passives, wrapped mutations, orb and runes', () => {
+    const raw = [
+      '<yellow>Hero the Pugilist (MiFi)       Turns: 999, Time: 00:10:00</yellow>',
+      '<brown>Magic:  <lightgrey>8/8        <brown>EV: <lightgrey> 8    <brown>Int: <lightgrey> 5    <brown>God:    <lightgrey><yellow>the Shining One [****..]</yellow>',
+      '                                         <brown>Lives:  <lightgrey>2<brown>   Deaths: <lightgrey>1',
+      '<red>rFire   x . .  <lightgrey>(150%)<red> <w>a</w> - <darkgrey>melded +2 chain mail</darkgrey>',
+      '<green>rPois   ∞          (0%)     - unarmed',
+      '<darkgrey>rElec   .          (100%) <darkgrey>(helmet unavailable)</darkgrey>',
+      '<darkgrey>rCorr   .          (100%)   <darkgrey>[ring occupied]</darkgrey>',
+      '<lightgrey>Stlth                  <w>z</w> - <yellow>scroll labelled VENOM CURARE</yellow>',
+      '<w>%:</w> reflection, harm (+30% outgoing, +20% incoming), wizardry (x1),',
+      'infuse magic (1 MP), rampage+∞',
+      '<w>@:</w> quick, seriously poisoned, berserking (expiring), corroded (-4), constricted (roots)',
+      '<w>A:</w> <darkgrey>(Horns 2)</darkgrey>, [spit poison],',
+      'tough skin 1[+1]',
+      '<w>0:</w> Orb of Zot',
+      '<w>}:</w> 2/15 runes: slimy, golden',
+    ].join('\n')
+    const out = translateCharOverview(raw)
+    expect(out).toContain('Hero 拳手（牛头人战士）')
+    expect(out).toContain('光辉者 [****..]')
+    expect(out).toContain('<brown>生命数: <lightgrey>2<brown>   死亡数: <lightgrey>1')
+    expect(out).toContain('火抗    x . .  <lightgrey>(150%)<red> <w>a</w>')
+    expect(out).toContain('（已融合）')
+    expect(out).toContain('毒抗    ∞          (0%)')
+    expect(out).toContain('  - 空手')
+    expect(out).toContain('(头盔不可用)')
+    expect(out).toContain('[戒指槽已占用]')
+    expect(out).toContain('<w>z</w> - <yellow>卷轴（标签 VENOM CURARE）</yellow>')
+    expect(out).toContain('反射，伤害加深（造成+30%，承受+20%），巫术（x1），注入魔力（1 法力），冲锋+∞')
+    expect(out).toContain('急促，严重中毒，狂暴中（即将结束），腐蚀（-4），被根须缠住')
+    expect(out).toContain('<darkgrey>(角顶 2)</darkgrey>，[吐毒]，')
+    expect(out).toContain('1[+1]')
+    expect(out).toContain('<w>0:</w> 佐特宝珠')
+    expect(out).toContain('<w>}:</w> 2/15 枚符文：黏液，黄金')
   })
 
   it('preserves A: label and translates empty slots / regen / stats on the % overview screen', () => {

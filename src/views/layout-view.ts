@@ -27,6 +27,7 @@ import { LANG_CHANGED_EVENT, t, tItem, tMore, tTitle, isZh } from '../i18n'
 import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 import { translateOverviewMarkup, translatePage } from '../i18n/pages'
+import { isCharOverview, translateCharOverview } from '../i18n/char-overview'
 import { translateMessageHistory } from '../i18n/messages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 import { translateGodLine, translateGodServiceFee } from '../i18n/god'
@@ -187,10 +188,12 @@ export class LayoutView {
     // is one fixed-width terminal block — leave it alone.
     const overview = msg.type === 'formatted-scroller' && !messageHistory && isDungeonOverview(rawBody)
     if (overview) rawBody = reflowOverview(rawBody)
+    const charOverview = msg.type === 'formatted-scroller' && !messageHistory && !overview &&
+      (msg.tag === 'resists' || isCharOverview(rawBody))
     // Only an item describe can carry the Ctrl-F search highlight
     // (overlay-body.ts liftSearchHighlight).
     const searchHighlight = msg.type === 'describe-item'
-    if (msg.type !== 'game-over' && !messageHistory) rawBody = unwrapHangingIndents(unpadMutationCategory(rawBody), searchHighlight)
+    if (msg.type !== 'game-over' && !messageHistory && !charOverview) rawBody = unwrapHangingIndents(unpadMutationCategory(rawBody), searchHighlight)
     if (msg.type === 'describe-god') {
       // describe-god has no `title`/`text` — name is the heading, and the
       // body is split across pane fields (description / favour+powers_list /
@@ -264,6 +267,8 @@ export class LayoutView {
       rawBody = translateMessageHistory(rawBody)
     } else if (overview && isZh()) {
       rawBody = translateOverviewMarkup(rawBody)
+    } else if (charOverview && isZh()) {
+      rawBody = translateCharOverview(rawBody)
     } else if (isZh()) {
       // Scrollers include help/manual pages, not just describes.
       // Translate the entire display copy before colour spans split sentences.
@@ -308,7 +313,7 @@ export class LayoutView {
       if (rawBody) {
         const bodyEl = document.createElement('div')
         bodyEl.className = 'overlay-body fg7'
-        if (messageHistory) bodyEl.dataset.noI18n = ''
+        if (messageHistory || (charOverview && isZh())) bodyEl.dataset.noI18n = ''
         // Scroller bodies take the tighter line pitch (style.css
         // .overlay-body--scroller); describe-* panels stay at prose pitch.
         if (msg.type === 'formatted-scroller') bodyEl.classList.add('overlay-body--scroller')

@@ -299,6 +299,7 @@ export const SUPP_ZH: Record<string, string> = {
   'necronomicon': '死灵之书',
   'Sigmund the Dreaded': '恐怖的西格蒙德',
   'Iiyb the Inquisitive': '好奇的伊伊布',
+  'Amaemon the Diabolical Poisoner': '邪毒师亚麦蒙',
   'Sigmund': '西格蒙德',
   'Iiyb': '伊伊布',
   'spectral': '幽灵',

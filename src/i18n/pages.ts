@@ -87,8 +87,13 @@ function translateTraitItem(raw: string): string {
   if (lv) {
     const base = t(lv[1])
     if (base !== lv[1]) return `${base} ${lv[2]}`
+    const low = t(lv[1].toLowerCase())
+    if (low !== lv[1].toLowerCase()) return `${low} ${lv[2]}`
   }
-  return t(s)
+  const hit = t(s)
+  if (hit !== s) return hit
+  const low = t(s.toLowerCase())
+  return low !== s.toLowerCase() ? low : s
 }
 
 function cell(text: string): string {

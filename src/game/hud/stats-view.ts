@@ -3,6 +3,7 @@ import type { InventoryStore } from '../inventory-store'
 import { escHtml, dcssToHtml, DCSS_COLOR_MAP } from '../dcss-colors'
 import { compactPlace, nameTitle } from '../char-label'
 import { isZh, LANG_CHANGED_EVENT, t, tItem } from '../../i18n'
+import { translatePlayerTitle } from '../../i18n/char-overview'
 
 const BAR_RES = 10000  // basis points; matches reference player.js precision
 
@@ -169,7 +170,8 @@ export class StatsView {
     const speciesLabel = zh && speciesDisplay ? t(speciesDisplay) : speciesDisplay
     const godLabel = zh && god && god !== 'No God' ? t(god) : god
     const godStr = god && god !== 'No God' ? (zh ? `（信仰${godLabel}）` : ` of ${god}`) : ''
-    const titled = nameTitle(name, title)
+    const zhTitle = zh && title ? translatePlayerTitle(title) : title
+    const titled = zh && name && zhTitle && zhTitle !== title ? `${name} ${zhTitle}` : nameTitle(name, title)
     // Wizard/explore games are non-scoring; flag them like the reference's
     // #stats_wizmode. Explore mode is reachable from the WebTiles lobby ('+').
     const modeFlag = s.wizard ? (zh ? ' *巫师模式*' : ' *WIZARD*') : s.explore ? (zh ? ' *探索模式*' : ' *EXPLORE*') : ''

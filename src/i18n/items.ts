@@ -157,6 +157,7 @@ const PROP_LABELS: Record<string, string> = {
   draining: '汲取', 'holy wrath': '神圣之怒', flaming: '烈焰',
   freezing: '冰冻', electrocution: '电击', venom: '淬毒',
   distortion: '扭曲', chaos: '混沌', vamp: '吸血', vampirism: '吸血',
+  curare: '箭毒',
   antimagic: '反魔法', pain: '痛苦', heavy: '沉重', spectral: '幽灵',
   speed: '急速', flame: '烈焰', freeze: '冰冻', drain: '汲取',
   Harm: '伤害', Death: '死亡',
@@ -437,8 +438,10 @@ export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean 
   const quoted = /^(.*?)\s*"([^"]+)"(.*)$/.exec(body)
   let quothName = ''
   if (quoted) {
-    quothName = quoted[2]
     base = `${quoted[1]} ${quoted[3]}`.trim()
+    // Use a canonical full-item key, never translate random names by themselves.
+    const known = m.exact.get(body)
+    quothName = known ? /["“「]([^"”」]+)["”」]/.exec(known)?.[1] ?? quoted[2] : quoted[2]
   }
   let suffixZh = ''
   let suffixNote = ''
