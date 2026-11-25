@@ -1,0 +1,1569 @@
+{
+  "source": "DCSS 0.35-a0: dat/descript/{,zh/}mutations.txt and mutation-data.h",
+  "descriptions": {
+    "tough skin": [
+      "Your epidermis has hardened, providing a small amount of protection. Each level of this mutation provides +1 AC.",
+      "你的表皮已经硬化，这会提供少量保护。这个变异每升一级会加1点防护。"
+    ],
+    "shaggy fur": [
+      "You are covered in fur, providing a small amount of protection. Each level of this mutation provides +1 AC. The third level of this mutation also provides resistance to cold.",
+      "你被皮毛覆盖，这会提供少量保护。这个变异每升一级会加1点防护。\n这个变异达到第三级会提供寒抗。"
+    ],
+    "repulsion field": [
+      "You are surrounded by a repulsion field, providing a small amount of evasion. Each level of this mutation provides more EV. The third level of this mutation also repels missiles, greatly increasing your EV against such attacks.",
+      "你被排斥力场围绕，这会提供少量闪避。\n这个变异每升一级会提供更多闪避。\n这个变异达到第三级也会使射向你的远程攻击的命中率减半。"
+    ],
+    "icy blue scales": [
+      "You are covered in blue scales, providing a small amount of protection. Each level of this mutation provides more AC. The third level of this mutation also provides resistance to cold.",
+      "你被蓝色鳞片覆盖，这会提供少量保护。这个变异每升一级会提供更多防护。\n这个变异达到第三级会提供寒抗。"
+    ],
+    "molten scales": [
+      "You are covered in molten scales, providing a small amount of protection. Each level of this mutation provides more AC. The third level of this mutation also provides resistance to fire.",
+      "你被熔融的鳞片覆盖，这会提供少量保护。这个变异每升一级会提供更多防护。\n这个变异达到第三级会提供火抗。"
+    ],
+    "slimy green scales": [
+      "You are covered in green scales, providing a small amount of protection. Each level of this mutation provides more AC. The third level of this mutation also provides resistance to poison.",
+      "你被绿色鳞片覆盖，这会提供少量保护。这个变异每升一级会提供更多防护。\n这个变异达到第三级会提供毒抗。"
+    ],
+    "yellow scales": [
+      "You are covered in yellow scales, providing a small amount of protection. Each level of this mutation provides more AC. The third level of this mutation also provides resistance to acid and corrosion.",
+      "你被黄色鳞片覆盖，这会提供少量保护。这个变异每升一级会提供更多防护。\n这个变异达到第三级会提供酸抗和腐蚀抗。"
+    ],
+    "thin metallic scales": [
+      "You are covered in metallic scales, providing a small amount of protection. Each level of this mutation provides more AC. The third level of this mutation also provides resistance to electricity.",
+      "你被金属鳞片覆盖，这会提供少量保护。\n这个变异每升一级会提供更多防护。这个变异达到第三级会提供电抗。"
+    ],
+    "rugged brown scales": [
+      "You are covered in brown scales, providing a small amount of protection. Each level of this mutation provides +1 AC and also increases your health slightly.",
+      "你被褐色鳞片覆盖，这会提供少量保护。\n这个变异每升一级会加1点防护，并会稍稍提升你的生命力。"
+    ],
+    "sharp scales": [
+      "You are covered in sharp scales, providing a small amount of protection. Each level of this mutation provides +1 AC and Slay +1, improving your accuracy and damage with melee and ranged attacks.",
+      "你被尖锐的鳞片覆盖，这会提供少量保护。这个变异每升一级会加1点防护和1点杀戮，\n这会提升你在近身和远程攻击中的命中率和伤害。"
+    ],
+    "iridescent scales": [
+      "You are covered in iridescent scales, providing a small amount of protection. Each level of this mutation provides +2 AC.",
+      "你被彩色鳞片覆盖，这会提供少量保护。这个变异每升一级会加2点防护。"
+    ],
+    "large bone plates": [
+      "You are covered in bone plates, providing a small amount of shielding. Each level of this mutation provides more SH.",
+      "你被大骨板保护着，这会提供少量格挡。这个变异每升一级会提供更多格挡。"
+    ],
+    "thin skeletal structure": [
+      "Your bones are light and porous. Each level of this mutation provides +2 Dexterity and Stealth+.",
+      "你的骨头变得轻巧、多孔。这个变异每升一级会加2点敏捷和潜行。"
+    ],
+    "strong": [
+      "Your muscles have grown unnaturally strong. Each level of this mutation provides +4 Strength, but the extra muscles slow your movements and thoughts, giving -1 to both your Intelligence and Dexterity for each level.",
+      "你的肌肉变得异常强壮。这个变异每升一级会加4点力量，\n但额外的肌肉会让你的动作和思维变得迟钝，每升一级，你的智力和敏捷会减1点。"
+    ],
+    "clever": [
+      "Your mind has become unnaturally acute. Each level of this mutation provides +4 Intelligence, but all the blood flowing to your head weakens your constitution, giving -1 to both your Strength and Dexterity for each level.",
+      "你的心智变得异常敏锐。这个变异每升一级会加4点智力，\n但所有的血液都供向了头部，因而削弱了你的体质，\n每升一级，你的力量和敏捷会减1点。"
+    ],
+    "agile": [
+      "Your reflexes have become unnaturally fast. Each level of this mutation provides +4 Dexterity, but the rest of your body can't keep up with your speed, giving -1 to both your Strength and Intelligence for each level.",
+      "你的反应变得异常迅捷。这个变异每升一级会加4点敏捷，\n但你身体的其他部分无法跟上你的速度，每升一级，你的力量和智力会减1点。"
+    ],
+    "weak": [
+      "Your muscles have grown unnaturally weak. Each level of this mutation provides -3 Strength.",
+      "你的肌肉变得异常虚弱。这个变异每升一级会减2点力量。"
+    ],
+    "dopey": [
+      "Your mind has become unnaturally dopey. Each level of this mutation provides -3 Intelligence.",
+      "你的心智变得异常愚钝。这个变异每升一级会减2点智力。"
+    ],
+    "clumsy": [
+      "Your reflexes have become unnaturally clumsy. Each level of this mutation provides -3 Dexterity.",
+      "你的反应变得异常笨拙。这个变异每升一级会减2点敏捷。"
+    ],
+    "high mp": [
+      "You have an increased reservoir of magic. Each level of this mutation provides +10% MP.",
+      "你的魔力储备会增加。这个变异每升一级会加10点魔力。"
+    ],
+    "low mp": [
+      "You have a low magical capacity. Each level of this mutation provides -10% MP.",
+      "你的魔力储备会减少。这个变异每升一级会减10点魔力。"
+    ],
+    "efficient magic": [
+      "You have both an innate understanding and a greater control over the exact flow of your magic, letting you cast spells with greater efficiency. Each level of this mutation reduces the cost of your spells by 1 MP, to a minimum of 1 MP.",
+      ""
+    ],
+    "ephemeral shield": [
+      "Whenever you use spells or divine abilities with any costs, a shield forms from the excess loose magical or spiritual energy to guard you. The magical energy from spells only sustains the shield for but a moment, while the spiritual energy from using divine abilities lasts a brief bit longer.",
+      ""
+    ],
+    "camouflage": [
+      "Your skin changes colour to match your surroundings. Each level of this mutation provides Stealth+.",
+      "你的皮肤会根据周围环境而变色。这个变异每升一级会提升潜行。"
+    ],
+    "passive freeze": [
+      "Foes who strike you in melee will be frozen, taking damage. This effect is guaranteed to trigger if your foe does any damage.",
+      "近战攻击你的敌人会被冻结，并受到伤害。\n如果敌人造成了任何伤害，这个效果就必会触发。"
+    ],
+    "time-warped blood": [
+      "Your blood has desynchronised itself from the flow of time. Whenever you fall below 50% of your maximum HP, the spilling of your blood surges strangely through your surroundings, hasting two of your strongest allies in sight for each level of this mutation. After doing so, your blood will be unable to further dilate time until your HP has fully recovered.",
+      ""
+    ],
+    "efficient metabolism": [
+      "Your altered digestive system extracts additional value out of select potion types, doubling the duration of all status effects gained via potions.",
+      ""
+    ],
+    "protean grace": [
+      "Your limbs are overflowing with morphogenic power, guiding your every movement. Each other non-innate mutation you have also provides +1 EV and Slay +1 (up to a limit of 7), improving your accuracy and damage with melee and ranged attacks. This still applies even when the mutations would be suppressed by a different form. You currently gain %value%",
+      ""
+    ],
+    "feed off suffering": [
+      "A vile yet invigorating energy permeates your soul, which resonates with specific other energies released at the moment of death. Whenever poisoned or drained enemies die in sight of you, you have a chance to siphon away a small portion of their life force and magical power. Each level of this mutation increases the chance this happens and the amount one siphons.",
+      ""
+    ],
+    "lucky": [
+      "You have an uncanny knack for uncovering hidden properties of items other people might ignore as mundane. Whenever you encounter a new item on the ground for the first time, there is a very tiny chance to discover that it is actually an artefact. Each level of this mutation increases that chance.",
+      ""
+    ],
+    "reckless": [
+      "Your recklessness halves your SH, but the damage you deal with two-handed melee weapons is increased by 15%.",
+      ""
+    ],
+    "horns": [
+      "You have horns on your head, allowing you to try to gore foes when launching melee attacks, but preventing you from wearing helmets. Each level of this mutation increases the damage of your gore attacks. The third level of this mutation prevents you from wearing any type of headgear.",
+      "你的头上长出角，在近战时会尝试顶伤敌人，但无法戴头盔。这个变异每升一级，\n就会增加你顶撞的攻击力。这个变异达到第三级，你将无法戴任何帽子。"
+    ],
+    "beak": [
+      "You have a beak for a mouth, allowing you to peck at foes when launching melee attacks, but preventing you from wearing helmets.",
+      "你的嘴成了鸟喙，在近战时能够啄击敌人，但无法戴头盔。"
+    ],
+    "fangs": [
+      "You have sharp teeth, allowing you to bite foes when launching melee attacks. Each level of this mutation makes your teeth sharper, longer, and stronger.",
+      "你长出锋利的牙齿，在近战时能够撕咬敌人。\n这个变异每升一级，你的牙齿就会更尖、更长、更强。"
+    ],
+    "acidic bite": [
+      "You have acidic saliva, allowing you to bite foes and apply corrosion to them when launching melee attacks.",
+      "你有了酸性唾液，在近战时能够咬伤敌人，并对其造成腐蚀。"
+    ],
+    "antimagic bite": [
+      "You have a thirst for magic, allowing you to bite foes when launching melee attacks. This restores your magical reserves and also disrupts magical foes, sometimes leaving them unable to act.",
+      "你对魔法有着渴求，在近战时能够咬伤敌人。\n这可以恢复你的魔力并扰乱使用魔法的敌人，有时会让他们无法行动。"
+    ],
+    "claws": [
+      "You have sharp nails, increasing the strength of your main-hand unarmed attacks if you aren't wearing gloves. If your off-hand is free, the strength of your off-hand punch attacks is also increased. Each level of this mutation makes your nails sharper, longer, and stronger. The third level of this mutation prevents you from wearing gloves.",
+      "你长出锋利的指甲，如果不戴手套，会增加主手的徒手攻击强度。\n如果你的副手没有装备东西，也会增强其拳击强度。这个变异每升一级，\n你的指甲就会更尖、更长、更强。这个变异达到第三级，你将无法戴手套。"
+    ],
+    "demonic touch": [
+      "Your hands glow with unholy energy, allowing you to inflict irresistible damage when launching melee attacks as long as your off-hand is free. Your touch attacks deal damage which ignores armour, and each level of this mutation increases the damage dealt. The third level of this mutation prevents you from wearing gloves, and also causes your touch attacks to reduce your foes' willpower.",
+      "你的手散发着邪恶的能量，只要你的副手没有装备东西，\n在近战时就能造成无法抵御的伤害。你的触碰攻击会造成无视护甲的伤害，\n并且这个变异每升一级会增加更多攻击力。这个变异达到第三级，\n能削弱受到你触碰攻击的敌人的意志力，但你将无法戴手套。"
+    ],
+    "hooves": [
+      "You have hooves, allowing you to kick foes when launching melee attacks if you aren't wearing boots. Each level of this mutation makes your hooves harder and stronger. The third level of this mutation prevents you from wearing boots.",
+      "你长出蹄子，如果不穿靴子，在近战时能够踢击敌人。这个变异每升一级，\n你的蹄子就会更硬、更强。这个变异达到第三级，你将无法穿靴子。"
+    ],
+    "talons": [
+      "You have sharp toenails, allowing you to kick foes when launching melee attacks if you aren't wearing boots. Each level of this mutation makes your nails sharper, longer, and stronger. The third level of this mutation prevents you from wearing boots.",
+      "你长出锋利的趾甲，如果不穿靴子，在近战时能够踢击敌人。这个变异每升一级，\n你的趾甲就会更尖、更长、更强。这个变异达到第三级，你将无法穿靴子。"
+    ],
+    "antennae": [
+      "You have antennae, allowing you to sense nearby monsters, but preventing you from wearing helmets. Each level of this mutation lets you sense monsters from further away. The third level of this mutation prevents you from wearing any type of headgear, and allows you to see invisible monsters.",
+      "你长出触角，可以感知周围的怪物，但无法戴头盔。这个变异每升一级，\n你会感知到更远的怪物。这个变异达到第三级，\n能看到隐形的怪物，但你将无法戴任何帽子。"
+    ],
+    "tentacle spike": [
+      "You have a spiked tentacle, allowing you to pierce foes when launching melee attacks. Each level of this mutation makes your spike sharper, longer, and stronger.",
+      "你长出一个带有尖刺的触手，在近战时能够刺穿敌人。\n这个变异每升一级，你的刺就会更尖、更长、更强。"
+    ],
+    "naga tail": [
+      "You have a long, snake-like tail in place of feet. This gives you stability in water, but causes you to move much more slowly than most species. The second level of this mutation allows you to constrict foes with your tail when attacking in melee. Your tail can constrict only one enemy at a time, and every attack at this mutation level will begin or renew a constriction attempt. The chances of succeeding are determined primarily by Dexterity, Fighting skill, and any slaying bonuses.",
+      "你的脚变成一条长长的蛇状尾巴。这个变异达到第二级，\n你在近战时可以用尾巴束缚敌人。你的尾巴一次只能束缚一个敌人，\n在这个变异等级，每次攻击都会尝试开始或再次进行束缚。\n成功率主要取决于敏捷、格斗技能和任何杀戮加成。"
+    ],
+    "stinger": [
+      "You have a venomous barb on the end of your tail, allowing you to sting foes when launching melee attacks. Each level of this mutation makes your stinger sharper, longer, and stronger.",
+      "你的尾部长出一个毒刺，在近战时能够蛰刺敌人。\n这个变异每升一级，你的螫刺就会更尖、更长、更强。"
+    ],
+    "weakness stinger": [
+      "You have a thin, orange tail, allowing you to attack foes when launching melee attacks. Each level of this mutation increases your tail's strength as it turns into a sharp stinger. The third level of this mutation prevents wearing cloaks or scarves, and causes the stinger to inflict brief weakness on those struck.",
+      "你长出一条细长的红色尾巴，在近战时能够扫打敌人。\n这个变异每升一级会增强你的尾巴的力量，并使其变成尖锐的螫刺。\n这个变异达到第三级，那些不幸被螫刺击中的怪物会被短暂虚弱，\n但你将无法穿戴披风或围巾。"
+    ],
+    "armoured tail": [
+      "You have a large scaly tail, allowing you to tail-slap foes when launching melee attacks.",
+      "你长出一条披着甲的大尾巴，在近战时能够扫打敌人。"
+    ],
+    "pseudopods": [
+      "You are covered in pseudopods, allowing you to slap your foes when launching melee attacks, but somewhat reducing the amount of protection provided by body armour. This has no effect on protection provided by armour enchantments. Each level of this mutation makes your pseudopods larger and stronger.",
+      "你身上长满了伪足，在近战时能够扫打敌人，但在一定程度上会削弱护甲提供的防护。\n这对护甲附魔提供的防护没有影响，也不会影响训练的护甲技能的防御效果。\n这个变异每升一级，你的伪足就会更大、更强。"
+    ],
+    "steam resistance": [
+      "You are immune to the damage from steam breath and steam clouds.",
+      "你对蒸汽吐息和蒸汽云的伤害免疫。"
+    ],
+    "mutation resistance": [
+      "Your genetic code is unusually stable, making it less likely that you will be mutated (or have existing mutations removed). Each level of this mutation makes you more resistant.",
+      "你的遗传密码出奇地稳定，使你不太可能发生变异（或消除现有变异）。\n这个变异每升一级，你就会有更强的抵抗力。"
+    ],
+    "torment resistance": [
+      "You are less affected by unholy torment, which would otherwise cut your health in half. The second level of this mutation renders you entirely immune.",
+      "折磨对你的影响较弱，否则这会让你的生命值减半。\n这个变异达到第二级，你将完全免疫折磨。"
+    ],
+    "poison resistance": [
+      "You resist poisons, toxins and other contaminants. This does not confer full immunity, but reduces your chances of being affected to roughly one-third what it would be otherwise.",
+      "你对毒物、毒素和其他污染物有着抗性。\n它不会赋予完全的免疫力，但你中毒的几率会降低到原先的三分之一左右。"
+    ],
+    "fire resistance": [
+      "You resist heat. Each level of this mutation reduces the amount of damage taken from fire.",
+      "你抵抗热。这个变异每升一级，就会削弱火对你造成的伤害。"
+    ],
+    "cold resistance": [
+      "You resist cold. Each level of this mutation reduces the amount of damage taken from cold.",
+      "你抵抗寒冷。这个变异每升一级，就会削弱寒冷对你造成的伤害。"
+    ],
+    "electricity resistance": [
+      "You resist electricity (rElec), taking less damage from it.",
+      "你抵抗电（rElec），电对你造成的伤害变弱。"
+    ],
+    "acid resistance": [
+      "You resist acid (rCorr), taking less damage from it. You are also less likely to become corroded.",
+      "你抵抗酸（rCorr），酸对你造成的伤害变弱。你也变得更难被腐蚀。"
+    ],
+    "negative energy resistance": [
+      "You resist negative energy. Each level of this mutation reduces the amount of damage taken from negative energy, along with the amount that it drains your health.",
+      "你抵抗负能量。\n这个变异每升一级，就会减小负能量对你造成的伤害和从你身上汲取的生命值。"
+    ],
+    "heat vulnerability": [
+      "You are vulnerable to fire and take more damage from it.",
+      "火很容易对你造成伤害，并会对你造成更多伤害。"
+    ],
+    "cold vulnerability": [
+      "You are vulnerable to cold and take more damage from it.",
+      "寒冷很容易对你造成伤害，并会对你造成更多伤害。"
+    ],
+    "temperature sensitive": [
+      "You are vulnerable to both cold and fire, and you take more damage from those effects.",
+      "寒冷和火都很容易对你造成伤害，并会对你造成更多伤害。"
+    ],
+    "electricity vulnerability": [
+      "You are vulnerable to electricity and take more damage from it.",
+      "电很容易对你造成伤害，并会对你造成更多伤害。"
+    ],
+    "strong-willed": [
+      "You have an unnaturally strong will, improving your resistance to certain types of hostile magic. Each level of this mutation increases your willpower further.",
+      "你有着异常强大的意志，提升了对某类敌对魔法的抵抗力。\n这个变异每升一级，就会增加你的意志力。"
+    ],
+    "weak-willed": [
+      "You have an unnaturally weak will, reducing your resistance to certain types of hostile magic. Each level of this mutation reduces your willpower further.",
+      "你有着异常疲弱的意志，削弱了对某类敌对魔法的抵抗力。\n这个变异每升一级，就会削弱你的意志力。"
+    ],
+    "see invisible": [
+      "You have supernaturally acute vision, allowing you to see monsters that are hidden from mundane sight. This has no effect on your accuracy otherwise.",
+      "你有着超乎寻常的敏锐视力，可以看到隐藏在世俗眼界之外的怪物。\n然而，它对你的命中率没有影响。"
+    ],
+    "clarity": [
+      "Your mind is exceptionally clear, preventing you from becoming confused, mesmerised, or supernaturally afraid. You also cannot become involuntarily enraged.",
+      "你的头脑异常清晰，你不会被混乱、迷惑或产生超自然的恐惧。\n你也不会不由自主地狂暴。"
+    ],
+    "sense surroundings": [
+      "You have a second sense for the dungeon, allowing you to sense terrain you haven't yet seen. Each level of this mutation allows you to sense more and more thoroughly.",
+      "你对地牢有第二种感知，可以感知到你还没有看到的地形。\n这个变异每升一级，你的感知就越来越全面。"
+    ],
+    "mp-powered wands": [
+      "Your wands draw upon your magical reserves, becoming somewhat more powerful in the process. If you have no magic left to draw upon, your wands function as normal.",
+      "你的魔杖会汲取你的魔力，在这个过程中会变得更强大。\n如果你没有魔力了，你的魔杖的效果会恢复正常。"
+    ],
+    "regeneration": [
+      "You heal quickly. Each level of this mutation increases the rate at which you heal.",
+      "你愈合得很快。这个变异每升一级，就会增加你的愈合速率。"
+    ],
+    "inhibited regeneration": [
+      "You do not heal over time while foes are in sight. Other sources of healing, such as potions, are unaffected.",
+      "当敌人出现时，你不会随着时间推移而痊愈。其他治疗来源，如药水，不受此影响。"
+    ],
+    "speed": [
+      "You cover ground quickly - moving to new positions takes you less time. This has no effect on other types of actions, like attacking or casting spells. Each level of this mutation makes you move faster.",
+      "你行进得很快——移动到新位置所需的时间会更短。它对其他类型的动作没有影响，\n比如攻击或施法。这个变异每升一级，你移动得会更快。"
+    ],
+    "slowness": [
+      "You cover ground slowly - moving to new positions takes you more time. This has no effect on other types of actions, like attacking or casting spells. Each level of this mutation makes you move slower.",
+      "你行进得很慢——移动到新位置所需的时间会更长。它对其他类型的动作没有影响，\n比如攻击或施法。这个变异每升一级，你移动得会更慢。"
+    ],
+    "robust": [
+      "You can take a beating. Each level of this mutation improves your health further (+10% HP).",
+      "你承受得住打击。这个变异每升一级，你的健康状况会改善（+10%生命值）。"
+    ],
+    "frail": [
+      "Your health is poor. Each level of this mutation worsens your health further (-10% HP).",
+      "你的健康状况很差。这个变异每升一级，你的健康状况会恶化（-10%生命值）。"
+    ],
+    "evolution": [
+      "As you gain experience, your body's hidden potential will express itself in the form of new beneficial mutations.",
+      "当你获得经验时，你身体的隐藏特质会导致新的有益变异。"
+    ],
+    "devolution": [
+      "As you gain experience, your body's hidden potential will express itself in the form of new detrimental mutations.",
+      "当你获得经验时，你身体的隐藏特质会导致新的有害变异。"
+    ],
+    "wild magic": [
+      "Your spells are slightly harder to cast (increased miscast chance and severity), but more powerful. Each level of this mutation increases both effects further.",
+      "你的法术将略难施放（增加了失误率和判定的严苛程度），但威力会变强。\n这个变异每升一级，两方面的效果都会增强。"
+    ],
+    "subdued magic": [
+      "Your spells are slightly easier to cast (reduced miscast chance and severity), but less powerful. Each level of this mutation increases both effects further.",
+      "你的法术将略易施放（减少了失误率和判定的严苛程度），但威力会变弱。\n这个变异每升一级，两方面的效果都会增强。"
+    ],
+    "teleportitis": [
+      "You periodically teleport towards hostile monsters. You will sense yourself destabilising several turns in advance of this happening, and may suppress it temporarily by reading a scroll of teleportation. Each level of this mutation increases the frequency with which you start to teleport.",
+      "你偶尔会穿过本层，传送到敌方怪物那里。\n这个变异每升一级，就会增加这种情况发生的频率。"
+    ],
+    "deformed body": [
+      "Your body is shaped in an inhuman way, somewhat reducing the amount of protection provided by body armour. This has no effect on protection provided by armour enchantments.",
+      "你的身体被一种非人的方式塑造，这在一定程度上削弱了铠甲提供的防护。\n这对护甲附魔提供的防护没有影响，也不会影响训练的护甲技能的防御效果。"
+    ],
+    "screaming": [
+      "You are sometimes seized by an uncontrollable urge to scream whenever you sustain an injury. All of your shouts are also louder than usual. The second level of this mutation makes this urge harder to resist and makes your shouts even louder.",
+      "当敌人第一次出现在你的视线中时，有时你会有种无法克制的冲动，要冲他们喊叫。\n你的喊叫声也都比平时更大。这个变异达到第二级，你将更难克制那股冲动，\n你的喊叫声也会更大。"
+    ],
+    "poor constitution": [
+      "Your body reacts poorly to injury; when you suffer damage, you have a chance for your attacks to become weakened for a short while. The second level of this mutation sometimes additionally causes this to slow you as well.",
+      ""
+    ],
+    "no potion heal": [
+      "Your system is resistant to potable panaceas, reducing the effectiveness of all kinds of healing potions. The second level of this mutation completely blocks potion-based healing. (Aid from the god Gozag is unaffected.)",
+      "你的系统会抗拒饮用的灵丹妙药，削弱了各种治疗药水的效果。\n这个变异达到第二级，会完全阻断药水的疗效。（哥萨戈神的援助不受影响。）"
+    ],
+    "persistent drain": [
+      "Your health recovers twice as slowly from being drained. (The total experience needed is doubled.)",
+      "你衰竭后，恢复正常所用的时间是原先的两倍。（所需的总经验值增加了一倍。）"
+    ],
+    "contamination susceptible": [
+      "You absorb twice as much mutagenic energy from being contaminated.",
+      ""
+    ],
+    "initially attractive": [
+      "The first time you see a monster, it may be magically pulled toward you. This has a chance of waking sleeping monsters, though they will not necessarily be alerted to your position. The second level of this mutation increases the chance of this happening.",
+      ""
+    ],
+    "booming voice": [
+      "When reading scrolls in sight of hostile monsters, your voice resounds with a truly stupendous volume.",
+      ""
+    ],
+    "potion fungus": [
+      "Your body is covered in a fungus that metabolises beneficial potions you drink and sometimes emits spores which transmit their effects to nearby monsters - whether friend or foe.",
+      ""
+    ],
+    "spatial entanglement": [
+      "Whenever you translocate, there is a chance that another monster is pulled along to your new location. If you translocated a short distance, this will always be some monster in sight of your previous location, but long distance teleports may pull a monster from anywhere else on the floor. The experience is mildly disorienting for the monster, and it will not be able to act immediately after being pulled this way.",
+      ""
+    ],
+    "meek": [
+      "All of your attacks are less effective, dealing less damage and being a little less accurate. This effect worsens with each level of this mutation.",
+      ""
+    ],
+    "demonic guardian": [
+      "When you are harmed, there is a chance that a demonic guardian will rush to aid you. The greater the damage done and the closer you are to death, the greater the odds. Each level of this mutation increases the strength of your guardians.",
+      "当你受到伤害时，可能会有恶魔守卫冲过来帮助你。受到的伤害越大，离死亡越近，\n其可能性就越大。这个变异每升一级，就会增加你的守卫的力量。"
+    ],
+    "powered by pain": [
+      "When you are harmed, you sometimes gain power, refilling your magical reservoir or granting you temporary agility or might. Each level of this mutation increases the magnitude of this effect.",
+      "当你受伤时，有时你会获得能量，它会注入你的魔力储备，\n有时你的敏捷或力量会得到暂时的提升。这个变异每升一级，其效果就会增强。"
+    ],
+    "foul stench": [
+      "Foes who strike you in melee sometimes cause you to emit a cloud of foul miasma, slowing and severely poisoning those caught within. This mutation also grants you immunity to miasma (from any source).",
+      "敌人的近战攻击有时会让你发出一团恶臭的瘴气，\n卷入其中的怪物会变慢并受到严重毒害。\n这个变异还能让你对（任何来源的）瘴气免疫。"
+    ],
+    "spiny": [
+      "Foes who strike you in melee have a 50% chance of being impaled on your spines, taking damage. Each level of this mutation increases the damage. This mutation also grants you immunity to constriction.",
+      "近战中，你的敌人有50%的几率被你的尖刺所刺穿，并受到伤害。\n这个变异每升一级，就会增加攻击力。"
+    ],
+    "augmentation": [
+      "While in good health, you are more powerful, casting spells and slaying foes more effectively. Each level of this mutation increases this effect further.",
+      "在健康状况良好的情况下，你会更有能量，更有效地施展法术并杀死敌人。\n这个变异每升一级，其效果都会增强。"
+    ],
+    "magic shield": [
+      "When you are harmed, some damage is redirected to deplete your magic reserves instead.",
+      "当你受到伤害时，一些伤害会转而消耗你的魔力储备。"
+    ],
+    "magic regeneration": [
+      "Your magical reserves regenerate quickly.",
+      "你的魔力储备的恢复速度变快。"
+    ],
+    "magic link": [
+      "When low on magic, you restore magic in place of health.",
+      "当魔力不足时，你会恢复魔法而不是生命值。"
+    ],
+    "demonic magic": [
+      "When you cast spells, there's a chance that adjacent monsters will be paralysed. This effect is more powerful when casting higher-level spells, but monsters with greater willpower can resist it. Each level of this mutation allows more distant monsters to be affected. The third level of this mutation also allows you to paralyse monsters in the same way while zapping wands.",
+      "当你施放法术时，相邻的怪物可能会麻痹。在施放更高等级的法术时，\n效果会更为强大，但具有更强意志力的怪物能够抵御它。这个变异每升一级，\n就能影响更远的怪物。这个变异达到第三级，你在挥动魔杖时也能麻痹怪物。"
+    ],
+    "icemail": [
+      "You are coated in a protective layer of ice. Fiery attacks can temporarily melt the ice, removing the protection until the ice reforms. Each level of this mutation increases the protection imparted.",
+      "你身上覆盖着一层起保护作用的冰。火焰攻击能暂时融化冰层，\n在冰层重新形成之前会消除保护。这个变异每升一级，就会提升获得的保护。"
+    ],
+    "condensation shield": [
+      "A shield of frost guards you, blocking some incoming attacks. Fiery attacks can temporarily melt the shield.",
+      "一个冰霜盾守护着你，阻挡着一些来袭的攻击。火焰攻击能暂时融化此盾。"
+    ],
+    "powered by death": [
+      "Death fuels you, allowing you to heal somewhat for each life you take. Each level of this mutation increases the healing further.",
+      "死亡滋养着你，你每夺取一条生命，就能得到一定程度的治疗。\n这个变异每升一级，治疗效果就会增强。"
+    ],
+    "sturdy frame": [
+      "Your movements are less encumbered by armour, mitigating penalties to spell success, evasion, and ranged weapon attack speed. Each level of this mutation reduces armour ER by 2.",
+      "你的行动将少受到护甲的阻碍，\n并减少了护甲对施法的成功率、命中率和远程武器的攻击速度的负面影响。\n这个变异每升一级，就会减少2点护甲的妨碍等级。"
+    ],
+    "sanguine armour": [
+      "When seriously injured, your blood congeals around you, forming armour. Each level of this mutation increases the AC provided.",
+      "当受重伤时，你的血液会在你周围凝结，形成护甲。这个变异每升一级就会提升防护。"
+    ],
+    "big brain": [
+      "What's up? You have a big brain. Each level of this mutation provides +2 Intelligence. The third level of this mutation also makes you less likely to miscast spells.",
+      "出什么事了？你有一个大脑袋。这个变异每升一级会加2点智力。\n这个变异达到第三级，你在施法时就更不容易失误。"
+    ],
+    "ignite blood": [
+      "Whenever you see blood spilled (yours or others'), it may ignite, bursting into a cloud of flame. Each level of this mutation makes this more likely. This mutation also grants you immunity to clouds of flame.",
+      "每当你看到（你的或他人的）飞溅的血液，它可能会燃烧，爆发成火焰云。\n这个变异每升一级，这种可能性就越大。这个变异还能让你免疫火焰云。"
+    ],
+    "corrupting presence": [
+      "When you injure a foe, your presence may intensify the damage, corroding their weapons and defences. The second level of this mutation makes matters even worse, adding a chance that your wretched victims may become mutated and deformed.",
+      "当你伤害到敌人时，攻击力可能会增强，并能腐蚀他们的武器和防具。\n这个变异达到第二级，事态会更为严重，你那可怜的受害者将有可能被变异、变形。"
+    ],
+    "black mark": [
+      "When you strike a foe in melee, the black mark on your body may debilitate them. This can weaken foes, drain their health, or disrupt their magic.",
+      "当你近战攻击敌人时，你身上的黑色标记可能会削弱敌人。\n它能够虚弱敌人、汲取他们的生命力，或扰乱他们的魔法。"
+    ],
+    "aura of silence": [
+      "You are surrounded by an aura of silence. Those adjacent to you cannot make any sound. This prevents most forms of spellcasting and prayer, though demonic magic, being noiseless, is unaffected.",
+      "你被沉默力场所围绕。与你相邻的怪物无法发出任何声音。\n它可以阻止大多数形式的施法和祈祷，但恶魔的魔法是无声的，不受此影响。"
+    ],
+    "bedevilling": [
+      "You cast Hex spells with increased power.",
+      "你施放的妖术威力增强。"
+    ],
+    "demonic willpower": [
+      "Your willpower has a will of its own, sometimes injuring those who attempt to hex you. This mutation also bolsters your willpower.",
+      "你的意志力有了自己的意图，有时它会伤害那些试图给你下咒的人。\n这个变异还会增强你的意志力。"
+    ],
+    "hurl damnation": [
+      "You can hurl damnation with %key%. Foes beware!",
+      "你可以通过<input>$cmd[CMD_USE_ABILITY]</input>发动天遣。敌人们可要当心了！"
+    ],
+    "word of chaos": [
+      "You can speak a Word of Chaos with %key%.",
+      "你可以通过<input>$cmd[CMD_USE_ABILITY]</input>念出混沌之语。"
+    ],
+    "freezing cloud immunity": [
+      "You are immune to freezing clouds.",
+      "你免疫冰汽云。"
+    ],
+    "flame cloud immunity": [
+      "You are immune to clouds of flame.",
+      "你免疫火焰云。"
+    ],
+    "spit poison": [
+      "You can spit poison with %key%. The second level of this mutation intensifies the poison from a single glob into a large cloud.",
+      "你可以通过<input>$cmd[CMD_USE_ABILITY]</input>喷吐毒液。\n这个变异达到第二级，毒素会从一小团毒液，变成一大片毒云。"
+    ],
+    "in touch with death": [
+      "Your Necromancy spells are more powerful. The second level of this mutation enhances your Necromancy spellpower further.",
+      "你的死灵法术变得更为强大。这个变异达到第二级，就会增强你的死灵术的法力。"
+    ],
+    "acrobatic": [
+      "Your magical nature helps you tumble your hollow bones around acrobatically, allowing you to evade attacks while moving or waiting.",
+      "你那神奇的天性有助于你杂技般地翻滚你的空心骨头，从而能在移动或等待时躲避攻击。"
+    ],
+    "evasive flight": [
+      "You fly evasively through the air, increasing your evasion somewhat.",
+      "你地在空中扑闪，闪避能力得到一定提升。"
+    ],
+    "big wings": [
+      "You have big, strong wings, capable of bearing you through the air.",
+      "你长出巨大、强壮的翅膀，它能够承载你在空中飞行。"
+    ],
+    "float": [
+      "You hover through the air, forever free from the surly bonds of earth.",
+      "你在空中悬浮，永远摆脱了大地的束缚。"
+    ],
+    "innate caster": [
+      "You cannot learn spells from books. Instead, as you gain experience, spells of higher and higher level bubble up from your fiery heart. These spells are unpredictable and unaffected by your choice of god. You cannot train specific spell schools - you can either train all spell schools at once, or none.",
+      "你无法从书本习得法术。取而代之的是，随着你经验的增加，\n越来越高级的法术从你炽热的内心中涌现。\n这些法术是不可预知的，且不受你皈依的神影响。\n你无法训练特定的法术流派——要么同时都进行训练，要么一个都不进行训练。"
+    ],
+    "hp casting": [
+      "You have no separate reserve of magical power, and anything that would affect MP has no effect on you. When casting spells, using abilities, or doing anything else that *costs* MP for normal species, you spend HP instead.",
+      "你没有独立的魔力储备，任何会影响魔力的都将对你失效。\n当施展法术、使用能力或做任何对其他物种来说需要花费魔力的事时，\n你将转而消耗生命值。"
+    ],
+    "extra vitality": [
+      "You are built differently from most species, making you slightly harder to kill. Each level of this mutation increases your maximum health by 4 points.",
+      "你的身体结构与大多数物种不同，这让你略难被杀死。\n这个变异每升一级，你的生命值上限就会增加4点。"
+    ],
+    "frog-like legs": [
+      "Your uniquely muscular legs allow you to hop short distances in the blink of an eye with %key%, though your walking speed is below average. The second level of this mutation allows you to hop farther.",
+      ""
+    ],
+    "forlorn": [
+      "You cannot, will not, and will never worship any god.",
+      "你不能、不会、也永远无法皈依任何神。"
+    ],
+    "nightstalker": [
+      "You are attuned to the shadows, reducing the distance that you can see or be seen from.",
+      "你适应了阴影，减小了你能看到和被看到的距离。"
+    ],
+    "+los": [
+      "The darkness flees at your approach, allowing an extended range of vision and ranged attack (+1 line of sight), but also allowing you to be seen and potentially targeted from further away.",
+      "在你的道路上黑暗会遁形，从而扩大了视野和远程攻击范围（+1视线），\n但也使得你能从更远的地方被发现并成为潜在目标。"
+    ],
+    "stone body": [
+      "You are made of living stone which is very resistant to damage. You gain a large bonus to your AC, which increases with your experience level, and are immune to petrification, poison, disease, sleep, and certain other effects.",
+      ""
+    ],
+    "cold-blooded": [
+      "When struck by a cold attack, you may be slowed until your blood warms again.",
+      "当受到寒冷攻击时，你可能会变慢，直到你的血液再次变暖。"
+    ],
+    "stealthy paws": [
+      "When launching attacks on unaware or incapacitated enemies, you inflict extra damage in the same way as a human with a short blade might.",
+      "当你攻击没有意识或失去行动能力的敌人时，你会造成额外的伤害，\n就像人类使用短刀一样。"
+    ],
+    "four strong arms": [
+      "You have two pairs of two arms, allowing you to wield two-handed weapons with one pair and a shield with the other, as well as wear a second pair of gloves. You can even wield extremely large weapons like giant clubs, though this takes both arm-pairs.",
+      "你有两对双臂，可以一对手持双手武器，另一对手持盾牌。\n你甚至可以挥舞极其巨大的武器，比如大棒，不过这需要两对手臂的配合。\n每对手臂的副臂的形状都很奇怪，因此你无法戴上额外的手套或魔法戒指。"
+    ],
+    "retaliatory headbutt": [
+      "When a foe misses you in melee, you may reflexively retaliate, attempting to gore your attacker with your horns. You can perform this against a given enemy no more than once per player action.",
+      "当敌人未在近战中击中你时，你可能会本能地进行报复，试图用你的角顶伤攻击者。"
+    ],
+    "multi-lived": [
+      "Every third experience level, you gain an extra life. If you are slain while you still have a life remaining, you will reappear elsewhere on the current floor. You can continue to gain extra lives even once you reach the maximum experience level, but you can't have more than two extra lives at a time.",
+      "每过三级，你将获得额外的生命。\n如果你被杀的时候还有一条命，你会在当前楼层的其他地方重新出现。\n即使你达到了最高的经验等级，你也可以继续获得额外的生命，\n但最多只能有两条额外生命。"
+    ],
+    "distributed training": [
+      "Whenever you gain experience, it is split between all of your skills. You cannot choose to focus. Effects that prevent you from training certain skills, such as divine restrictions, do not cause your other skills to rise faster.",
+      "无论你何时获得经验，它都会分配到你的所有技能之中。\n你无法选择技能进行着重训练。\n此效果让你无法训练特定技能，仿佛是神的限制，不会让你的其他技能提升得更快。"
+    ],
+    "nimble swimmer": [
+      "You can blend into the waves while swimming through water or flying above it, gaining Stealth+. The second level of this mutation also grants you improved evasion and increases your movement speed when in or above water.",
+      "你在水中游泳或在水面上飞行时能融入波浪，潜行获得加成。\n这个变异达到第二级，还会提升你在水中或水上的闪避能力和移动速度。"
+    ],
+    "divine attributes": [
+      "Your divine heritage dramatically boosts your attribute gain (Strength, Intelligence, and Dexterity) as you level up relative to other species, both in quantity and in how much you can control your development. Every three levels, you choose an attribute to increase by four points.",
+      "当你与其他物种相比，无论是在数值还是在发育程度的掌控上，\n神圣属性都显著提升了你的属性增益（力量、智力和敏捷）。\n每过三级，你可以选一个属性，提升四点。"
+    ],
+    "tentacles": [
+      "Your gelatinous body has eight tentacles that help you move around in shallow or deep water and can be used to constrict enemies while attacking them in melee. Each tentacle can wear a ring, but you need four of them to move around, and either two or four tentacles to hold a weapon depending on its size, and two tentacles to hold a shield. Your tentacles will try to constrict foes which you attack in melee. (You cannot constrict monsters larger than you.) Independently, you have a two-thirds chance of launching a damaging 'squeeze' attack whenever you attack in melee.",
+      "你的胶状身体有八个触手，可以帮助你在浅水或深水中移动，并能在近战时束缚敌人。\n每只触手都可以戴上戒指，但你需要四只触手用来移动，根据武器的大小，\n两只或四只触手可以拿一把武器，两只触手可以拿一面盾牌。\n\n当你近战时，你的触手会尝试束缚敌人。（你无法束缚比你大的怪物。）\n顺便一提，每当你近战攻击时，你有三分之二的机会发动破坏性的“挤压”攻击。"
+    ],
+    "mertail": [
+      "Your morphogenic matrix is unstable, allowing your lower body to shift to a powerful aquatic tail when in shallow or deep water. It will quickly reform into legs once you leave the water. When in merform, your tail allows you to tail-slap foes when launching melee attacks.",
+      "你的基体形态不稳定，当你在浅水或深水中，\n你的下半身会变成强有力的水生生物的尾巴。一旦你离开水面，它会很快变成腿。\n处于人鱼形态时，你的尾巴在近战时能够扫打敌人。"
+    ],
+    "no regeneration": [
+      "You do not regenerate health while resting, and are unable to receive the effects of magic that hastens the speed of regeneration. Sources of HP gain such as potions and religious invocations will still heal you, and certain divine invocations can temporarily grant you the ability to regenerate. To compensate, you are able to heal yourself via the %key% key, at the cost of permanent MP.",
+      "你在休息时无法恢复健康，也无法获得提升恢复速度的魔法效果。\n至于提升生命力的手段，像药水和虔诚的祈祷仍能治疗你，\n某些神圣祈祷能力可以短暂赋予你自愈的能力。\n作为补偿，你可以通过<input>$cmd[CMD_USE_ABILITY]</input> 键治疗自己，\n但代价是要永久地失去一些魔力。"
+    ],
+    "treasure sense": [
+      "You have an uncanny knack for knowing where items can be found. As you explore the dungeon, nearby item locations that you cannot directly see will gain a marker for as-yet-undiscovered items.",
+      ""
+    ],
+    "gelatinous body": [
+      "Your body is rubbery, and your foes like glue. Each level of this mutation confers +1 AC and +1 EV.",
+      "你的身体富有弹性，你的敌人就像胶水。这个变异每升一级会加1点防护和1点闪避。"
+    ],
+    "eyeballs": [
+      "Golden eyeballs sprout from your flesh like mushrooms, confusing your foes. Each level of this mutation improves your accuracy with weapons, unarmed attacks, auxiliary attacks, and spells. The third level of this mutation also allows you to see invisible foes.",
+      "金色的眼球像蘑菇一样从你的肉里长出来，能够混乱你的敌人。\n这个变异每升一级，就能提升你的武器、徒手攻击、辅助攻击和法术的命中率。\n这个变异达到第三级，你将能够看到隐形的敌人。"
+    ],
+    "translucent skin": [
+      "Your skin is transparent, improving your stealth and reducing the accuracy of your foes' attacks against you. Each level of this mutation reduces your foes' accuracy further.",
+      "你的皮肤是透明的，你的潜行能力得到提升，敌人攻击你的命中率会降低。\n这个变异每升一级，就会削弱你的敌人的命中率。"
+    ],
+    "slime shroud": [
+      "When struck in melee, the slimy shroud covering your body may deflect the attack. Such deflection will break the shroud, however, and it will take time for it to reconstitute itself.",
+      ""
+    ],
+    "tendrils": [
+      "When struck in melee, the slimy tendrils covering your body may grab your attacker's weapon and yank it from their grasp, disarming them.",
+      "受到近战伤害时，覆盖在你身体上的黏稠卷须可能会抓住攻击者的武器，\n并从他手上将其拽出，解除他们的武装。"
+    ],
+    "jelly sensing items": [
+      "You have a small jelly attached to you that senses nearby items.",
+      "你身上附有一个小胶冻，它可以感知周围物品。"
+    ],
+    "jelly absorbing missiles": [
+      "When struck by a missile (such as an arrow or crossbow bolt), a jelly on your body may eat it, healing you somewhat.",
+      "当你被飞弹击中时（比如箭或弩箭），你身上的胶冻可能会吞掉它，并进行一定治疗。"
+    ],
+    "ooze flood": [
+      "Your melee attacks may flood the airways of your foes with ooze. Those that need to breathe air will be silenced and take asphyxiation damage over time.",
+      ""
+    ],
+    "otherworldly": [
+      "You are foreign to this world, easily perceived by dark forces. You have only one-tenth the normal time on each dungeon floor before Zot finds you and permanently reduces your health.",
+      "你与这个世界格格不入，很容易被黑暗势力察觉。\n在佐特找到你并永久降低你的生命值之前，你在每层地牢的时间只有正常时间的十分之一。"
+    ],
+    "foul shadow": [
+      "Your body is shadowed by foul flame. Foes hit you less often, and your stealth is greatly enhanced. Foes who strike you in melee are sometimes seared by the foul flame; undead and demonic foes take less damage from it, while holy beings and good god worshippers take more.",
+      ""
+    ],
+    "explore regen": [
+      "You are invigorated by the discovery of the unknown. As you explore the dungeon, your wounds will heal and your magic will replenish.",
+      "探索未知会让你精神振奋。当你探索地牢时，你的伤口会愈合，你的魔力会恢复。"
+    ],
+    "faith": [
+      "You were embalmed with holy oils and sacred spices and bound about with blessed cloth. Now you have a special connection with the divine, allowing you to gain favour with your chosen god more quickly.",
+      "你被熏了圣油和圣香料，被蒙福的布裹着。\n现在你与神有一种特殊的联系，你会更快被你皈依的神所赏识。"
+    ],
+    "devour on kill": [
+      "When you kill living creatures you have a chance to devour their life force and restore health.",
+      "当你杀死生物时，你有机会吞噬它们的生命力并恢复健康。"
+    ],
+    "rollpage": [
+      "You instinctively roll as you move toward enemies, rampaging forward an additional space. This mutation grants magic regeneration when rolling; the second level of this mutation regenerates both magic and health.",
+      "当你移向敌人时会本能地翻滚，会向前再冲出一格。\n这个变异能在你滚动时提升魔力恢复速度；\n这个变异达到第二级，魔力和生命值的恢复速度会同时提升。"
+    ],
+    "double potion healing": [
+      "Whenever a potion restores your health or magic, it restores twice as much.",
+      "每当药水恢复你的生命值或魔力时，其恢复量是原先的两倍。"
+    ],
+    "drunken brawling": [
+      "Whenever you drink a potion that restores health or magic, you perform an immediate attack against all enemies adjacent to you. (This includes potions of curing, heal wounds, magic, and ambrosia.)",
+      "当你喝下恢复健康或魔力的药水时，你会立即攻击附近的所有敌人。\n\n（这包括治疗、愈伤、魔力和琼浆药水。）"
+    ],
+    "artefact enchanting": [
+      "You can use scrolls of enchant weapon and armour upon random artefacts. This cannot raise their enchantment above what would normally be possible on a mundane item of the same type, and cannot affect especially unusual artefacts at all.",
+      ""
+    ],
+    "runic magic": [
+      "You cast spells with the assistance of glyphs marked upon your armour, greatly reducing the complex movements which would otherwise be required. (The encumbrance rating of all armour you wear is reduced by 1/2 for purposes of spell success.)",
+      ""
+    ],
+    "off-hand wielding": [
+      "You can wield a one-handed weapon in your off-hand, if not wielding a two-handed weapon or wearing a shield or orb. You will follow up attacks from your primary weapon with your off-hand weapon, with attack delay determined by the average of the two. Ranged weapons can only follow attacks by ranged weapons, and likewise melee weapons.",
+      ""
+    ],
+    "slow wielding": [
+      "You must recalibrate your grasping arms when wielding or unwielding weapons. This takes as long as donning armour.",
+      ""
+    ],
+    "warmup strikes": [
+      "Your grasping arms need time to limber up, making your first few attacks in each fight less effective. Slow, heavy attacks help more than fast attacks. Both weapon-based and unarmed attacks are affected.",
+      ""
+    ],
+    "no rings": [
+      "Your hands are embedded into the controls for your grasping arms, leaving you with no place to wear magical rings without disastrous magical interference.",
+      ""
+    ],
+    "iron-fused scales": [
+      "Your scales are fused with a thick layer of iron, giving them resilience akin to a suit of armour (+5 AC).",
+      ""
+    ],
+    "inviolate magic": [
+      "Your magic is resistant to distruption by outside forces. Hostile effects which drain your MP drain only 1/3 as much and you are immune to having your magical effects be removed by anyone but yourself.",
+      ""
+    ],
+    "formless": [
+      "You have no physical body and instead interact with the world through haunting objects. This allows you to 'equip' up to 6 boots, gloves, cloaks, or helmets in any combination, but body armour is too large for you to usefully manipulate in this fashion. At higher levels, you can even send the armour you are haunting out to attack enemies independently for short periods of time.",
+      ""
+    ],
+    "trickster": [
+      "Your connection to the realm of the living grows stronger as you spread misfortune. Whenever you or your allies inflict new negative status effects upon nearby enemies (other than poison), your AC temporarily increases. This bonus improves with the number of different enemies affected, but will decay over time if you do not continue to inflict new misfortune. At your current XL, you can gain a maximum bonus of %value% AC this way.",
+      ""
+    ],
+    "mnemnophage": [
+      "You devour the memories and even the very existence of those you kill, subsuming them in the unholy fire that wreathes your body. Once you have accumulated enough memories, you may choose to burn them all away as fuel to greatly enhance your spellcasting for a short period of time. At your current experience level, you can hold enough memories to cast a maximum of %value% spells in a row this way.",
+      ""
+    ],
+    "spellclaws": [
+      "You instinctually channel destructive magic through your claws. When casting a damage-dealing spell, you also perform a melee attack against the most healthy enemy in your attack range. This attack does reduced damage if your attack speed is slower than your casting speed.",
+      ""
+    ],
+    "accursed": [
+      "Your accursed nature makes it harder to dispel malignant energies from your being, reducing the rate at which you can recover from Doom and Banes.",
+      ""
+    ],
+    "vampire fangs": [
+      "When you perform a stab attack against a living monster with blood, you heal for a portion of the total damage dealt. When you are at 50% of your max HP or less, this has a 2/3 chance to happen on all melee attacks.",
+      ""
+    ],
+    "bloodcurse": [
+      "When you kill a living monster with a stab attack, they may rise again to serve you as a vampiric thrall. Thralls possess all the abilities they had in life, but are undead, and gain a vampiric bite attack as well as increased melee damage against sleeping foes. Spellcaster thralls will also gain knowledge of the Vampiric Draining spell. You can only create a thrall if you do not have one already, and they will inevitably turn to dust after a short time.",
+      ""
+    ],
+    "insubstantial": [
+      "You are insubstantial and immune to many effects that require a solid body. You cannot be constricted, petrified, skewered by barbs, covered in sticky flame, or caught by webs, nets, or bolas.",
+      ""
+    ],
+    "frigid aura": [
+      "Your breath radiates an intense chill which freezes nearby walls solid as you fight. Whenever you attack, you turn a random wall adjacent to your target or yourself frigid. Frigid walls deal damage to any enemies adjacent to them each turn - up to twice as much when an enemy is adjacent to as many as possible. This damage increases with your shapeshifting skill. The walls will rapidly melt again if you stop attacking.",
+      ""
+    ],
+    "hive swarm": [
+      "Whenever an injury reduces your health to less than 50%, angry bees will swarm out of your body to defend you. This effect cannot happen again until your health is fully recovered.",
+      ""
+    ],
+    "water reaching": [
+      "Your body is formed of elemental water that changes shape flexibly, allowing you to reach and perform melee attacks from several tiles away - including auxiliary attacks of all sorts. The precision required to preform stab attacks is still impossible unless you're adjacent to your target, and axes can only cleave to enemies adjacent to you, regardless of where you strike.",
+      ""
+    ],
+    "water splatter": [
+      "When injured, parts of your watery body may splatter as puddles of shallow water nearby. The more damage you take at once, the more water is spread around.",
+      ""
+    ],
+    "freeze response": [
+      "Whenever you are exposed to cold damage, you have a chance to become Frozen, lowering your movement speed for a short while.",
+      ""
+    ],
+    "steam response": [
+      "Whenever you take fire damage from a projectile, you have a chance (increasing with the damage suffered) to spread steam clouds around yourself.",
+      ""
+    ],
+    "airstrike attack": [
+      "Whenever you strike an enemy in melee, the wind twists around and strikes them for additional damage which is increased for each empty space adjacent to them.",
+      ""
+    ],
+    "hex mastery": [
+      "Your Hexes spells are much easier to cast (reduced miscast chance and severity) and enemies have reduced willpower against all your effects.",
+      ""
+    ],
+    "riddle compulsion": [
+      "You compulsively pose riddles to enemies when you encounter them. Every now and again, these may confuse or vex them, but mostly they just attract their attention.",
+      ""
+    ],
+    "werefury": [
+      "Whenever you kill an enemy with a melee attack, you gain a temporary slaying bonus that increases with your Shapeshifting skill. This bonus stacks up to +12 and will not expire so long as you continue to perform melee attacks.",
+      ""
+    ],
+    "werehowl": [
+      "When you kill an enemy in melee, if your werefury bonus is at least 5, you may unleash a terrifying howl that attempts to freeze all nearby enemies in place with fear if it overcomes their willpower.",
+      ""
+    ],
+    "stinger hair": [
+      "Your hair is made of long prehensile jellyfish-like tendrils. Whenever you attack in melee, they will lash out and attempt to poison several visible enemies within 2 tiles of the player at random. The number of enemies they can afflict at once is improved by Shapeshifting skill.",
+      ""
+    ],
+    "lithotoxin": [
+      "When your health drops to 60% of your max HP or less, your tendrils reflexively attempt to petrify all poisoned enemies within 3 tiles of you. This effect cannot activate again until you fully heal and its success chance improves with your Shapeshifting skill.",
+      ""
+    ],
+    "contaminating": [
+      "When you strike an enemy in melee, a portion of the transmutational energy surging through will contaminate them. Upon landing the third strike in a row, this contamination will grow so acute that it will twist their bodily form, inflicting significant AC-ignoring damage and malmutating them.",
+      ""
+    ],
+    "maw attack": [
+      "Your maw sometimes bites enemies in melee, at a rate independant of your own attack speed (once per 15 aut, on average). Its base damage is directly increased by 3/4rd of your strength.",
+      ""
+    ],
+    "devouring maw": [
+      "When you kill an edible enemy in melee (anything which drops a corpse), your maw devours it, greatly increasing your regeneration for a short while. More powerful enemies provide a longer duration of this effect.",
+      ""
+    ],
+    "growling stomach": [
+      "Your maw's appetite is insatiable. Whenever you first encounter an edible monster, there is a chance to become mesmerised by it and let out a loud growl.",
+      ""
+    ],
+    "eel punch": [
+      "Your melee hits have a 50% chance of discharging an arc of electricity that travels between several connected enemies.",
+      ""
+    ],
+    "eeljolt": [
+      "When your health drops to 40% of your max HP, your eels violently discharge electricity, striking all connected targets within 2 tiles of yourself - be they friend or foe - for twice the damage their electricity normally does. This effect cannot activate again until you fully heal.",
+      ""
+    ],
+    "blade parry": [
+      "You briefly gain SH equal to your slaying whenever you perform a melee attack (with an additional flat bonus based on your Shapeshifting skill).",
+      ""
+    ],
+    "sporulate": [
+      "Your melee attacks cause multiple burstshrooms to begin growing on unoccupied tiles behind your target. If they are allowed to grow for several turns, they will explode in a burst of spores that damages nearby enemies and can briefly daze them.",
+      ""
+    ],
+    "armoured shell": [
+      "Your body armour is fused into your shell, multiplying its base AC by a factor that increases with your Shapeshifting skill. The effectiveness of its ego and most artefact properties will also be doubled, though certain rare artefacts may be too unusual to enhance this way.",
+      ""
+    ],
+    "hypnotic gaze": [
+      "Your gaze has a hypnotic effect on many creatures. Whenever a living, demonic, or holy monster first notices you, it may become momentarily dazed, preventing it from shouting. Creatures which fail a Willpower check will be dazed for even longer.",
+      ""
+    ],
+    "gehenna destruction": [
+      "Your Unleash Destruction ability is empowered by Gehenna. You are able to hurl bolts of magma instead of cold, and your bolts of fire can strip away their victims' fire resistance.",
+      ""
+    ],
+    "cocytus destruction": [
+      "Your Unleash Destruction ability is empowered by Cocytus. You are able to hurl bolts of ice instead of fire, and your bolts of cold freeze victims solid, slowing their movement.",
+      ""
+    ],
+    "tartarus destruction": [
+      "Your Unleash Destruction ability is empowered by Tartarus. You are able to hurl bolts of devastation which lower their victims' willpower instead of lightning, and your bolts of negative energy are more powerful.",
+      ""
+    ],
+    "dis destruction": [
+      "Your Unleash Destruction ability is empowered by Dis. You are able to hurl bolts of corrosive acid and metal splinters instead of negative energy.",
+      ""
+    ],
+    "mark of the tyrant": [
+      "Your Infernal Servants have a longer duration, and you can summon even stronger ones at very high Invocations (at the cost of additional piety). When you slay enemies, a random servant may gain one of: Haste, Might, Regeneration, or Brilliance.",
+      ""
+    ],
+    "mark of carnage": [
+      "Your Infernal Servants are now summoned adjacent to a random enemy instead of near you. When they appear, they do so in a blast of your characteristic Destruction (which cannot hurt you or other allies). (Your servants unleash blasts of either %value%.)",
+      ""
+    ],
+    "mark of the legion": [
+      "Your Infernal Servant ability is replaced with Infernal Legion, allowing you to call in a small army of demons over time. While individually short-lived, their numbers are inexhaustible for as long as the status lasts, and they will never be hostile to you. You may also unleash Makhleb's Destruction through your summoned allies without harming them.",
+      ""
+    ],
+    "mark of annihilation": [
+      "Your Infernal Servant ability is replaced with Globe of Annihilation, allowing you to hurl slow-moving spheres of intense destructive force that detonate in an enormous blast of your characteristic Destruction. (Your globes of annihilation unleash either %value%.)",
+      ""
+    ],
+    "mark of haemoclasm": [
+      "When you kill enemies, they have a small chance to explode in a violent rain of gore, which damages adjacent foes proportional to the victim's maximum health. Enemies who die to this explosion will always explode themselves.",
+      ""
+    ],
+    "mark of the celebrant": [
+      "Whenever you fall below 50% of your maximum HP, you perform an infernal rite, unleashing a flurry of blood arrows aimed at nearby enemies. You will fire at least one arrow for every valid target, but may fire additional ones if few are present. Invocations increases the damage of these arrows, and Makhleb will always bestow healing upon you for enemies killed by them. After performing a blood rite, you cannot perform another until your HP has fully recovered.",
+      ""
+    ],
+    "mark of execution": [
+      "A demonic incarnation of murder lies dormant within your soul. Whenever you kill an enemy in melee, there is a small chance for it to awaken and manifest as a maelstrom of scythe-like blades enveloping you. These blades will attack whenever you do and also retaliate whenever you successfully dodge an enemy attack. You have the ability to rampage swiftly towards enemies while possessed, but if you spend more than a short while doing anything other than attacking, the demonic presence will go dormant inside you once again.",
+      ""
+    ],
+    "mark of atrocity": [
+      "Your Unleash Destruction is empowered the more times you use it consecutively without pause, increasing in both damage and health cost. Upon using it a fourth time in a row, you will automatically unleash a wild barrage of additional bolts aimed at random targets and reset this boost.",
+      ""
+    ],
+    "mark of the fanatic": [
+      "Grants you the Vessel of Slaughter ability, allowing you to transform into a powerful demonic avatar with greatly boosted offence and defence for a short period of time, in exchange for being dragged down into the Crucible of Flesh afterward and made to fight for your freedom.",
+      ""
+    ],
+    "renounce potions": [
+      "You refuse to drink potions in combat unless badly injured. While enemies are in your line of sight (and for several turns afterward), you will be unable to drink anything unless your HP is below 50% of its maximum.",
+      ""
+    ],
+    "renounce scrolls": [
+      "You refuse to read scrolls in combat unless badly injured. While enemies are in your line of sight (and for several turns afterward), you will be unable to read anything unless your HP is below 50% of its maximum.",
+      ""
+    ],
+    "missing a hand": [
+      "You are considerably less handy than you used to be. You cannot wield two-handed weapons, wear a shield, launch off-handed attacks, or use more than one magical ring at a time.",
+      "你的手要比以前不方便得多。\n你不能使用双手武器、装备盾牌、发起徒手攻击或一次使用多个魔法戒指。"
+    ],
+    "no stealth": [
+      "You have no Stealth. You will always alert monsters when they see you, and they will track you very effectively.",
+      "你无法潜行。\n当敌人能看到你时，你总是能引起他们的警觉，并且他们能够轻易追踪你。"
+    ],
+    "no forms": [
+      "You cannot voluntarily change forms, via talismans, potions, or any other means. You may still be involuntarily transformed by effects such as wands of polymorph.",
+      "你无法通过符咒、药水或其他任何方式自行改变形态。\n但你仍有可能会被变形魔杖等方式不由自主地改变形态。"
+    ],
+    "inability to use devices": [
+      "You cannot use magical devices. This includes wands and most items evoked with %key%, excepting reaching weapons, talismans, and ziggurat figurines. This also renders magical staves much less effective in melee.",
+      "你无法使用魔法设备。\n其中包括魔杖和大多数需要通过<input>$cmd[CMD_EVOKE]</input>激活的物品，\n但不包括获得的武器、符咒和金字塔雕像。这也使得法杖在近战时的威力大大降低。"
+    ],
+    "hated by all": [
+      "You are hated by all and cannot acquire allies, temporarily or permanently, by any means. Simplistic, unthinking magical constructs, such as spectral weapons, orbs of destruction, and battlespheres, are unaffected.",
+      "你被所有怪物憎恨，无法以任何方式获得暂时或永久的盟友。\n简单、没有意识的魔法造物，比如幽灵武器、毁灭球和作战球则不受此影响。"
+    ],
+    "cowardly": [
+      "Seeing threatening monsters fills you with dread, reducing the power of your spells and your ability to slay monsters with melee and ranged attacks. Seeing multiple such monsters at once, or extremely threatening monsters, renders this even worse.",
+      "看到有威胁的怪物会让你充满恐惧，\n你的法术威力、近战和远程攻击杀怪物的能力都会受到削弱。\n一次看到多个这样的怪物，或极其危险的怪物，会让情况变得更糟。"
+    ],
+    "disrupted magic": [
+      "Your chance to miscast spells is higher. Each level of this sacrifice increases the chance to miscast further.",
+      "你施法的失误几率会更高。这个舍弃每升一级，施法就越容易失误。"
+    ],
+    "unskilled": [
+      "It takes you more experience to improve your skills. Each level of this sacrifice makes your skills cost even more.",
+      "你提升技能需要更多经验。这个舍弃每升一级，技能成本就会更高。"
+    ],
+    "reduced ac": [
+      "You are easily battered and bruised, reducing the benefits of your armour.",
+      "你很容易受到创伤，你的防具的增益受到削弱。"
+    ],
+    "reduced ev": [
+      "Your reflexes are slow, making it easier for foes to hit you.",
+      "你的反应很慢，敌人很容易攻击你。"
+    ],
+    "inexperienced": [
+      "You are inexperienced and unable to fully gain 27 levels.",
+      "你缺乏经验，无法完全升到27级。"
+    ],
+    "missing an eye": [
+      "You are missing an eye, reducing the accuracy of your physical and magical attacks.",
+      "你失去了一只眼睛，降低了你的物理和魔法攻击的命中率。"
+    ],
+    "no potions": [
+      "You are unable to quaff potions.",
+      "你无法饮用药水。"
+    ],
+    "no weapons or thrown items": [
+      "You are incapable of wielding weapons or throwing items.",
+      "你无法装备武器或投掷物品。"
+    ],
+    "no armour": [
+      "You cannot wear armour.",
+      "你无法装备防具。"
+    ],
+    "inability to train dodging": [
+      "Your Dodging skill is 0 and you cannot train the skill.",
+      "你的闪避技能等级为0，你也无法训练它。"
+    ],
+    "inability to train armour": [
+      "Your Armour skill is 0 and you cannot train the skill.",
+      "你的护甲技能等级为0，你也无法训练它。"
+    ],
+    "no air magic": [
+      "Your Air Magic skill is 0 and you cannot train the skill.",
+      "你的气系魔法技能等级为0，你也无法训练它。"
+    ],
+    "no conjurations magic": [
+      "Your Conjurations skill is 0 and you cannot train the skill.",
+      "你的塑能技能等级为0，你也无法训练它。"
+    ],
+    "no earth magic": [
+      "Your Earth Magic skill is 0 and you cannot train the skill.",
+      "你的土系魔法技能等级为0，你也无法训练它。"
+    ],
+    "no fire magic": [
+      "Your Fire Magic skill is 0 and you cannot train the skill.",
+      "你的火系魔法技能等级为0，你也无法训练它。"
+    ],
+    "no hexes magic": [
+      "Your Hexes skill is 0 and you cannot train the skill.",
+      "你的妖术技能等级为0，你也无法训练它。"
+    ],
+    "no ice magic": [
+      "Your Ice Magic skill is 0 and you cannot train the skill.",
+      "你的冰系魔法技能等级为0，你也无法训练它。"
+    ],
+    "no necromancy magic": [
+      "Your Necromancy skill is 0 and you cannot train the skill.",
+      "你的死灵术技能等级为0，你也无法训练它。"
+    ],
+    "no alchemy magic": [
+      "Your Alchemy skill is 0 and you cannot train the skill.",
+      "你的炼金术技能等级为0，你也无法训练它。"
+    ],
+    "no summoning magic": [
+      "Your Summoning skill is 0 and you cannot train the skill.",
+      "你的召唤技能等级为0，你也无法训练它。"
+    ],
+    "no translocations magic": [
+      "Your Translocations skill is 0 and you cannot train the skill.",
+      "你的移位技能等级为0，你也无法训练它。"
+    ],
+    "no forgecraft magic": [
+      "Your Forgecraft skill is 0 and you cannot train the skill.",
+      ""
+    ]
+  },
+  "names": {
+    "iron-fused scales": "iron-fused scales",
+    "inviolate magic": "inviolate magic",
+    "tough skin": "tough skin",
+    "strong": "strong",
+    "clever": "clever",
+    "agile": "agile",
+    "poison resistance": "poison resistance",
+    "fire resistance": "fire resistance",
+    "cold resistance": "cold resistance",
+    "heat vulnerability": "heat vulnerability",
+    "cold vulnerability": "cold vulnerability",
+    "demonic guardian": "demonic guardian",
+    "electricity resistance": "electricity resistance",
+    "electricity vulnerability": "electricity vulnerability",
+    "regeneration": "regeneration",
+    "inhibited regeneration": "inhibited regeneration",
+    "feed off suffering": "feed off suffering",
+    "lucky": "lucky",
+    "weak": "weak",
+    "dopey": "dopey",
+    "clumsy": "clumsy",
+    "meek": "meek",
+    "teleportitis": "teleportitis",
+    "persistent drain": "persistent drain",
+    "contamination susceptible": "contamination susceptible",
+    "strong-willed": "strong-willed",
+    "speed": "speed",
+    "slowness": "slowness",
+    "see invisible": "see invisible",
+    "deformed body": "deformed body",
+    "spit poison": "spit poison",
+    "screaming": "screaming",
+    "clarity": "clarity",
+    "poor constitution": "poor constitution",
+    "mutation resistance": "mutation resistance",
+    "evolution": "evolution",
+    "devolution": "devolution",
+    "protean grace": "protean grace",
+    "frail": "frail",
+    "robust": "robust",
+    "torment resistance": "torment resistance",
+    "negative energy resistance": "negative energy resistance",
+    "in touch with death": "in touch with death",
+    "evasive flight": "evasive flight",
+    "acrobatic": "acrobatic",
+    "off-hand wielding": "off-hand wielding",
+    "slow wielding": "slow wielding",
+    "initially attractive": "initially attractive",
+    "warmup strikes": "warmup strikes",
+    "no jewellery": "no jewellery",
+    "hurl damnation": "hurl damnation",
+    "horns": "horns",
+    "beak": "beak",
+    "claws": "claws",
+    "fangs": "fangs",
+    "hooves": "hooves",
+    "antennae": "antennae",
+    "talons": "talons",
+    "tentacle spike": "tentacle spike",
+    "naga tail": "naga tail",
+    "stinger": "stinger",
+    "big wings": "big wings",
+    "frog-like legs": "frog-like legs",
+    "armoured tail": "armoured tail",
+    "rollpage": "rollpage",
+    "shaggy fur": "shaggy fur",
+    "high mp": "high MP",
+    "low mp": "low MP",
+    "wild magic": "wild magic",
+    "subdued magic": "subdued magic",
+    "efficient magic": "efficient magic",
+    "ephemeral shield": "ephemeral shield",
+    "time-warped blood": "time-warped blood",
+    "demonic magic": "demonic magic",
+    "forlorn": "forlorn",
+    "sense surroundings": "sense surroundings",
+    "icemail": "icemail",
+    "condensation shield": "condensation shield",
+    "passive freeze": "passive freeze",
+    "nightstalker": "nightstalker",
+    "spiny": "spiny",
+    "powered by death": "powered by death",
+    "powered by pain": "powered by pain",
+    "augmentation": "augmentation",
+    "magic shield": "magic shield",
+    "magic regeneration": "magic regeneration",
+    "magic link": "magic link",
+    "gelatinous body": "gelatinous body",
+    "eyeballs": "eyeballs",
+    "translucent skin": "translucent skin",
+    "pseudopods": "pseudopods",
+    "acidic bite": "acidic bite",
+    "slime shroud": "slime shroud",
+    "antimagic bite": "antimagic bite",
+    "efficient metabolism": "efficient metabolism",
+    "no potion heal": "no potion heal",
+    "reckless": "reckless",
+    "spatial entanglement": "spatial entanglement",
+    "repulsion field": "repulsion field",
+    "icy blue scales": "icy blue scales",
+    "iridescent scales": "iridescent scales",
+    "large bone plates": "large bone plates",
+    "molten scales": "molten scales",
+    "rugged brown scales": "rugged brown scales",
+    "slimy green scales": "slimy green scales",
+    "thin metallic scales": "thin metallic scales",
+    "thin skeletal structure": "thin skeletal structure",
+    "yellow scales": "yellow scales",
+    "sharp scales": "sharp scales",
+    "sturdy frame": "sturdy frame",
+    "sanguine armour": "sanguine armour",
+    "big brain": "big brain",
+    "camouflage": "camouflage",
+    "ignite blood": "ignite blood",
+    "foul stench": "foul stench",
+    "tendrils": "tendrils",
+    "jelly sensing items": "jelly sensing items",
+    "jelly absorbing missiles": "jelly absorbing missiles",
+    "stone body": "stone body",
+    "black mark": "black mark",
+    "aura of silence": "aura of silence",
+    "bedevilling": "bedevilling",
+    "corrupting presence": "corrupting presence",
+    "word of chaos": "word of chaos",
+    "demonic willpower": "demonic willpower",
+    "weakness stinger": "weakness stinger",
+    "demonic touch": "demonic touch",
+    "cold-blooded": "cold-blooded",
+    "flame cloud immunity": "flame cloud immunity",
+    "freezing cloud immunity": "freezing cloud immunity",
+    "renounce potions": "renounce potions",
+    "renounce scrolls": "renounce scrolls",
+    "missing a hand": "missing a hand",
+    "booming voice": "booming voice",
+    "potion fungus": "potion fungus",
+    "no stealth": "no stealth",
+    "inability to use devices": "inability to use devices",
+    "hated by all": "hated by all",
+    "cowardly": "cowardly",
+    "inability to train dodging": "inability to train dodging",
+    "inability to train armour": "inability to train armour",
+    "no air magic": "no air magic",
+    "no conjurations magic": "no conjurations magic",
+    "no earth magic": "no earth magic",
+    "no fire magic": "no fire magic",
+    "no hexes magic": "no hexes magic",
+    "no ice magic": "no ice magic",
+    "no necromancy magic": "no necromancy magic",
+    "no alchemy magic": "no alchemy magic",
+    "no forgecraft magic": "no forgecraft magic",
+    "no summoning magic": "no summoning magic",
+    "no translocations magic": "no translocations magic",
+    "reduced ac": "reduced AC",
+    "reduced ev": "reduced EV",
+    "weak-willed": "weak-willed",
+    "disrupted magic": "disrupted magic",
+    "mp-powered wands": "MP-powered wands",
+    "unskilled": "unskilled",
+    "inexperienced": "inexperienced",
+    "stealthy paws": "stealthy paws",
+    "missing an eye": "missing an eye",
+    "temperature sensitive": "temperature sensitive",
+    "no forms": "no forms",
+    "no regeneration": "no regeneration",
+    "treasure sense": "treasure sense",
+    "acid resistance": "acid resistance",
+    "four strong arms": "four strong arms",
+    "no potions": "no potions",
+    "faith": "faith",
+    "retaliatory headbutt": "retaliatory headbutt",
+    "steam resistance": "steam resistance",
+    "no weapons or thrown items": "no weapons or thrown items",
+    "no armour": "no armour",
+    "multi-lived": "multi-lived",
+    "distributed training": "distributed training",
+    "nimble swimmer": "nimble swimmer",
+    "tentacles": "tentacles",
+    "mertail": "mertail",
+    "float": "float",
+    "innate caster": "innate caster",
+    "hp casting": "HP casting",
+    "extra vitality": "extra vitality",
+    "ooze flood": "ooze flood",
+    "+los": "+LOS",
+    "divine attributes": "divine attributes",
+    "devour on kill": "devour on kill",
+    "otherworldly": "otherworldly",
+    "foul shadow": "foul shadow",
+    "explore regen": "explore regen",
+    "double potion healing": "double potion healing",
+    "drunken brawling": "drunken brawling",
+    "artefact enchanting": "artefact enchanting",
+    "runic magic": "runic magic",
+    "formless": "formless",
+    "trickster": "trickster",
+    "mnemnophage": "mnemnophage",
+    "spellclaws": "spellclaws",
+    "accursed": "accursed",
+    "spiteful blood": "spiteful blood",
+    "gehenna destruction": "Gehenna destruction",
+    "cocytus destruction": "Cocytus destruction",
+    "tartarus destruction": "Tartarus destruction",
+    "dis destruction": "Dis destruction",
+    "mark of haemoclasm": "Mark of Haemoclasm",
+    "mark of the legion": "Mark of the Legion",
+    "mark of carnage": "Mark of Carnage",
+    "mark of annihilation": "Mark of Annihilation",
+    "mark of the tyrant": "Mark of the Tyrant",
+    "mark of the celebrant": "Mark of the Celebrant",
+    "mark of execution": "Mark of Execution",
+    "mark of atrocity": "Mark of Atrocity",
+    "mark of the fanatic": "Mark of the Fanatic",
+    "removed mutation": "Removed Mutation",
+    "no rings": "no rings",
+    "vampire fangs": "vampire fangs",
+    "bloodcurse": "bloodcurse",
+    "insubstantial": "insubstantial",
+    "frigid aura": "frigid aura",
+    "hive swarm": "hive swarm",
+    "water reaching": "water reaching",
+    "water splatter": "water splatter",
+    "freeze response": "freeze response",
+    "steam response": "steam response",
+    "airstrike attack": "airstrike attack",
+    "hex mastery": "hex mastery",
+    "riddle compulsion": "riddle compulsion",
+    "werefury": "werefury",
+    "werehowl": "werehowl",
+    "stinger hair": "stinger hair",
+    "lithotoxin": "lithotoxin",
+    "contaminating": "contaminating",
+    "maw attack": "maw attack",
+    "devouring maw": "devouring maw",
+    "growling stomach": "growling stomach",
+    "eel punch": "eel punch",
+    "eeljolt": "eeljolt",
+    "blade parry": "blade parry",
+    "sporulate": "sporulate",
+    "armoured shell": "armoured shell",
+    "hypnotic gaze": "hypnotic gaze"
+  },
+  "shortRows": {
+    "Your scales are fused with iron. (AC + 5)": "你的鳞片与铁融合。（防御+5）",
+    "Your magical power and effects resist disruption.": "你的魔法力量和效果能够抵抗干扰。",
+    "You have tough skin. (AC +1)": "你拥有坚韧的皮肤。（防御+1）",
+    "You have very tough skin. (AC +2)": "你拥有非常坚韧的皮肤。（防御+2）",
+    "You have extremely tough skin. (AC +3)": "你拥有极其坚韧的皮肤。（防御+3）",
+    "You are strong. (Str +4, Int/Dex -1)": "你很强壮。（力量+4，智力/敏捷-1）",
+    "You are very strong. (Str +8, Int/Dex -2)": "你非常强壮。（力量+8，智力/敏捷-2）",
+    "Your mind is acute. (Int +4, Str/Dex -1)": "你的头脑敏锐。（智力+4，力量/敏捷-1）",
+    "Your mind is very acute. (Int +8, Str/Dex -2)": "你的头脑非常敏锐。（智力+8，力量/敏捷-2）",
+    "You are agile. (Dex +4, Str/Int -1)": "你很敏捷。（敏捷+4，力量/智力-1）",
+    "You are very agile. (Dex +8, Str/Int -2)": "你非常敏捷。（敏捷+8，力量/智力-2）",
+    "You are resistant to poisons. (rPois)": "你对毒素有抗性。（毒抗）",
+    "You are heat resistant. (rF+)": "你耐热。（火抗+）",
+    "You are very heat resistant. (rF++)": "你非常耐热。（火抗++）",
+    "You are almost immune to the effects of heat. (rF+++)": "你几乎对火焰效果免疫。（火抗+++）",
+    "You are cold resistant. (rC+)": "你耐寒。（冰抗+）",
+    "You are very cold resistant. (rC++)": "你非常耐寒。（冰抗++）",
+    "You are almost immune to the effects of cold. (rC+++)": "你几乎对寒冷效果免疫。（冰抗+++）",
+    "You are vulnerable to heat. (rF-)": "你怕热。（火抗-）",
+    "You are very vulnerable to heat. (rF--)": "你非常怕热。（火抗--）",
+    "You are extremely vulnerable to heat. (rF---)": "你极其怕热。（火抗---）",
+    "You are vulnerable to cold. (rC-)": "你怕冷。（冰抗-）",
+    "You are very vulnerable to cold. (rC--)": "你非常怕冷。（冰抗--）",
+    "You are extremely vulnerable to cold. (rC---)": "你极其怕冷。（冰抗---）",
+    "A weak demonic guardian rushes to your aid.": "一个弱小的恶魔守护者冲来援助你。",
+    "A demonic guardian rushes to your aid.": "一个恶魔守护者冲来援助你。",
+    "A powerful demonic guardian rushes to your aid.": "一个强大的恶魔守护者冲来援助你。",
+    "You are resistant to electric shocks. (rElec)": "你对电击有抗性。（电抗）",
+    "You are vulnerable to electric shocks. (rElec-)": "你容易被电击。（电抗-）",
+    "Your natural rate of healing is unusually fast.": "你的自然恢复速度异常快。",
+    "You heal very quickly.": "你恢复得非常快。",
+    "You regenerate.": "你具有再生能力。",
+    "You do not regenerate when monsters are visible.": "当怪物在视野中时你无法再生。",
+    "You can sometimes gain power from killing poisoned or drained foes.": "你有时可以通过杀死中毒或虚弱的敌人获得力量。",
+    "You can regularly gain power from killing poisoned or drained foes.": "你经常可以通过杀死中毒或虚弱的敌人获得力量。",
+    "You discover slightly more artefacts.": "你发现的神器略微增多。",
+    "You discover more artefacts.": "你发现的神器增多。",
+    "You are weak. (Str -3)": "你很虚弱。（力量-3）",
+    "You are very weak. (Str -6)": "你非常虚弱。（力量-6）",
+    "You are dopey. (Int -3)": "你很迟钝。（智力-3）",
+    "You are very dopey. (Int -6)": "你非常迟钝。（智力-6）",
+    "You are clumsy. (Dex -3)": "你很笨拙。（敏捷-3）",
+    "You are very clumsy. (Dex -6)": "你非常笨拙。（敏捷-6）",
+    "Your attacks are a little less effective. (Slay -3)": "你的攻击效果略微降低。（杀戮-3）",
+    "Your attacks are less effective. (Slay -5)": "你的攻击效果降低。（杀戮-5）",
+    "Your attacks are much less effective. (Slay -7)": "你的攻击效果大幅降低。（杀戮-7）",
+    "You are occasionally teleported next to monsters.": "你偶尔会被传送到怪物旁边。",
+    "You are often teleported next to monsters.": "你经常会被传送到怪物旁边。",
+    "Your health recovers twice as slowly from being drained.": "你被虚弱后生命恢复速度减半。",
+    "You absorb twice as much mutagenic energy from being contaminated.": "你从污染中吸收双倍的变异能量。",
+    "You are strong-willed. (Will+)": "你意志坚强。（意志+）",
+    "You are highly strong-willed. (Will++)": "你意志非常坚强。（意志++）",
+    "You are extremely strong-willed. (Will+++)": "你意志极其坚强。（意志+++）",
+    "You move with supernatural speed. (Speed+)": "你以超自然的速度移动。（速度+）",
+    "You move with supernatural speed. (Speed++)": "你以非常超自然的速度移动。（速度++）",
+    "You move with supernatural speed. (Speed+++)": "你以极其超自然的速度移动。（速度+++）",
+    "You cover ground slowly.": "你移动缓慢。",
+    "You cover ground very slowly.": "你移动非常缓慢。",
+    "You cover ground extremely slowly.": "你移动极其缓慢。",
+    "You have supernaturally acute vision. (SInv)": "你拥有超自然的敏锐视觉。（看破隐形）",
+    "Armour fits poorly on your strangely shaped body.": "护甲在你变形奇怪的身体上不合身。",
+    "You can spit poison.": "你可以喷吐毒素。",
+    "You can exhale a cloud of poison.": "你可以喷吐一团毒雾。",
+    "You occasionally shout uncontrollably at those who injure you.": "你偶尔不受控制地对伤害你的人大喊。",
+    "You frequently scream uncontrollably at those who injure you.": "你经常不受控制地对伤害你的人尖叫。",
+    "You possess an exceptional clarity of mind.": "你拥有非凡的心智清晰。",
+    "Your body sometimes grows weak upon taking damage.": "你的身体有时在受伤后会变得虚弱。",
+    "Your body sometimes grows weak and slow upon taking damage.": "你的身体有时在受伤后会变得虚弱和缓慢。",
+    "You are somewhat resistant to further mutation.": "你对进一步变异有一定抗性。",
+    "You are somewhat resistant to both further mutation and mutation removal.": "你对进一步变异和变异移除都有一定抗性。",
+    "You are almost entirely resistant to further mutation and mutation removal.": "你几乎完全抵抗进一步变异和变异移除。",
+    "You have hidden genetic potential.": "你拥有隐藏的基因潜力。",
+    "You have great hidden genetic potential.": "你拥有巨大的隐藏基因潜力。",
+    "You have hidden genetic defects.": "你拥有隐藏的基因缺陷。",
+    "You have terrible hidden genetic defects.": "你拥有可怕的隐藏基因缺陷。",
+    "You are empowered by your non-innate mutations. (+": "你被你非先天变异所增强。（+",
+    "You are frail. (-10% HP)": "你很脆弱。（-10%生命）",
+    "You are very frail. (-20% HP)": "你非常脆弱。（-20%生命）",
+    "You are extremely frail. (-30% HP)": "你极其脆弱。（-30%生命）",
+    "You are robust. (+10% HP)": "你很健壮。（+10%生命）",
+    "You are very robust. (+20% HP)": "你非常健壮。（+20%生命）",
+    "You are extremely robust. (+30% HP)": "你极其健壮。（+30%生命）",
+    "You are resistant to unholy torment.": "你抵抗邪恶折磨。",
+    "You are immune to unholy pain and torment.": "你对邪恶痛苦和折磨免疫。",
+    "You resist negative energy. (rN+)": "你抵抗负能量。（负抗+）",
+    "You are quite resistant to negative energy. (rN++)": "你相当抵抗负能量。（负抗++）",
+    "You are immune to negative energy. (rN+++)": "你对负能量免疫。（负抗+++）",
+    "You are in touch with the powers of death.": "你与死亡的力量相通。",
+    "You are strongly in touch with the powers of death.": "你与死亡的力量深度相通。",
+    "Your magical flight helps you evade attacks. (EV +4)": "你的魔法飞行帮助你闪避攻击。（闪避+4）",
+    "You can magically evade attacks while moving or waiting.": "你可以在移动或等待时魔法般地闪避攻击。",
+    "You can wield a second weapon in your off-hand.": "你可以在副手持有第二把武器。",
+    "It takes a long time for you to wield or remove held weapons.": "你持握或移除武器需要很长时间。",
+    "You sometimes pull newly seen creatures towards you.": "你有时将新看到的生物拉向你。",
+    "You frequently pull newly seen creatures towards you.": "你经常将新看到的生物拉向你。",
+    "Your first few attacks do less damage.": "你的前几次攻击造成较少伤害。",
+    "You cannot equip rings or amulets.": "你无法佩戴戒指或项链。",
+    "You can hurl damnation.": "你可以投掷诅咒之火。",
+    "You have a pair of small horns on your head.": "你头上有一对小角。",
+    "You have a pair of horns on your head.": "你头上有一对角。",
+    "You have a pair of large horns on your head.": "你头上有一对大角。",
+    "You have a beak for a mouth.": "你有一张喙状的嘴。",
+    "You have sharp fingernails.": "你有锋利的指甲。",
+    "You have very sharp fingernails.": "你有非常锋利的指甲。",
+    "You have claws for hands.": "你手上有爪子。",
+    "You have very sharp teeth.": "你有非常锋利的牙齿。",
+    "You have extremely sharp teeth.": "你有极其锋利的牙齿。",
+    "You have razor-sharp teeth.": "你有剃刀般锋利的牙齿。",
+    "You have large cloven feet.": "你有大型分趾蹄。",
+    "You have hoof-like feet.": "你有蹄状脚。",
+    "You have hooves in place of feet.": "你的脚变成了蹄子。",
+    "You have a pair of small antennae on your head.": "你头上有一对小触角。",
+    "You have a pair of antennae on your head.": "你头上有一对触角。",
+    "You have a pair of large antennae on your head. (SInv)": "你头上有一对大触角。（看破隐形）",
+    "You have sharp toenails.": "你有锋利的趾甲。",
+    "You have razor-sharp toenails.": "你有剃刀般锋利的趾甲。",
+    "You have claws for feet.": "你脚上有爪子。",
+    "One of your tentacles bears a spike.": "你的一条触手上有一根尖刺。",
+    "One of your tentacles bears a nasty spike.": "你的一条触手上有一根锐利的尖刺。",
+    "One of your tentacles bears a large vicious spike.": "你的一条触手上有一根巨大的凶猛尖刺。",
+    "Your snake-like lower body moves slowly.": "你的蛇形下半身移动缓慢。",
+    "Your snake-like lower body moves slowly, but can constrict enemies.": "你的蛇形下半身移动缓慢，但可以缠绕敌人。",
+    "Your tail ends in a venomous barb.": "你的尾巴末端是一根毒刺。",
+    "Your tail ends in a sharp venomous barb.": "你的尾巴末端是一根锋利的毒刺。",
+    "Your tail ends in a wickedly sharp and venomous barb.": "你的尾巴末端是一根极其锋利的毒刺。",
+    "Your large and strong wings let you fly.": "你大而强壮的翅膀让你能够飞行。",
+    "You can hop short distances, but move slowly.": "你可以短距离跳跃，但移动缓慢。",
+    "You can hop long distances, but move slowly.": "你可以长距离跳跃，但移动缓慢。",
+    "You have an armoured tail.": "你有一条装甲尾巴。",
+    "You have a heavy armoured tail.": "你有一条沉重的装甲尾巴。",
+    "You regenerate magic when rolling toward enemies. (Rampage MPRegen)": "你向敌人翻滚时会恢复法力。（冲锋法力再生）",
+    "You regenerate magic and health when rolling toward enemies. (Rampage Regen)": "你向敌人翻滚时会恢复法力和生命。（冲锋再生）",
+    "You are covered in fur. (AC +1)": "你覆盖着毛发。（防御+1）",
+    "You are covered in thick fur. (AC +2)": "你覆盖着浓密毛发。（防御+2）",
+    "Your thick and shaggy fur keeps you warm. (AC +3, rC+)": "你浓密蓬松的毛发让你保持温暖。（防御+3，冰抗+）",
+    "You have an increased reservoir of magic. (+10% MP)": "你的魔力储备增加。（+10%魔力）",
+    "You have a considerably increased reservoir of magic. (+20% MP)": "你的魔力储备大幅增加。（+20%魔力）",
+    "You have a greatly increased reservoir of magic. (+30% MP)": "你的魔力储备极大增加。（+30%魔力）",
+    "Your magical capacity is low. (-10% MP)": "你的魔力容量较低。（-10%魔力）",
+    "Your magical capacity is very low. (-20% MP)": "你的魔力容量很低。（-20%魔力）",
+    "Your magical capacity is extremely low. (-30% MP)": "你的魔力容量极低。（-30%魔力）",
+    "Your spells are a little harder to cast, but a little more powerful.": "你的法术施放稍微更困难，但威力稍微更强。",
+    "Your spells are harder to cast, but more powerful.": "你的法术施放更困难，但威力更强。",
+    "Your spells are much harder to cast, but much more powerful.": "你的法术施放困难得多，但威力强得多。",
+    "Your spells are a little easier to cast, but a little less powerful.": "你的法术施放稍微更容易，但威力稍微更弱。",
+    "Your spells are easier to cast, but less powerful.": "你的法术施放更容易，但威力更弱。",
+    "Your spells are much easier to cast, but much less powerful.": "你的法术施放容易得多，但威力弱得多。",
+    "Spells you cast cost 1 less MP (to a minimum of 1).": "你施放的法术消耗减少1点魔力（最低为1）。",
+    "Spells you cast cost 2 less MP (to a minimum of 1).": "你施放的法术消耗减少2点魔力（最低为1）。",
+    "A shield forms around you when casting spells or using Invocations. (SH +7)": "当你施放法术或使用祈祷时，周围会形成一个护盾。（盾挡+7）",
+    "Your blood hastes a few of your allies when you are sufficiently damaged.": "当你受到足够伤害时，你的血液会加速少数盟友。",
+    "Your blood hastes several of your allies when you are sufficiently damaged.": "当你受到足够伤害时，你的血液会加速数名盟友。",
+    "Spells you cast may paralyse adjacent enemies.": "你施放的法术可能会麻痹相邻的敌人。",
+    "Spells you cast may paralyse nearby enemies.": "你施放的法术可能会麻痹附近的敌人。",
+    "Spells you cast and wands you use may paralyse nearby enemies.": "你施放的法术和使用的魔杖可能会麻痹附近的敌人。",
+    "You shall have no god before yourself.": "你将自己置于神之前。",
+    "You passively map the area around you.": "你被动地绘制周围区域的地图。",
+    "You passively map a large area around you.": "你被动地绘制周围大片区域的地图。",
+    "A meltable icy envelope protects you from harm. (AC +": "一层可融化的冰封包裹保护你免受伤害。（防御+",
+    "A thick, meltable icy envelope protects you from harm. (AC +": "一层厚实可融化的冰封包裹保护你免受伤害。（防御+",
+    "A meltable shield of frost defends you. (SH +": "一层可融化的冰霜护盾保护你。（盾挡+",
+    "A frigid envelope surrounds you and freezes all who hurt you.": "一层寒气包裹环绕着你，冻结所有伤害你的人。",
+    "You are slightly more attuned to the shadows.": "你与暗影的同调略微增强。",
+    "You are significantly more attuned to the shadows.": "你与暗影的同调显著增强。",
+    "You are completely attuned to the shadows.": "你完全与暗影同调。",
+    "You are partially covered in sharp spines.": "你部分覆盖着锋利的尖刺。",
+    "You are mostly covered in sharp spines.": "你大部分覆盖着锋利的尖刺。",
+    "You are completely covered in sharp spines.": "你完全覆盖着锋利的尖刺。",
+    "You regenerate a little health from kills.": "你通过击杀恢复少量生命。",
+    "You regenerate health from kills.": "你通过击杀恢复生命。",
+    "You regenerate a lot of health from kills.": "你通过击杀恢复大量生命。",
+    "You sometimes gain a little power by taking damage.": "你有时通过承受伤害获得少量力量。",
+    "You sometimes gain power by taking damage.": "你有时通过承受伤害获得力量。",
+    "You are powered by pain.": "你被痛苦所赋能。",
+    "Your magical and physical power is slightly enhanced at high health.": "你在高生命时魔法和物理力量略微增强。",
+    "Your magical and physical power is enhanced at high health.": "你在高生命时魔法和物理力量增强。",
+    "Your magical and physical power is greatly enhanced at high health.": "你在高生命时魔法和物理力量大幅增强。",
+    "When hurt, damage is shared between your health and your magic reserves.": "受伤时，伤害在你的生命和魔力储备之间分摊。",
+    "You regenerate magic rapidly.": "你快速恢复魔力。",
+    "When low on magic, you restore magic in place of health.": "当魔力不足时，你以消耗生命为代价恢复魔力。",
+    "Your rubbery body absorbs attacks. (AC +1, EV +1)": "你橡胶般的身体吸收攻击。（防御+1，闪避+1）",
+    "Your pliable body absorbs attacks. (AC +2, EV +2)": "你柔韧的身体吸收攻击。（防御+2，闪避+2）",
+    "Your gelatinous body deflects attacks. (AC +3, EV +3)": "你凝胶般的身体偏转攻击。（防御+3，闪避+3）",
+    "Your body has grown eyes which may confuse attackers. (Acc +3)": "你的身体长出了可能迷惑攻击者的眼睛。（精准+3）",
+    "Your body has grown many eyes which may confuse attackers. (Acc +5)": "你的身体长出了许多可能迷惑攻击者的眼睛。（精准+5）",
+    "Your body is covered in eyes which may confuse attackers. (Acc +7, SInv)": "你的身体遍布可能迷惑攻击者的眼睛。（精准+7，看破隐形）",
+    "Your translucent skin slightly reduces your foes' accuracy. (Stealth+)": "你半透明的皮肤略微降低了敌人的精准度。（潜行+）",
+    "Your translucent skin reduces your foes' accuracy. (Stealth+)": "你半透明的皮肤降低了敌人的精准度。（潜行+）",
+    "Your transparent skin significantly reduces your foes' accuracy. (Stealth+)": "你透明的皮肤显著降低了敌人的精准度。（潜行+）",
+    "Armour fits poorly on your pseudopods.": "护甲在你的伪足上不合身。",
+    "Armour fits poorly on your large pseudopods.": "护甲在你较大的伪足上不合身。",
+    "Armour fits poorly on your massive pseudopods.": "护甲在你巨大的伪足上不合身。",
+    "You have acidic saliva.": "你有酸性唾液。",
+    "A fragile, slimy shroud covers you, deflecting attacks.": "一层脆弱的黏液护罩覆盖着你，偏转攻击。",
+    "Your bite disrupts and absorbs the magic of your enemies.": "你的咬击能干扰并吸收敌人的魔法。",
+    "Your metabolism doubles the duration of potion status effects.": "你的新陈代谢使药水状态效果持续时间翻倍。",
+    "Potions are less effective at restoring your health.": "药水恢复你生命的效果降低。",
+    "Potions cannot restore your health.": "药水无法恢复你的生命。",
+    "Your SH is halved, but you deal more damage with two-handed weapons.": "你的盾挡减半，但双手武器造成更多伤害。",
+    "When you translocate, a monster is sometimes pulled along with you.": "当你位移时，有时会将一个怪物一起拉过去。",
+    "You are surrounded by a mild repulsion field. (EV +2)": "你被一个温和的排斥场包围。（闪避+2）",
+    "You are surrounded by a moderate repulsion field. (EV +3)": "你被一个中等的排斥场包围。（闪避+3）",
+    "You are surrounded by a strong repulsion field. (EV +4, RMsl)": "你被一个强大的排斥场包围。（闪避+4，排斥飞弹）",
+    "You are partially covered in icy blue scales. (AC +2)": "你部分覆盖着冰蓝鳞片。（防御+2）",
+    "You are mostly covered in icy blue scales. (AC +3)": "你大部分覆盖着冰蓝鳞片。（防御+3）",
+    "You are completely covered in icy blue scales. (AC +4, rC+)": "你完全覆盖着冰蓝鳞片。（防御+4，冰抗+）",
+    "You are partially covered in iridescent scales. (AC +2)": "你部分覆盖着虹彩鳞片。（防御+2）",
+    "You are mostly covered in iridescent scales. (AC +4)": "你大部分覆盖着虹彩鳞片。（防御+4）",
+    "You are completely covered in iridescent scales. (AC +6)": "你完全覆盖着虹彩鳞片。（防御+6）",
+    "You are partially covered in large bone plates. (SH +4)": "你部分覆盖着大型骨板。（盾挡+4）",
+    "You are mostly covered in large bone plates. (SH +6)": "你大部分覆盖着大型骨板。（盾挡+6）",
+    "You are completely covered in large bone plates. (SH +8)": "你完全覆盖着大型骨板。（盾挡+8）",
+    "You are partially covered in molten scales. (AC +2)": "你部分覆盖着熔岩鳞片。（防御+2）",
+    "You are mostly covered in molten scales. (AC +3)": "你大部分覆盖着熔岩鳞片。（防御+3）",
+    "You are completely covered in molten scales. (AC +4, rF+)": "你完全覆盖着熔岩鳞片。（防御+4，火抗+）",
+    "You are partially covered in rugged brown scales. (AC +1, +3% HP)": "你部分覆盖着粗糙棕鳞。（防御+1，+3%生命）",
+    "You are mostly covered in rugged brown scales. (AC +2, +5% HP)": "你大部分覆盖着粗糙棕鳞。（防御+2，+5%生命）",
+    "You are completely covered in rugged brown scales. (AC +3, +7% HP)": "你完全覆盖着粗糙棕鳞。（防御+3，+7%生命）",
+    "You are partially covered in slimy green scales. (AC +2)": "你部分覆盖着黏滑绿鳞。（防御+2）",
+    "You are mostly covered in slimy green scales. (AC +3)": "你大部分覆盖着黏滑绿鳞。（防御+3）",
+    "You are completely covered in slimy green scales. (AC +4, rPois)": "你完全覆盖着黏滑绿鳞。（防御+4，毒抗）",
+    "You are partially covered in thin metallic scales. (AC +2)": "你部分覆盖着薄金属鳞片。（防御+2）",
+    "You are mostly covered in thin metallic scales. (AC +3)": "你大部分覆盖着薄金属鳞片。（防御+3）",
+    "You are completely covered in thin metallic scales. (AC +4, rElec)": "你完全覆盖着薄金属鳞片。（防御+4，电抗）",
+    "You have a somewhat thin skeletal structure. (Dex +2, Stealth+)": "你的骨骼结构有些纤细。（敏捷+2，潜行+）",
+    "You have a moderately thin skeletal structure. (Dex +4, Stealth++)": "你的骨骼结构相当纤细。（敏捷+4，潜行++）",
+    "You have an unnaturally thin skeletal structure. (Dex +6, Stealth+++)": "你的骨骼结构异常纤细。（敏捷+6，潜行+++）",
+    "You are partially covered in yellow scales. (AC +2)": "你部分覆盖着黄色鳞片。（防御+2）",
+    "You are mostly covered in yellow scales. (AC +3)": "你大部分覆盖着黄色鳞片。（防御+3）",
+    "You are completely covered in yellow scales. (AC +4, rCorr)": "你完全覆盖着黄色鳞片。（防御+4，酸抗）",
+    "You are partially covered in razor-sharp scales. (AC +1, Slay +1)": "你部分覆盖着锋利鳞片。（防御+1，杀戮+1）",
+    "You are mostly covered in razor-sharp scales. (AC +2, Slay +2)": "你大部分覆盖着锋利鳞片。（防御+2，杀戮+2）",
+    "You are completely covered in razor-sharp scales. (AC +3, Slay +3)": "你完全覆盖着锋利鳞片。（防御+3，杀戮+3）",
+    "Your movements are slightly less encumbered by armour. (ER -2)": "护甲对你的移动阻碍略微减少。（负重-2）",
+    "Your movements are less encumbered by armour. (ER -4)": "护甲对你的移动阻碍减少。（负重-4）",
+    "Your movements are significantly less encumbered by armour. (ER -6)": "护甲对你的移动阻碍显著减少。（负重-6）",
+    "When seriously injured, your blood forms armour. (AC +": "当你严重受伤时，血液会形成护甲。（防御+",
+    "When seriously injured, your blood forms thick armour. (AC +": "当你严重受伤时，血液会形成厚实的护甲。（防御+",
+    "When seriously injured, your blood forms very thick armour. (AC +": "当你严重受伤时，血液会形成非常厚实的护甲。（防御+",
+    "You have an unusually large brain. (Int +2)": "你有一个异常大的大脑。（智力+2）",
+    "You have an extremely huge brain. (Int +4)": "你有一个极其巨大的大脑。（智力+4）",
+    "You have an absolutely massive brain. (Int +6, Wiz)": "你有一个绝对庞大无比的大脑。（智力+6，巫术）",
+    "Your skin changes colour to match your surroundings (Stealth+).": "你的皮肤会变色以匹配环境。（潜行+）",
+    "Your skin blends seamlessly with your surroundings (Stealth++).": "你的皮肤与周围环境完美融合。（潜行++）",
+    "Your skin perfectly mimics your surroundings (Stealth+++).": "你的皮肤完美模拟周围环境。（潜行+++）",
+    "Your demonic aura sometimes causes spilled blood to erupt in flames.": "你的恶魔光环有时会让流出的血液燃烧起来。",
+    "Your demonic aura often causes spilled blood to erupt in flames.": "你的恶魔光环经常会让流出的血液燃烧起来。",
+    "Your demonic aura causes all spilled blood to erupt in flames.": "你的恶魔光环会让所有流出的血液燃烧起来。",
+    "You may rarely emit foul miasma when damaged in melee.": "你在近战受伤时可能极少散发出恶臭的瘴气。",
+    "You sometimes emit foul miasma when damaged in melee.": "你在近战受伤时有时会散发出恶臭的瘴气。",
+    "You frequently emit foul miasma when damaged in melee.": "你在近战受伤时经常会散发出恶臭的瘴气。",
+    "You are covered in slimy tendrils that may disarm your opponents.": "你覆盖着黏液卷须，可能缴械对手。",
+    "You have a small jelly attached to you that senses nearby items.": "你身上附着一个小果冻，能够感知附近的物品。",
+    "You have a small jelly attached to you that may absorb projectiles.": "你身上附着一个小果冻，可能吸收飞弹。",
+    "Your stone body is resiliant and immune to petrification. (AC +": "你的石质身体坚韧且免疫石化。（防御+",
+    "Your melee attacks may debilitate your foes.": "你的近战攻击可能会削弱你的敌人。",
+    "You are surrounded by an aura of silence.": "你被一个沉默光环包围。",
+    "Your hexes are more powerful.": "你的诅咒更加强大。",
+    "Your presence sometimes corrodes those you injure.": "你的存在有时会腐蚀你伤害的人。",
+    "Your presence sometimes corrodes or deforms those you injure.": "你的存在有时会腐蚀或变形你伤害的人。",
+    "You can speak a Word of Chaos.": "你可以说出混沌之语。",
+    "You punish those that try to bend your will. (Will+)": "你惩罚那些试图扭曲你意志的人。（意志+）",
+    "You have a small tail.": "你有一条小尾巴。",
+    "You have a tail ending in a sharp stinger.": "你的尾巴末端是一根锋利的毒刺。",
+    "You have a sharp stinger which inflicts weakening toxins.": "你有一根锋利的毒刺，能造成虚弱毒素。",
+    "Your touch may inflict minor irresistible damage on your foes.": "你的触碰可能对敌人造成少量不可抵抗的伤害。",
+    "Your touch may inflict irresistible damage on your foes.": "你的触碰可能对敌人造成不可抵抗的伤害。",
+    "Your touch may irresistibly damage your foes and sap their willpower.": "你的触碰可能对敌人造成不可抵抗的伤害并削弱他们的意志力。",
+    "You are cold-blooded and may be slowed by cold attacks.": "你是冷血动物，可能被寒冷攻击减速。",
+    "You are immune to clouds of flame.": "你对火焰云免疫。",
+    "You are immune to freezing clouds.": "你对冰冻云免疫。",
+    "You refuse to drink potions in combat unless seriously injured.": "除非严重受伤，否则你在战斗中拒绝饮用药水。",
+    "You refuse to read scrolls in combat unless seriously injured.": "除非严重受伤，否则你在战斗中拒绝阅读卷轴。",
+    "You are missing a hand.": "你缺少一只手。",
+    "You read scrolls incredibly loudly when enemies are in sight.": "你在敌人视野中时，阅读卷轴的声音异常响亮。",
+    "You may spread the effect of potions you drink to nearby monsters.": "你饮用药水的效果可能会传播到附近的怪物。",
+    "You cannot be stealthy.": "你无法潜行。",
+    "You cannot study or use magical devices.": "你无法学习或使用魔法装置。",
+    "You are hated by all.": "你被所有生物憎恨。",
+    "Your cowardice makes you less effective in combat with threatening foes.": "你的懦弱使你在面对有威胁的敌人时战斗效率降低。",
+    "You cannot train Dodging skill.": "你无法训练闪避技能。",
+    "You cannot train Armour skill.": "你无法训练护甲技能。",
+    "You cannot study or cast Air magic.": "你无法学习或施放空气魔法。",
+    "You cannot study or cast Conjurations magic.": "你无法学习或施放咒法魔法。",
+    "You cannot study or cast Earth magic.": "你无法学习或施放大地魔法。",
+    "You cannot study or cast Fire magic.": "你无法学习或施放火焰魔法。",
+    "You cannot study or cast Hexes magic.": "你无法学习或施放诅咒魔法。",
+    "You cannot study or cast Ice magic.": "你无法学习或施放寒冰魔法。",
+    "You cannot study or cast Necromancy magic.": "你无法学习或施放死灵魔法。",
+    "You cannot study or cast Alchemy magic.": "你无法学习或施放炼金魔法。",
+    "You cannot study or cast Forgecraft magic.": "你无法学习或施放锻造魔法。",
+    "You cannot study or cast Summoning magic.": "你无法学习或施放召唤魔法。",
+    "You cannot study or cast Translocations magic.": "你无法学习或施放位移魔法。",
+    "You take slightly more damage. (AC -5)": "你受到稍微更多的伤害。（防御-5）",
+    "You take more damage. (AC -10)": "你受到更多伤害。（防御-10）",
+    "You take considerably more damage. (AC -15)": "你受到相当多的伤害。（防御-15）",
+    "You have somewhat slow reflexes. (EV -5)": "你的反应有些迟钝。（闪避-5）",
+    "You have slow reflexes. (EV -10)": "你的反应迟钝。（闪避-10）",
+    "You have very slow reflexes. (EV -15)": "你的反应非常迟钝。（闪避-15）",
+    "You are slightly weak-willed. (Will-)": "你意志略微薄弱。（意志-）",
+    "You are weak-willed. (Will--)": "你意志薄弱。（意志--）",
+    "You are extremely weak-willed. (Will---)": "你意志极其薄弱。（意志---）",
+    "Your casting is slightly disrupted.": "你的施法受到轻微干扰。",
+    "Your casting is disrupted.": "你的施法受到干扰。",
+    "Your casting is seriously disrupted.": "你的施法受到严重干扰。",
+    "You expend magic power (3 MP) to strengthen your wands.": "你消耗魔力（3点）来增强你的魔杖。",
+    "You are somewhat unskilled. (-1 Apt)": "你天赋有些不足。（-1资质）",
+    "You are unskilled. (-2 Apt)": "你天赋不足。（-2资质）",
+    "You are extremely unskilled. (-3 Apt)": "你天赋极其不足。（-3资质）",
+    "You are somewhat inexperienced. (-1 XL)": "你有些缺乏经验。（-1级）",
+    "You are inexperienced. (-2 XL)": "你缺乏经验。（-2级）",
+    "You are extremely inexperienced. (-3 XL)": "你极其缺乏经验。（-3级）",
+    "Your paws help you pounce on unaware monsters.": "你的爪垫帮助你扑向毫无防备的怪物。",
+    "You are missing an eye, making it more difficult to aim.": "你缺少一只眼睛，瞄准更加困难。",
+    "You are sensitive to extremes of temperature. (rF-, rC-)": "你对极端温度敏感。（火抗-，冰抗-）",
+    "You cannot voluntarily change form.": "你无法自愿改变形态。",
+    "You do not regenerate.": "你无法再生。",
+    "You have an uncanny knack for detecting items.": "你有探测物品的奇特能力。",
+    "You are resistant to acid. (rCorr)": "你对酸蚀有抗性。（酸抗）",
+    "Your four strong arms can wield two-handed weapons with a shield.": "你的四条强壮手臂可以持盾使用双手武器。",
+    "You cannot drink.": "你无法饮用。",
+    "You have a special connection with the divine. (Faith)": "你与神圣有特殊的联系。（信仰）",
+    "You reflexively headbutt those who attack you in melee.": "你会反射性地用头槌反击近战攻击你的敌人。",
+    "You are immune to the effects of steam.": "你对蒸汽效果免疫。",
+    "You are incapable of wielding weapons or throwing items.": "你无法持握武器或投掷物品。",
+    "You cannot wear armour.": "你无法穿戴护甲。",
+    "You gain extra lives every three experience levels.": "你每三级获得一条额外生命。",
+    "Your experience applies equally to all skills.": "你的经验平均分配于所有技能。",
+    "You are camouflaged when in or above water. (Stealth+)": "你在水中或水上时获得伪装。（潜行+）",
+    "You are very nimble when in or above water. (Stealth+, EV+, Speed+++)": "你在水中或水上非常灵活。（潜行+，闪避+，速度+++）",
+    "You have tentacles for arms and can constrict enemies.": "你的手臂是触手，可以缠绕敌人。",
+    "Your lower body shifts to a powerful aquatic tail in water.": "在水中你的下半身会变成一条强大的水生尾巴。",
+    "You float through the air rather than walking.": "你在空中漂浮，而非行走。",
+    "You learn spells naturally, not from books.": "你自然地学习法术，不需要书籍。",
+    "Your magical power is your life essence.": "你的魔力就是你的生命精华。",
+    "You have superior vitality. (+4 MHP)": "你拥有出众的活力。（+4最大生命）",
+    "You have much superior vitality. (+8 MHP)": "你拥有非常出众的活力。（+8最大生命）",
+    "You have exceptionally superior vitality. (+12 MHP)": "你拥有异常出众的活力。（+12最大生命）",
+    "Your melee attacks may flood your foes with ooze.": "你的近战攻击可能会用软泥淹没你的敌人。",
+    "You have an extended range of vision and can be seen from far away.": "你的视野范围扩大，也可以从远处被看到。",
+    "Your divine heritage dramatically boosts your attributes as you level up.": "你的神圣血统在升级时大幅提升你的属性。",
+    "You thrive by killing the living.": "你通过杀戮活物而茁壮成长。",
+    "You are easily found by Zot.": "你很容易被佐特发现。",
+    "You are faintly shadowed, very rarely releasing foul flame when damaged in melee.": "你被淡淡的阴影笼罩，在近战受伤时极少释放污秽火焰。",
+    "You are shadowed, sometimes releasing foul flame when damaged in melee.": "你被阴影笼罩，在近战受伤时有时会释放污秽火焰。",
+    "You are darkly shadowed, frequently releasing foul flame when damaged in melee.": "你被深沉的阴影笼罩，在近战受伤时经常会释放污秽火焰。",
+    "You regain HP and MP as you explore.": "你在探索时恢复生命和魔力。",
+    "You gain doubled healing and magic from potions.": "你从药水中获得双倍的治疗和魔力恢复。",
+    "Whenever you drink a healing potion, you attack all around you.": "每当你饮用治疗药水时，你会攻击周围的所有敌人。",
+    "You can use scrolls of enchantment on lesser artefacts.": "你可以使用附魔卷轴强化次级神器。",
+    "Your spellcasting is much less encumbered by armour.": "你的法术施放受护甲的阻碍大大减少。",
+    "You can equip up to 6 pieces of aux armour in any combination.": "你最多可以装备6件辅助护甲任意组合。",
+    "You can equip up to 6 pieces of aux armour in any combination and unleash them.": "你最多可以装备6件辅助护甲任意组合并释放它们。",
+    "You gain AC when you inflict magical misfortune on nearby enemies.": "当你对附近的敌人施加魔法灾厄时，你获得防御。",
+    "You can enhance your damage-dealing spells by burning harvested memories.": "你可以通过燃烧收集的记忆来增强你的伤害法术。",
+    "You perform a melee attack whenever you cast damage-dealing spells.": "每当你施放伤害法术时，你会进行一次近战攻击。",
+    "You recover more slowly from Doom and Banes.": "你从厄运和灾祸中恢复得更慢。",
+    "Your shed blood may rise up to attack you.": "你流出的血液可能会起来攻击你。",
+    "Your shed blood may rise up to attack you as a group.": "你流出的血液可能会成群地起来攻击你。",
+    "You draw destruction from the endless fires of Gehenna.": "你从基希纳的无尽火焰中汲取毁灭之力。",
+    "You draw destruction from the frigid wastes of Cocytus.": "你从科塞特斯的冰冷荒原中汲取毁灭之力。",
+    "You draw destruction from the wailing grief of Tartarus.": "你从塔耳塔洛斯的哀嚎悲伤中汲取毁灭之力。",
+    "You draw destruction from the ruthless spite of Dis.": "你从迪斯的无情怨恨中汲取毁灭之力。",
+    "You bear the Mark of Haemoclasm.": "你携带着血破印记。",
+    "You bear the Mark of the Legion.": "你携带着军团印记。",
+    "You bear the Mark of Carnage.": "你携带着杀戮印记。",
+    "You bear the Mark of Annihilation.": "你携带着湮灭印记。",
+    "You bear the Mark of the Tyrant.": "你携带着暴君印记。",
+    "You bear the Mark of the Celebrant.": "你携带着颂礼者印记。",
+    "You bear the Mark of Execution.": "你携带着处决印记。",
+    "You bear the Mark of Atrocity.": "你携带着暴行印记。",
+    "You bear the Mark of the Fanatic.": "你携带着狂热者印记。"
+  }
+}

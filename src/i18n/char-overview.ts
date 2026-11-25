@@ -7,6 +7,7 @@
 
 import { isZh, t, tItem } from './index'
 import { translateStatusLight } from './status'
+import { translateMutationName } from './mutations'
 
 const SPECIES_ABBREV_ZH: Record<string, string> = {
   Hu: '人类', DE: '深精灵', Gn: '豺狼人', Mi: '牛头人', Mf: '人鱼',
@@ -110,19 +111,6 @@ const RESIST_LABEL_ZH: Record<string, string> = {
   SInv: '看破隐形',
   Will: '意志',
   Stlth: '潜行',
-}
-
-const EXTRA_MUTATION_ZH: Record<string, string> = {
-  horns: '角顶',
-  claws: '利爪',
-  hooves: '蹄',
-  tentacles: '触手',
-  spellclaws: '法爪',
-  'spit poison': '吐毒',
-  'hurl damnation': '投掷业火',
-  'retaliatory headbutt': '报复性头槌',
-  'golden breath': '黄金吐息',
-  'no striking features': '无明显特征',
 }
 
 const PASSIVE_ZH: Record<string, string> = {
@@ -541,8 +529,7 @@ function translateMutationEntry(raw: string): string {
     levelSuffix = ` ${lv[2]}`
   }
 
-  const lower = inner.toLowerCase()
-  const zh = EXTRA_MUTATION_ZH[lower] ?? lookupCI(inner)
+  const zh = translateMutationName(inner)
   return `${openTag}${pre}${zh}${levelSuffix}${post}${closeTag}`
 }
 

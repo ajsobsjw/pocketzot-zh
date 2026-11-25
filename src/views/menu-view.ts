@@ -21,6 +21,7 @@ import { columnTable, menuColumns, type ColumnTable } from './menu-columns'
 import { systemKeyboardField } from './text-field'
 import { isZh, tItem, tMore, tTitle } from '../i18n'
 import { LANG_CHANGED_EVENT } from '../i18n'
+import { isMutationMenu, translateMutationMenuFooter, translateMutationRow } from '../i18n/mutations'
 
 // Debounce for reporting a client-side scroll back to the server — menus
 // here, the formatted scroller in LayoutView.
@@ -499,7 +500,8 @@ export class MenuView {
   // re-fill it and visibility must come back with the text.
   private setFooter(footerEl: HTMLElement, more: string, pos: string): void {
     const source = more.replace(/XXX/g, pos)
-    footerEl.innerHTML = dcssToHtml(translateKeyHelp(source, this.model.active?.tag === 'spell'))
+    footerEl.innerHTML = dcssToHtml(isMutationMenu(this.model.active?.title?.text ?? '')
+      ? translateMutationMenuFooter(source) : translateKeyHelp(source, this.model.active?.tag === 'spell'))
     footerEl.dataset.noI18n = ''
     footerEl.style.display = formatMore(more, pos) ? '' : 'none'
   }
@@ -602,7 +604,8 @@ export class MenuView {
   private fillItems(listEl: HTMLElement, rawItems: MenuItem[]): HTMLElement | null {
     const coalesced = coalesceMenuItems(rawItems)
     const active = this.model.active
-    const cols = active && menuColumns(active.tag, active.title?.text)
+    const mutationMenu = isMutationMenu(active?.title?.text ?? '')
+    const cols = !mutationMenu && active && menuColumns(active.tag, active.title?.text)
     this.columns = cols ? columnTable(cols, coalesced.map(c => c.item)) : null
     let header: HTMLElement | null = null
     if (this.columns) {
@@ -657,7 +660,8 @@ export class MenuView {
         const prefix = !laid && String(item.text ?? '')
           .match(/^\s*(?:<[a-zA-Z]+>.<\/[a-zA-Z]+>|(?:<[^>]+>)*.)\s([-+# $])\s/)
         const rowText = String(item.text ?? '')
-        const shownText = active?.tag === 'shop' ? displayShopItemText(rowText) : displayItemText(rowText)
+        const shownText = mutationMenu ? translateMutationRow(rowText)
+          : active?.tag === 'shop' ? displayShopItemText(rowText) : displayItemText(rowText)
         const el = this.itemButton(laid ?? dcssToHtml(shownText), () => {
           const shift = this.d.shift
           const active = this.model.active

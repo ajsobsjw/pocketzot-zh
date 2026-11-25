@@ -28,6 +28,7 @@ import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
 import { translateOverviewMarkup, translatePage } from '../i18n/pages'
 import { isCharOverview, translateCharOverview } from '../i18n/char-overview'
+import { localizeMutationDetail } from '../i18n/mutations'
 import { translateMessageHistory } from '../i18n/messages'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from '../i18n/monster'
 import { translateGodLine, translateGodServiceFee } from '../i18n/god'
@@ -253,9 +254,12 @@ export class LayoutView {
       }).filter(Boolean).join('\n\n')
     }
     const title = stripDcss(titleSrc)
+    const mutation = msg.type === 'describe-generic' ? localizeMutationDetail(title, rawBody) : null
     // Phase D light: swap the English prose for the localized description when
     // the title names something in dat/descript/zh. Computed lines stay.
-    if (String(msg.type ?? '').startsWith('describe')) {
+    if (mutation) {
+      rawBody = mutation.body
+    } else if (String(msg.type ?? '').startsWith('describe')) {
       if (msg.type !== 'describe-god' && msg.type !== 'describe-feature-wide') {
         rawBody = zhDescribe(title, rawBody, String(msg.type ?? '')) ?? rawBody
       }
@@ -288,7 +292,7 @@ export class LayoutView {
 
     const itemName = msg.type === 'describe-item' ? title.trim().replace(/\.$/, '') : title
     const localizedName = msg.type === 'describe-item' ? tItem(itemName) : title
-    this.d.renderOverlay(localizedName === itemName ? title : localizedName, () => {
+    this.d.renderOverlay(mutation?.title ?? (localizedName === itemName ? title : localizedName), () => {
       const overlay = this.d.content()
       const tileSpec = deriveTileSpec(msg)
       if (tileSpec && tileSpec.length > 0) {
@@ -313,7 +317,7 @@ export class LayoutView {
       if (rawBody) {
         const bodyEl = document.createElement('div')
         bodyEl.className = 'overlay-body fg7'
-        if (messageHistory || (charOverview && isZh())) bodyEl.dataset.noI18n = ''
+        if (mutation || messageHistory || (charOverview && isZh())) bodyEl.dataset.noI18n = ''
         // Scroller bodies take the tighter line pitch (style.css
         // .overlay-body--scroller); describe-* panels stay at prose pitch.
         if (msg.type === 'formatted-scroller') bodyEl.classList.add('overlay-body--scroller')
