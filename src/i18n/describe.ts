@@ -38,6 +38,12 @@ export function loadDescript(): Promise<void> {
       // Hand-written prose for content newer than the 0.34.1 Chinese database.
       for (const [en, zh] of Object.entries(MANUAL_PROSE)) map.set(norm(en), zh)
       for (const [en, zh] of Object.entries(EGO_PROSE)) map.set(norm(en), zh)
+      map.set(norm('Binds a chosen equipped item to the wearer in exchange for a sliver of Ashenzari\'s knowledge. Items bound in this way can no longer be enchanted or modified by most means, and cannot be removed without shattering them.'),
+        '以艾申札利的一缕知识为代价，将选定的已装备物品束缚在穿戴者身上。如此束缚的物品无法再通过大多数方式附魔或改造，也不能取下，否则物品将会粉碎。')
+      map.set(norm('If you bind an item with this ritual Ashenzari will enhance the following skills:'),
+        '若以此仪式束缚物品，艾申札利将强化以下技能：')
+      map.set(norm('Necromancy, Short Blades, Long Blades, Axes, Maces & Flails, Polearms, Staves, Unarmed Combat and Shields.'),
+        '死灵术、短刃、长刃、斧、锤与连枷、长柄武器、法杖、徒手格斗和盾牌。')
       proseMap = map
       setProseLookup((text) => map.get(norm(text)) ?? translateEgoProse(text))
     })

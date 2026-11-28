@@ -1,9 +1,12 @@
 // @vitest-environment happy-dom
 import { afterAll, expect, it } from 'vitest'
 import { setLang } from './index'
-import { translatePage, translateTerminalLine } from './pages'
+import { translatePage, translateScrollerMarkup, translateTerminalLine } from './pages'
+import { translateGameOver } from './game-over'
+import { dcssToHtml } from '../game/dcss-colors'
 import help from '../golden/07-lookup-input-dialog.golden.json'
 import travel from '../golden/12-travel-prompt-help.golden.json'
+import quit from '../golden/20-quit-game-over.golden.json'
 
 afterAll(() => setLang('en'))
 
@@ -26,6 +29,41 @@ it('retains parser-facing search keywords and player input', async () => {
   expect(translatePage('Stash search prefixes: weapon ego holy wrath'))
     .toContain('weapon ego holy wrath')
   expect(translateTerminalLine('a - Minotaur')).toContain('牛头人')
+})
+
+it('keeps the literal upstairs and downstairs keys in the rendered Chinese travel help', async () => {
+  await setLang('zh')
+  const raw = travel.messages.find((message) => message.type === 'formatted-scroller')!.text!
+  const el = document.createElement('div')
+  el.innerHTML = dcssToHtml(translateScrollerMarkup(raw))
+  expect(el.textContent).toMatch(/<\s*: 从最近的楼梯上楼。/)
+  expect(el.textContent).toMatch(/>\s*: 从最近的楼梯下楼。/)
+})
+
+it('localizes the quickstart without translating an unrelated page with similar prose', async () => {
+  await setLang('zh')
+  const intro = 'So, you want to start playing Crawl straight away without bothering with the\nmanual? Read this, the guide to starting Crawl with a minimum of preparation.'
+  const raw = `Crawl Quick-Start Guide\n=======================\n\n${intro}\n\nHappy Crawling!`
+  const translated = translateScrollerMarkup(raw)
+  expect(translated.split('\n')).toHaveLength(raw.split('\n').length)
+  expect(translated.replaceAll('\n', '')).toContain('想跳过手册，直接开始游玩吗？')
+  expect(translated).toContain('祝你探索愉快！')
+  expect(translateScrollerMarkup(intro)).toBe(intro)
+})
+
+it('translates the captured quit scorecard without changing names or scores', async () => {
+  const raw = quit.messages.find((message) => message.type === 'game-over')!.body!
+  await setLang('zh')
+  const translated = translateGameOver(raw)
+  expect(translated).toMatch(/7 Synthplayer [^\n]+（2级，生命 19\/19）/)
+  expect(translated).toMatch(/于2026年7月31日以[^\n]*[\u3400-\u9fff]开始冒险。/)
+  expect(translated).toContain('于2026年9月28日')
+  expect(translated).toContain('第1层放弃了游戏。')
+  expect(translated).toContain('用时 00:13:58（447 回合）。')
+  expect(translated).toContain('1.   900000 Synthone   HuFi-27 携佐特之球逃离')
+  expect(translated.split('\n')).toHaveLength(raw.split('\n').length)
+  await setLang('en')
+  expect(translateGameOver(raw)).toBe(raw)
 })
 
 it('translates standalone spell noise metadata and concatenated combat history rows', async () => {

@@ -15,7 +15,6 @@ const SKIP_SELECTOR = '#map-grid, #crt-display, .no-i18n, [data-no-i18n], .chat_
 const SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CODE', 'PRE'])
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'] as const
 
-const MAX_ORIGINALS = 4000
 // Fragments that inline markup splits out of a sentence ("and", ", and",
 // "Features"). The engine dictionary translates them by game context, which is
 // wrong in prose, so they only go through the exact UI table.
@@ -29,8 +28,10 @@ let observer: MutationObserver | null = null
 let root: HTMLElement | null = null
 let queued: Node[] = []
 let scheduled = false
-const originals = new Map<Text, string>()
-const attrOriginals = new Map<Element, Map<string, string>>()
+let pruneDetached = false
+type Translation = { source: string; shown: string }
+const originals = new Map<Text, Translation>()
+const attrOriginals = new Map<Element, Map<string, Translation>>()
 
 function skipped(el: Element | null): boolean {
   for (let e = el; e; e = e.parentElement) {
@@ -51,20 +52,10 @@ function skippedForAttrs(el: Element): boolean {
   return false
 }
 
-function remember(node: Text, value: string): void {
-  if (originals.has(node)) return
-  originals.set(node, value)
-  if (originals.size > MAX_ORIGINALS) {
-    let n = MAX_ORIGINALS / 4
-    for (const k of originals.keys()) {
-      originals.delete(k)
-      if (--n <= 0) break
-    }
-  }
-}
-
 function translateText(node: Text): void {
   const value = node.nodeValue
+  if (originals.get(node)?.shown === value) return
+  originals.delete(node)
   if (!value || value.length < 2) return
   if (!/[A-Za-z]/.test(value)) return
   if (skipped(node.parentElement)) return
@@ -96,7 +87,7 @@ function translateText(node: Text): void {
   // Preserve the node's own surrounding whitespace (inline layouts rely on it);
   // hotkey rows already carry their prefix from the item grammar.
   if (!hotkeyRow) out = lead + out.trim() + trail
-  remember(node, value)
+  originals.set(node, { source: value, shown: out })
   node.nodeValue = out
 }
 
@@ -104,18 +95,21 @@ function translateAttrs(el: Element): void {
   if (skippedForAttrs(el)) return
   for (const name of ATTRS) {
     const value = el.getAttribute(name)
+    let map = attrOriginals.get(el)
+    if (map?.get(name)?.shown === value) continue
+    map?.delete(name)
     if (!value || !/[A-Za-z]/.test(value)) continue
     const out = tLabel(value)
     const final = hasUiLabel(value) || out !== value ? out : t(value)
     if (final === value) continue
-    let map = attrOriginals.get(el)
     if (!map) {
       map = new Map()
       attrOriginals.set(el, map)
     }
-    if (!map.has(name)) map.set(name, value)
+    map.set(name, { source: value, shown: final })
     el.setAttribute(name, final)
   }
+  if (attrOriginals.get(el)?.size === 0) attrOriginals.delete(el)
 }
 
 function walk(node: Node): void {
@@ -129,7 +123,12 @@ function walk(node: Node): void {
   // (the map grid alone is thousands of glyph nodes per frame).
   if (el.matches(SKIP_SELECTOR)) return
   translateAttrs(el)
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT)
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+    acceptNode(node) {
+      return node instanceof Element && node.matches(SKIP_SELECTOR)
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+    },
+  })
   let cur: Node | null
   while ((cur = walker.nextNode())) {
     if (cur.nodeType === Node.TEXT_NODE) translateText(cur as Text)
@@ -142,13 +141,17 @@ function flush(): void {
   const batch = queued
   queued = []
   if (getLang() !== 'zh') return
+  if (pruneDetached) {
+    pruneDetached = false
+    restore(true)
+  }
   for (const node of batch) {
-    if (node.isConnected) walk(node)
+    if (root?.contains(node)) walk(node)
   }
 }
 
-function schedule(node: Node): void {
-  queued.push(node)
+function schedule(node: Node | null): void {
+  if (node) queued.push(node)
   if (scheduled) return
   scheduled = true
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush)
@@ -156,16 +159,19 @@ function schedule(node: Node): void {
 }
 
 /** Revert every node we touched (used when switching back to English). */
-function restore(): void {
-  for (const [node, value] of originals) {
-    if (node.isConnected && node.nodeValue !== value) node.nodeValue = value
+function restore(detachedOnly = false): void {
+  for (const [node, { source, shown }] of originals) {
+    if (detachedOnly && root?.contains(node)) continue
+    if (node.nodeValue === shown) node.nodeValue = source
+    originals.delete(node)
   }
-  originals.clear()
   for (const [el, map] of attrOriginals) {
-    if (!el.isConnected) continue
-    for (const [name, value] of map) el.setAttribute(name, value)
+    if (detachedOnly && root?.contains(el)) continue
+    for (const [name, { source, shown }] of map) {
+      if (el.getAttribute(name) === shown) el.setAttribute(name, source)
+    }
+    attrOriginals.delete(el)
   }
-  attrOriginals.clear()
 }
 
 export function installAutoTranslate(el: HTMLElement): () => void {
@@ -175,6 +181,10 @@ export function installAutoTranslate(el: HTMLElement): () => void {
     for (const r of records) {
       if (r.type === 'childList') {
         for (const n of r.addedNodes) schedule(n)
+        if (r.removedNodes.length) {
+          pruneDetached = true
+          schedule(null)
+        }
       } else if (r.type === 'characterData') {
         schedule(r.target)
       } else if (r.type === 'attributes' && r.target instanceof Element) {
@@ -196,6 +206,8 @@ export function installAutoTranslate(el: HTMLElement): () => void {
   return () => {
     observer?.disconnect()
     observer = null
+    restore()
+    root = null
     window.removeEventListener(LANG_CHANGED_EVENT, onLang)
   }
 }

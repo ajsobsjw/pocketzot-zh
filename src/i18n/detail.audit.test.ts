@@ -5,7 +5,9 @@ import { join } from 'node:path'
 import { setLang, t, tItem, tMore, tTitle } from './index'
 import { loadDescript, zhDescribe } from './describe'
 import { translateBody } from './body'
-import { translatePage } from './pages'
+import { translateScrollerMarkup } from './pages'
+import { translateGameOver } from './game-over'
+import { dcssToHtml } from '../game/dcss-colors'
 import { columnTable, menuColumns } from '../views/menu-columns'
 import { translateMonsterBody, translateMonsterQuote, translateMonsterStatus } from './monster'
 
@@ -59,11 +61,16 @@ it('audits captured display fragments instead of counting a changed page as a hi
         if (msg.type === 'describe-monster' && msg.status) audit('monster-status', msg.status, translateMonsterStatus(msg.status))
         if (msg.type === 'describe-monster' && msg.quote) audit('monster-quote', msg.quote, translateMonsterQuote(msg.quote))
       } else if (msg.type === 'formatted-scroller' && msg.text) {
-        const plain: string = msg.text.replace(/<[^>]*>/g, '')
-        const translated = translatePage(plain)
-        const sources = plain.split('\n')
-        const outputs = translated.split('\n')
+        const el = document.createElement('div')
+        el.innerHTML = dcssToHtml(msg.text)
+        const sources = el.textContent.split('\n')
+        el.innerHTML = dcssToHtml(translateScrollerMarkup(msg.text))
+        const outputs = el.textContent.split('\n')
         sources.forEach((line, i) => audit('help-line', line, outputs[i] ?? ''))
+      } else if (msg.type === 'game-over' && msg.body) {
+        const sources: string[] = msg.body.split('\n')
+        const outputs = translateGameOver(msg.body).split('\n')
+        sources.forEach((line, i) => audit('scorecard-line', line, outputs[i] ?? ''))
       }
     }
   }
@@ -74,4 +81,5 @@ it('audits captured display fragments instead of counting a changed page as a hi
   }
   expect([...buckets].filter(([kind]) => kind.startsWith('describe-')).reduce((sum, [, bucket]) => sum + bucket.total, 0)).toBeGreaterThan(20)
   expect(buckets.get('help-line')?.total).toBeGreaterThan(10)
+  expect(buckets.get('scorecard-line')?.misses.size).toBe(0)
 })

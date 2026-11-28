@@ -129,14 +129,16 @@ export function buildOfflineLobbyView(
           </span>
           <button type="button" id="offline-rc" class="offline-device-btn">Edit</button>
         </div>
-        <div class="offline-device-row">
+        <div class="offline-device-row offline-device-row--backup">
           <span class="offline-device-glyph" aria-hidden="true">${TRANSFER_ICON}</span>
           <span class="offline-device-lines">
             <span class="offline-device-label">Backup</span>
             <span class="offline-device-sub">Saves, morgues, scores, and options</span>
           </span>
-          <button type="button" id="offline-export" class="offline-device-btn">Export</button>
-          <button type="button" id="offline-import" class="offline-device-btn">Import</button>
+          <div class="offline-device-actions">
+            <button type="button" id="offline-export" class="offline-device-btn">Export</button>
+            <button type="button" id="offline-import" class="offline-device-btn">Import</button>
+          </div>
         </div>
       </div>
     </div>
@@ -890,4 +892,3 @@ export function buildOfflineLobbyView(
 
   return view
 }
-

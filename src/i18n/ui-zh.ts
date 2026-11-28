@@ -1,7 +1,7 @@
 // PocketZot's own interface strings (login, lobby, settings, offline lobby,
 // records, control names). These never come from the game, so they need their
 // own table. Values are matched exactly against a rendered text node or an
-// attribute (placeholder / aria-label / title) — no templates, no guessing.
+// attribute (placeholder / aria-label / title), with explicit templates below.
 
 export const UI_ZH: Record<string, string> = {
   // --- login / accounts ---
@@ -136,7 +136,6 @@ export const UI_ZH: Record<string, string> = {
   'Export': '导出',
   'Cancel': '取消',
   'Delete': '删除',
-  'Delete in 3': '3 秒后删除',
   'Add a note': '添加备注',
   'Fit to width': '适应宽度',
   'Character name': '角色名字',
@@ -264,7 +263,6 @@ export const UI_ZH: Record<string, string> = {
   'Drag to pan': '拖动以平移',
   'Tap or drag the minimap to pan': '点按或拖动小地图以平移',
   'Tap to place the cursor': '点按以放置光标',
-  'Actions for Standard': 'Standard 的操作',
   'View': '查看',
   'Duplicate': '复制',
   'Import…': '导入…',
@@ -318,4 +316,67 @@ export const UI_ZH: Record<string, string> = {
   'Close chat': '关闭聊天',
   'Send': '发送',
   'Chat': '聊天',
+  '#chat': '#聊天',
+  'Help': '帮助',
+  'Sizes': '尺寸',
+  'Name': '名称',
+  'Tab label': '标签页名称',
+  'Your spells (I)': '已记忆法术 (I)',
+  'GAZE UPON THE EXALTED, THE AMBITIOUS, THE DISGRACED': '且看功成者、逐梦者与失意者',
+  'O TRAVELER, BASK IN THY GLORY': '旅人啊，尽享你的荣光',
+  'CONTEMPLATE THY TRIBULATIONS': '且回望你历经的磨难',
+  'AND LO, IT IS ENDED': '看哪，一切已然落幕',
+  'Installed': '已安装',
+  "Can't be installed here": '此浏览器无法安装',
+  'Partly installed · tile data missing': '部分安装 · 缺少图块数据',
+  'Needs a connection once to finish installing': '需联网一次以完成安装',
+  "Can't install in this browser — connection required": '此浏览器无法安装离线数据，游玩需联网',
+}
+
+const UI_TEMPLATES: ReadonlyArray<readonly [RegExp, (...parts: string[]) => string]> = [
+  [/^Delete in (\d+)$/, (n) => `再按 ${n} 次删除`],
+  [/^Actions for (.+)$/, (name) => `${name}的操作`],
+  [/^Show all versions \((\d+)\)$/, (n) => `显示所有版本（${n}）`],
+  [/^Register on (.+)$/, (server) => `在 ${server} 注册`],
+  [/^Guest on (.+)$/, (server) => `${server} 的访客`],
+  [/^Could not connect to (.+?)\.?$/, (server) => `无法连接到 ${server}`],
+  [/^\+(\d+) more$/, (n) => `另有 ${n} 个`],
+  [/^(\d+) finished games?$/, (n) => `${n} 局已结束`],
+  [/^(\d+) gems?$/, (n) => `${n} 颗宝石`],
+  [/^(\d+) more found, not named in this record$/, (n) => `另有 ${n} 颗宝石，本记录未列出名称`],
+  [/^Tab (\S+)$/, (key) => `标签页 ${key}`],
+  [/^Downloading tiles (\d+\/\d+)…$/, (n) => `正在下载图块 ${n}…`],
+  [/^Installed · (.+)$/, (detail) => `已安装 · ${detail}`],
+  [/^Not installed · ([\d.]+\s*(?:[KMG]i?B|B))$/, (size) => `未安装 · ${size}`],
+  [/^Installs (.+) the first time$/, (size) => `首次使用需安装 ${size}`],
+  [/^Finishes a (.+) download first$/, (size) => `需先完成 ${size} 的下载`],
+  [/^Partly installed · (.+) left$/, (size) => `部分安装 · 还需下载 ${size}`],
+  [/^Partly installed · finishing installs DCSS (\S+), updating saved games$/, (version) =>
+    `部分安装 · 完成安装将升级到 DCSS ${version} 并更新存档`],
+  [/^Update to DCSS (\S+) available( — updates your saved games)?$/, (version, migrates) =>
+    `可更新至 DCSS ${version}${migrates ? '，这也会升级你的存档' : ''}`],
+  [/^Updates your saved games — use (.+) below$/, (button) =>
+    `将升级你的存档，请使用下方的「${Object.prototype.hasOwnProperty.call(UI_ZH, button) ? UI_ZH[button] : button}」`],
+  [/^Restored backup(?: from (\d{4}-\d{2}-\d{2}))?\.$/, (when) => `已恢复备份${when ? `（${when}）` : ''}。`],
+  [/^DCSS (\S+) installed$/, (version) => `已安装 DCSS ${version}`],
+  [/^([\d.]+ MB) download( left)?$/, (size, left) => `${left ? '还需' : '需'}下载 ${size}`],
+  [/^Download failed: ([\s\S]+)$/, (detail) => `下载失败：${detail}`],
+  [/^Export failed: ([\s\S]+)$/, (detail) => `导出失败：${detail}`],
+  [/^Import failed: ([\s\S]+)$/, (detail) => `导入失败：${detail}`],
+  [/^Couldn't import: ([\s\S]+)$/, (detail) => `无法导入：${detail}`],
+  [/^Could not save: ([\s\S]+)$/, (detail) => `无法保存：${detail}`],
+  [/^Could not open the options file: ([\s\S]+)$/, (detail) => `无法打开选项文件：${detail}`],
+  [/^DCSS (\S+) is older than PocketZot supports — expect rough edges\. Tap to dismiss\.$/, (version) =>
+    `DCSS ${version} 低于 PocketZot 支持的版本，部分功能可能无法使用。点按关闭。`],
+  [/^Character creation on DCSS (\S+) isn’t supported by PocketZot \(versions before 0\.24 predate the character-creation menus it supports\)\.$/, (version) =>
+    `PocketZot 无法在 DCSS ${version} 创建角色，因为 0.24 以前的版本使用旧版角色创建菜单。`],
+]
+
+export function matchUiLabel(text: string): string | undefined {
+  if (Object.prototype.hasOwnProperty.call(UI_ZH, text)) return UI_ZH[text]
+  for (const [pattern, translate] of UI_TEMPLATES) {
+    const hit = pattern.exec(text)
+    if (hit) return translate(...hit.slice(1))
+  }
+  return undefined
 }

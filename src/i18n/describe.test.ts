@@ -37,6 +37,18 @@ describe('describe replacement', () => {
     expect(out).not.toContain('A large, loose-fitting')
   })
 
+  it('localizes Ashenzari binding item prose, newer ritual text, and skill list', () => {
+    const body = [
+      'Binds a chosen equipped item to the wearer in exchange for a sliver of Ashenzari\'s knowledge. Items bound in this way can no longer be enchanted or modified by most means, and cannot be removed without shattering them.',
+      'If you bind an item with this ritual Ashenzari will enhance the following skills:',
+      'Necromancy, Short Blades, Long Blades, Axes, Maces & Flails, Polearms, Staves, Unarmed Combat and Shields.',
+    ].join('\n\n')
+    const out = zhDescribe('Ritual of Binding', body, 'describe-item')
+    expect(out).toContain('艾申札利')
+    expect(out).toContain('死灵术、短刃、长刃')
+    expect(out).not.toMatch(/\b(?:Binds|Ashenzari|Necromancy|Shields)\b/)
+  })
+
   it('keeps a monster stat block below the prose', () => {
     const body = 'A small snake.\n\nMax HP: ~10\n\nWill: +\n\nAC: +'
     const out = zhDescribe('z - a ball python', body)

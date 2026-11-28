@@ -3,6 +3,15 @@
 import { isZh, t, tItem } from './index'
 import { lookupProse } from './describe'
 import { GRID_MARK, CELL_SEP } from '../views/overlay-body'
+import { translateQuickstart } from './quickstart'
+
+// Tokens such as "<<" are visible keys, not part of the next colour tag.
+export function translateScrollerMarkup(text: string): string {
+  if (!isZh()) return text
+  const plain = text.replace(/<<|<\/?(?:bg:)?[a-z]+>/gi, (token) => token === '<<' ? '<' : '')
+  const translated = translatePage(plain)
+  return translated === plain ? text : translated.replace(/</g, '<<')
+}
 
 const HELP: Record<string, string> = {
   'Dungeon Crawl Help': '地下城探索帮助',
@@ -157,6 +166,8 @@ function translateCell(text: string): string {
 /** Plain text only: callers strip DCSS/HTML before passing a display copy. */
 export function translatePage(text: string): string {
   if (!isZh()) return text
+  const guide = translateQuickstart(text)
+  if (guide !== null) return guide
   const whole = lookupProse(text)
   if (whole !== null) return whole
   // Prose dictionaries contain paragraphs, whereas manual/scroller messages

@@ -104,7 +104,7 @@ export function mountCardOverlay(
   cls: { backdrop?: string; card?: string; body?: string } = {},
   onClose?: () => void,
   intercept?: CloseIntercept,
-): { backdrop: HTMLElement; body: HTMLElement; close: () => void } {
+): { backdrop: HTMLElement; body: HTMLElement; titleEl: HTMLElement; close: () => void } {
   const { backdrop, close, requestDismiss } = mountBackdrop(
     'sheet-backdrop' + (cls.backdrop ? ` ${cls.backdrop}` : ''), onClose, intercept)
   const card = document.createElement('div')
@@ -131,5 +131,5 @@ export function mountCardOverlay(
   backdrop.appendChild(card)
   closeBtn.addEventListener('click', requestDismiss)
   attachScrollCue(header, body)
-  return { backdrop, body, close }
+  return { backdrop, body, titleEl, close }
 }

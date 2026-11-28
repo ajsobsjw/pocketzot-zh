@@ -613,6 +613,17 @@ export const SUPP_ZH: Record<string, string> = {
   'You feel a surge of power!': '你感到一股力量涌动！',
   'You bind %s in chains and feel the brush of Ashenzari\'s sight against your mind.':
     '你以锁链束缚了%s，感到艾申札利的视界拂过你的心灵。',
+  'Ritual of Binding': '束缚仪式',
+  'Curse Item': '诅咒物品',
+  'Curse Item ability': '诅咒物品',
+  'Curses a chosen equipped item, binding it to the wearer until the curse and the item both are broken. Cursed items can no longer be enchanted or modified.':
+    '诅咒一件选定的已装备物品，将其束缚在穿戴者身上，直到诅咒和物品都被打破。被诅咒的物品无法再附魔或改造。',
+  'Binds a chosen equipped item to the wearer in exchange for a sliver of Ashenzari\'s knowledge. Items bound in this way can no longer be enchanted or modified by most means, and cannot be removed without shattering them.':
+    '以艾申札利的一缕知识为代价，将选定的已装备物品束缚于穿戴者。如此束缚的物品无法再通过大多数方式附魔或改造，也无法取下；强行取下只会将其摧毁。',
+  'If you bind an item with this ritual Ashenzari will enhance the following skills:':
+    '若以此仪式束缚一件物品，艾申札利将强化以下技能：',
+  'Necromancy, Short Blades, Long Blades, Axes, Maces & Flails, Polearms, Staves, Unarmed Combat and Shields.':
+    '死灵术、短刃、长刃、斧、锤与连枷、长柄武器、法杖、徒手格斗和盾牌。',
   'Ashenzari invites you to chain yourself with knowledge of %s.':
     '艾申札利邀请你以%s的知识束缚自己。',
   'Your %s attunes itself to your body, and you begin to regenerate more quickly.':

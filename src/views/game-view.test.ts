@@ -14,6 +14,7 @@ import { fakeStorage } from '../test/fake-storage'
 import { listAllAvatars, saveAvatar } from '../avatars'
 import stashSearchGolden from '../golden/22-stash-search-describe-highlight.golden.json'
 import searchPlacementsGolden from '../golden/23-stash-search-highlight-placements.golden.json'
+import quitGolden from '../golden/20-quit-game-over.golden.json'
 
 // game-view.ts exports buildGameView (plus unwrapHangingIndents/HANG_MARK for
 // the data-file sweep test), so it's exercised end-to-end the way
@@ -122,6 +123,23 @@ const msgRows = (h: Harness) => [...msgLog(h).querySelectorAll<HTMLElement>('.ga
 // msgLog is flex column-reverse, so the visual order (oldest→newest) is the
 // reverse of DOM order — undo that here so assertions read naturally.
 const msgTexts = (h: Harness) => msgRows(h).map(r => r.textContent?.trim()).reverse()
+
+it('uses a wrapping recap in Chinese without changing the English scorecard', async () => {
+  const h = setup()
+  const score = quitGolden.messages.find(m => m.type === 'game-over')!
+  await setLang('zh')
+  try {
+    h.dispatch(score)
+    const recap = overlay(h).querySelector('.overlay-body--localized-score')
+    expect(recap?.textContent).toContain('携佐特之球逃离')
+    expect(recap?.querySelector('.overlay-line')?.textContent).toMatch(/^7 Synthplayer/)
+    await setLang('en')
+    expect(overlay(h).querySelector('.overlay-body--localized-score')).toBeNull()
+    expect(overlay(h).querySelector('.overlay-line--nowrap')?.textContent).toContain('Synthplayer')
+  } finally {
+    await setLang('en')
+  }
+})
 
 describe('message log (msgs)', () => {
   it('prepends rows so the newest sits at the visual bottom (DOM firstChild)', () => {

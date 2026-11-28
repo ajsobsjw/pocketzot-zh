@@ -201,6 +201,8 @@ export const ITEM_NAMES: Record<string, string> = {
   'my sojourn through swampland': '我的沼泽旅居记',
   'orb of zot': '佐特宝球',
   'potion of enlightenment': '启明药水',
+  'potion of moonshine': '月光药水',
+  'potion of degeneration': '退化药水',
   'ring of dexterity': '敏捷戒指',
   'ring of flight': '飞行戒指',
   'ring of intelligence': '智力戒指',

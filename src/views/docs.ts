@@ -1,5 +1,7 @@
 import aboutMd from '../../ABOUT.md?raw'
 import changelogMd from '../../CHANGELOG.md?raw'
+import aboutZh from '../i18n/docs/about.zh.md?raw'
+import changelogZh from '../i18n/docs/changelog.zh.md?raw'
 import { openDocView } from './doc-view'
 import { getPref, setPref } from '../prefs'
 
@@ -27,7 +29,7 @@ function prep(md: string): string {
 }
 
 export function openAboutDoc(): void {
-  openDocView('About', prep(aboutMd), { resolveLink: resolveAboutLink })
+  openDocView('About', prep(aboutMd), { resolveLink: resolveAboutLink }, prep(aboutZh))
 }
 
 // Unread "What's new" state: each changelog entry is a dated `## YYYY-MM-DD`
@@ -51,7 +53,17 @@ export function unreadDotHtml(extraClass = ''): string {
 
 export function openChangelogDoc(): void {
   if (newestChangelogDate !== null) setPref('changelogSeen', newestChangelogDate)
-  openDocView("What's new", prep(changelogMd))
+  const datedEntries = /^## \d{4}-\d{2}-\d{2}$/m
+  const localized = new Map(changelogEntries(changelogZh).map((entry) => [entry.split('\n', 1)[0], entry]))
+  const entries = changelogEntries(changelogMd).map((entry) =>
+    localized.get(entry.split('\n', 1)[0]) ?? entry)
+  const intro = prep(changelogMd).split(datedEntries, 1)[0].trim()
+  openDocView("What's new", prep(changelogMd), undefined, [intro, ...entries].filter(Boolean).join('\n\n'))
+}
+
+function changelogEntries(markdown: string): string[] {
+  return prep(markdown).replace(/\r\n/g, '\n').split(/(?=^## \d{4}-\d{2}-\d{2}$)/m)
+    .map((entry) => entry.trim()).filter((entry) => /^## \d{4}-\d{2}-\d{2}\n/.test(entry))
 }
 
 // The Gestures section of ABOUT.md, as its own small doc (Settings → Help).
@@ -60,6 +72,7 @@ export function openChangelogDoc(): void {
 // than showing nothing.
 export function openGesturesDoc(): void {
   const section = /\n## Gestures\r?\n([\s\S]*?)(?=\n## |$)/.exec(aboutMd)
-  if (section) openDocView('Gestures', section[1].trim())
+  const localized = /\n## 手势\r?\n([\s\S]*?)(?=\n## |$)/.exec(aboutZh)
+  if (section) openDocView('Gestures', section[1].trim(), undefined, localized?.[1].trim())
   else openAboutDoc()
 }

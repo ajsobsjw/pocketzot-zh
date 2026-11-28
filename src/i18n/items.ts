@@ -315,12 +315,51 @@ export function splitItem(raw: string): ItemParts {
  */
 export function translateItem(m: Matcher, raw: string, opts?: { loose?: boolean }): string | null {
   if (!raw || !/[A-Za-z]/.test(raw)) return null
-  const unknownPotion = raw.trim().replace(/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/, '').replace(/^(?:a|an|the)\s+/i, '').replace(/[.。]$/, '')
-  if (/^unlabelled flask containing a single dose of unknown liquid$/i.test(unknownPotion)) {
+  const unknownFlask = raw.trim().replace(/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/, '').replace(/^(?:a|an|the)\s+/i, '').replace(/[.。]$/, '')
+  if (/^unlabelled flask containing a single dose of unknown liquid$/i.test(unknownFlask)) {
     const prefix = HOTKEY_PREFIX.exec(raw)?.[1] ?? ''
     return `${prefix}一瓶成分不明的药水`
   }
   const magicPotion = raw.trim().replace(/^\s*(?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+/, '').replace(/^(?:a|an|the)\s+/i, '').replace(/[.。]$/, '')
+  // Some servers omit the article or display the known potion effect as a
+  // direct alias (as in their unidentified-looking inventory labels).
+  const namedPotion = /^(?:potion of )?(enlightenment|moonshine)(?:\s*[×x]\s*(\d+))?$/i.exec(magicPotion)
+  if (namedPotion) {
+    const prefix = HOTKEY_PREFIX.exec(raw)?.[1] ?? ''
+    const names: Record<string, string> = { enlightenment: '启明药水', moonshine: '月光药水' }
+    return `${prefix}${names[namedPotion[1].toLowerCase()]}${namedPotion[2] ? `×${namedPotion[2]}` : ''}`
+  }
+  // DCSS prints an unidentified appearance as "potion (enlightenment) x2";
+  // this is not the known item "potion of enlightenment".
+  const potionLook = /^potion\s+\(([a-z -]+)\)(?:\s*[×x]\s*(\d+))?$/i.exec(magicPotion)
+  if (potionLook) {
+    const appearances: Record<string, string> = {
+      enlightenment: '启明', moonshine: '月光', degeneration: '退化',
+      curing: '治疗', heal: '疗伤', 'heal wounds': '疗伤', haste: '加速',
+      might: '力量', brilliance: '才智', agility: '敏捷', mutation: '变异',
+      cancellation: '解除', ambrosia: '神馔', attraction: '吸引',
+      'berserk rage': '狂怒', invisibility: '隐身', lignification: '木化',
+      resistance: '抗性', experience: '经验', flight: '飞行', stabbing: '背刺',
+    }
+    const label = appearances[potionLook[1].toLowerCase()]
+    if (label) return `${HOTKEY_PREFIX.exec(raw)?.[1] ?? ''}药水（${label}）${potionLook[2] ? `×${potionLook[2]}` : ''}`
+    return null
+  }
+  const unknownPotion = /^potion\s+of\s+\(([a-z -]+)\)(?:\s*[×x]\s*(\d+))?$/i.exec(magicPotion)
+  if (unknownPotion) {
+    const aliases: Record<string, string> = {
+      enlightenment: '启明', moonshine: '月光', degeneration: '退化',
+      curing: '治疗', heal: '疗伤', haste: '加速', might: '力量',
+      brilliance: '才智', agility: '敏捷', mutation: '变异',
+      cancellation: '解除', ambrosia: '神馔', attraction: '吸引',
+      'berserk rage': '狂怒', invisibility: '隐身', lignification: '木化',
+      resistance: '抗性', experience: '经验', flight: '飞行', stabbing: '背刺',
+    }
+    const effect = aliases[unknownPotion[1].toLowerCase()]
+    const qty = unknownPotion[2] ? `×${unknownPotion[2]}` : ''
+    if (effect) return `${HOTKEY_PREFIX.exec(raw)?.[1] ?? ''}${effect}药水${qty}`
+    return null
+  }
   if (/^potion of magic(?:\s*\(magic\))?$/i.test(magicPotion)) {
     const prefix = /^\s*((?:\([^)]\)|[A-Za-z0-9*!?])\s+[-+#$]\s+)/.exec(raw)?.[1] ?? ''
     return `${prefix}魔法药水${/\(magic\)/i.test(magicPotion) ? '（魔法）' : ''}`

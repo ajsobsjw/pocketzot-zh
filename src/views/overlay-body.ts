@@ -259,7 +259,10 @@ export const CELL_SEP = '\u0003'
 
 function renderCellBlock(line: string, highlight: string): string {
   const [kind, ...cells] = line.slice(GRID_MARK.length).split(CELL_SEP)
-  const widest = Math.max(...cells.map(c => stripDcss(c).length))
+  // ch measures the Latin zero, not the wider CJK fallback glyph. Budget
+  // two columns for full-width characters so adjacent tracks don't collide.
+  const widest = Math.max(...cells.map(c => Array.from(stripDcss(c)).reduce(
+    (width, char) => width + (/[\u2e80-\u9fff\uf900-\ufaff\uff01-\uff60]/u.test(char) ? 2 : 1), 0)))
   const style = kind === 'grid' ? ` style="--cell-ch:${widest}ch"` : ''
   const spans = cells.map(c => `<span>${applyHighlight(dcssToHtml(c), highlight)}</span>`).join('')
   return `<div class="overlay-line overlay-cells overlay-cells--${kind}"${style}>${spans}</div>`

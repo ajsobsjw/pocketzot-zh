@@ -26,7 +26,8 @@ import { SCROLL_SYNC_DEBOUNCE_MS } from './menu-view'
 import { LANG_CHANGED_EVENT, t, tItem, tMore, tTitle, isZh } from '../i18n'
 import { translateGodSection, zhDescribe } from '../i18n/describe'
 import { translateBody } from '../i18n/body'
-import { translateOverviewMarkup, translatePage } from '../i18n/pages'
+import { translateOverviewMarkup, translateScrollerMarkup } from '../i18n/pages'
+import { translateGameOver } from '../i18n/game-over'
 import { isCharOverview, translateCharOverview } from '../i18n/char-overview'
 import { localizeMutationDetail } from '../i18n/mutations'
 import { translateMessageHistory } from '../i18n/messages'
@@ -267,6 +268,8 @@ export class LayoutView {
       // panel also has an attack table, a to-hit line and a notice chance, so
       // it gets the structural rules first.
       rawBody = msg.type === 'describe-monster' ? translateMonsterBody(rawBody) : translateBody(rawBody)
+    } else if (msg.type === 'game-over') {
+      rawBody = translateGameOver(rawBody)
     } else if (messageHistory) {
       rawBody = translateMessageHistory(rawBody)
     } else if (overview && isZh()) {
@@ -276,9 +279,7 @@ export class LayoutView {
     } else if (isZh()) {
       // Scrollers include help/manual pages, not just describes.
       // Translate the entire display copy before colour spans split sentences.
-      const plain = stripDcss(rawBody)
-      const translated = translatePage(plain)
-      if (translated !== plain) rawBody = translated
+      rawBody = translateScrollerMarkup(rawBody)
     }
     const spellset = msg.spellset
     // Strip the placeholder when there's no spellset to render in its place;
@@ -317,7 +318,7 @@ export class LayoutView {
       if (rawBody) {
         const bodyEl = document.createElement('div')
         bodyEl.className = 'overlay-body fg7'
-        if (mutation || messageHistory || (charOverview && isZh())) bodyEl.dataset.noI18n = ''
+        if (mutation || messageHistory || msg.type === 'game-over' || (charOverview && isZh())) bodyEl.dataset.noI18n = ''
         // Scroller bodies take the tighter line pitch (style.css
         // .overlay-body--scroller); describe-* panels stay at prose pitch.
         if (msg.type === 'formatted-scroller') bodyEl.classList.add('overlay-body--scroller')
@@ -330,7 +331,12 @@ export class LayoutView {
         // long-name rows wrap — so render it as one nowrap block and scale the
         // font so the widest line fits the viewport (mirrors the morgue / the
         // official client). describe-monster/item/god panels stay per-line.
-        const terminal = msg.type === 'game-over'
+        // A Chinese recap uses proportional fallback glyphs. Keep the board
+        // readable at the user's chosen font size rather than shrinking the
+        // entire screen to fit a single long row.
+        const localizedScore = msg.type === 'game-over' && isZh()
+        const terminal = msg.type === 'game-over' && !localizedScore
+        if (localizedScore) bodyEl.classList.add('overlay-body--localized-score')
         if (spellset?.length && rawBody.includes('SPELLSET_PLACEHOLDER')) {
           // Reference client splits the body on SPELLSET_PLACEHOLDER and
           // renders the spellset between the halves (ui-layouts.js:24-31).
@@ -348,7 +354,8 @@ export class LayoutView {
             if (part) bodyEl.insertAdjacentHTML('beforeend', renderBodyLines(part, msg.highlight ?? '', terminal, searchHighlight))
           })
         } else {
-          bodyEl.innerHTML = renderBodyLines(rawBody, msg.highlight ?? '', terminal, searchHighlight)
+          const displayBody = localizedScore ? rawBody.replace(/^[\t ]+/gm, '') : rawBody
+          bodyEl.innerHTML = renderBodyLines(displayBody, msg.highlight ?? '', terminal, searchHighlight)
         }
         overlay.appendChild(bodyEl)
         // rAF re-fits once fonts settle (the sync call lands before paint).

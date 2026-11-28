@@ -97,6 +97,15 @@ describe('item names', () => {
     expect(translateItem(m, 'a +0 robe (worn)')).toBe('布袍（已穿戴）')
   })
 
+  it('translates unidentified potion appearances and keeps their stack counts', () => {
+    expect(translateItem(m, 'e - potion (enlightenment) ×2')).toBe('e - 药水（启明）×2')
+    expect(translateItem(m, 'o - potion (moonshine) ×3')).toBe('o - 药水（月光）×3')
+    expect(translateItem(m, 'e - potion (enlightenment) x2')).toBe('e - 药水（启明）×2')
+    expect(translateItem(m, 'o - potion (moonshine) x3')).toBe('o - 药水（月光）×3')
+    expect(translateItem(m, 'o - potion of moonshine')).toBe('o - 月光药水')
+    expect(translateItem(m, 'a - potion (unknown look) ×4')).toBeNull()
+  })
+
   it('moves an "of X" suffix in front', () => {
     expect(translateItem(m, 'the +2 ring of protection')).toBe('防护的+2戒指')
   })

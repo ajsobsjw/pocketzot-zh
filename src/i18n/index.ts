@@ -13,7 +13,7 @@
 import { compileDict, fill, lookup, type Matcher } from './translate'
 import { translateItem } from './items'
 import { matchTitle } from './titles'
-import { UI_ZH } from './ui-zh'
+import { UI_ZH, matchUiLabel } from './ui-zh'
 import { SUPP_ZH } from './supp-zh'
 import { ABILITY_NAMES, ITEM_NAMES, MONSTER_NAMES, featureName } from './names-zh'
 import { MANUAL_NAMES } from './manual-zh'
@@ -744,19 +744,14 @@ export function tItem(text: string): string {
   return out ?? text
 }
 
-/** PocketZot's own UI strings (exact match only). */
+/** PocketZot's own UI strings (exact or explicitly scoped template). */
 export function tLabel(text: string): string {
   if (lang !== 'zh' || !text) return text
   const trimmed = text.trim()
-  // Dynamic own-UI labels that a static dictionary cannot key.
-  const del = /^Delete in (\d+)$/.exec(trimmed)
-  if (del) return text.replace(trimmed, `再按 ${del[1]} 次删除`)
-  const actions = /^Actions for (.+)$/.exec(trimmed)
-  if (actions) return text.replace(trimmed, `${actions[1]} 的操作`)
-  const hit = UI_ZH[trimmed]
-  if (!hit) return text
+  const hit = matchUiLabel(trimmed)
+  if (hit === undefined) return text
   // Keep the surrounding whitespace so inline layouts don't collapse.
-  return text.replace(trimmed, hit)
+  return text.replace(trimmed, () => hit)
 }
 
 /**

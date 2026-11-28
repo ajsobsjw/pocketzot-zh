@@ -5,15 +5,41 @@ import { fakeStorage } from '../test/fake-storage'
 
 vi.stubGlobal('localStorage', fakeStorage())
 
-import { isChangelogUnread, openChangelogDoc } from './docs'
+import { isChangelogUnread, openAboutDoc, openChangelogDoc, openGesturesDoc } from './docs'
 import { getPref } from '../prefs'
+import { setLang } from '../i18n'
 
 beforeEach(() => {
   localStorage.clear()
 })
 
-afterEach(() => {
+afterEach(async () => {
+  for (const close of document.querySelectorAll<HTMLButtonElement>('.doc-close')) close.click()
   document.body.innerHTML = ''
+  await setLang('en')
+})
+
+it('shows Chinese documentation and can switch an open document back to English', async () => {
+  await setLang('zh')
+  openAboutDoc()
+  expect(document.querySelector('.doc-title')?.textContent).toBe('关于')
+  expect(document.querySelector('.doc-body')?.textContent).toContain('添加到主屏幕')
+  expect(document.querySelector('.doc-body a[href="/source.zip"]')?.textContent).toContain('完整对应源码')
+  await setLang('en')
+  expect(document.querySelector('.doc-title')?.textContent).toBe('About')
+  expect(document.querySelector('.doc-body')?.textContent).toContain('Add to Home Screen')
+})
+
+it('renders the hand-translated gesture guide and every current changelog date in Chinese', async () => {
+  openChangelogDoc()
+  const dates = [...document.querySelectorAll('.doc-body h2')].map((heading) => heading.textContent)
+  await setLang('zh')
+  const entries = [...document.querySelectorAll('.doc-body li')]
+  expect(entries.length).toBeGreaterThan(50)
+  for (const entry of entries) expect(entry.textContent).toMatch(/[\u3400-\u9fff]/)
+  expect([...document.querySelectorAll('.doc-body h2')].map((heading) => heading.textContent)).toEqual(dates)
+  openGesturesDoc()
+  expect([...document.querySelectorAll('.doc-body')].at(-1)?.textContent).toContain('双指长按地图')
 })
 
 describe('changelog unread state', () => {

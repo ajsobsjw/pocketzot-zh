@@ -73,4 +73,27 @@ describe('auto translate', () => {
     await tick()
     expect(p.textContent).toBe('Skills')
   })
+
+  it('restores the latest live label and attributes without undoing external edits', async () => {
+    await setLang('zh')
+    const button = document.createElement('button')
+    const text = document.createTextNode('Downloading tiles 1/3…')
+    button.append(text)
+    button.title = 'Show all versions (3)'
+    button.setAttribute('aria-label', 'Options file')
+    root.appendChild(button)
+    await tick()
+    expect(text.data).toBe('正在下载图块 1/3…')
+    expect(button.title).toBe('显示所有版本（3）')
+    text.data = 'Downloading tiles 2/3…'
+    button.title = 'Register on C$&O'
+    await tick()
+    expect(text.data).toBe('正在下载图块 2/3…')
+    expect(button.title).toBe('在 C$&O 注册')
+    button.removeAttribute('aria-label')
+    await setLang('en')
+    expect(text.data).toBe('Downloading tiles 2/3…')
+    expect(button.title).toBe('Register on C$&O')
+    expect(button.getAttribute('aria-label')).toBeNull()
+  })
 })
